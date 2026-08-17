@@ -1,0 +1,57 @@
+# Windows system files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary / Log files
+*.log
+.phpunit.result.cache
+
+# Local startup / tunneling / diagnostics scripts
+capture_screenshots.bat
+restart_ngrok.bat
+share_localhost.bat
+start-all-services.bat
+start-dev.ps1
+start_all_servers.bat
+stop-all-services.bat
+stop_tunnels.bat
+update_settings.py
+backend/cleanup.ps1
+backend/verify-system.ps1
+
+# AI assistant directories
+.kiro/
+.gemini/
+
+# Figma documentation and spec sheets
+figma/
+COMPLETE_COLOR_PALETTE.md
+COMPLETE_FIGMA_CONVERSION_GUIDE.md
+FIGMA_COMPLETE_SETUP_GUIDE.md
+FIGMA_DESIGN_SPECS.md
+FONTS_AND_ICONS_GUIDE.md
+HOW_TO_SHARE_LOCALHOST.md
+README_FIGMA_RESOURCES.md
+README_LOCALHOST_AND_FIGMA.md
+START_HERE.md
+docs/
+
+# Env overrides
+.env
+.env.*
+.env.local
+.env.production
+.env.staging
+.env.development
+!.env.example
+
