@@ -10,14 +10,11 @@ import ChatbotDemo from './sections/ChatbotDemo';
 import EmailAutomation from './sections/EmailAutomation';
 import PatientRecord from './sections/PatientRecord';
 import Modules from './sections/Modules';
-import Stats from './sections/Stats';
 import Security from './sections/Security';
 import UseCases from './sections/UseCases';
-import Testimonials from './sections/Testimonials';
 import Pricing from './sections/Pricing';
 import FAQ from './sections/FAQ';
 import CTABanner from './sections/CTABanner';
-import TrustBadges from './sections/TrustBadges';
 import Footer from './sections/Footer';
 import LiveNotifications from './sections/LiveNotifications';
 
@@ -85,21 +82,15 @@ export default function LandingPage(props) {
       <hr className="border-none h-px bg-linear-to-r from-transparent via-slate-200 to-transparent mx-auto max-w-5xl" />
       <Modules {...props} />
       <hr className="border-none h-px bg-linear-to-r from-transparent via-slate-200 to-transparent mx-auto max-w-5xl" />
-      <Stats {...props} />
-      <hr className="border-none h-px bg-linear-to-r from-transparent via-slate-200 to-transparent mx-auto max-w-5xl" />
       <Security {...props} />
       <hr className="border-none h-px bg-linear-to-r from-transparent via-slate-200 to-transparent mx-auto max-w-5xl" />
       <UseCases {...props} />
-      <hr className="border-none h-px bg-linear-to-r from-transparent via-slate-200 to-transparent mx-auto max-w-5xl" />
-      <Testimonials {...props} />
       <hr className="border-none h-px bg-linear-to-r from-transparent via-slate-200 to-transparent mx-auto max-w-5xl" />
       <Pricing {...props} />
       <hr className="border-none h-px bg-linear-to-r from-transparent via-slate-200 to-transparent mx-auto max-w-5xl" />
       <FAQ {...props} />
       <hr className="border-none h-px bg-linear-to-r from-transparent via-slate-200 to-transparent mx-auto max-w-5xl" />
       <CTABanner {...props} />
-      <hr className="border-none h-px bg-linear-to-r from-transparent via-slate-200 to-transparent mx-auto max-w-5xl" />
-      <TrustBadges {...props} />
       <Footer {...props} />
       
       {/* Floating social proof notifications */}
