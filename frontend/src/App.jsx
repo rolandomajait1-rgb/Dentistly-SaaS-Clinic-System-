@@ -370,10 +370,7 @@ export function AppContent() {
   }
 
   return (
-    <div
-      className="flex h-screen overflow-hidden"
-      style={{ background: 'var(--color-background)' }}
-    >
+    <div className="flex h-screen overflow-hidden bg-[#F4F6F8]">
       {renderModals()}
       {showWizard && (
         <OnboardingWizard 
@@ -474,57 +471,97 @@ export function AppContent() {
       )}
 
       {/* Main content body */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative dot-pattern">
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative" style={{ background: '#F0F4F3' }}>
 
         {/* ── Top App Bar ── */}
-        <header className="flex justify-between items-center w-full px-6 h-16 border-b border-outline-variant/40 shadow-xs shrink-0 z-50 bg-white/80 dark:bg-[#0a100f]/80 backdrop-blur-md">
+        <header
+          className="flex justify-between items-center w-full px-8 shrink-0 z-40 bg-white"
+          style={{ height: 76, borderBottom: '1px rgba(0, 0, 0, 0.10) solid' }}
+        >
           {/* Mobile menu toggle (hidden on desktop) */}
           <div className="flex items-center gap-3 md:hidden">
             <button 
               onClick={() => setIsMobileMenuOpen(true)}
-              className="p-2 -ml-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors cursor-pointer"
+              className="p-2 -ml-2 text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined">menu</span>
             </button>
-            <span className="text-lg font-bold text-primary tracking-tight">{clinic?.clinic_name || 'Happy Smiles'}</span>
+            <div className="flex flex-col">
+              <span
+                style={{
+                  color: '#99A1AF',
+                  fontSize: 12,
+                  fontFamily: "'Work Sans', sans-serif",
+                  fontWeight: '500',
+                  textTransform: 'uppercase',
+                  lineHeight: '16px',
+                }}
+              >
+                clinic owner
+              </span>
+              <span
+                style={{
+                  color: '#0E3F39',
+                  fontSize: 18,
+                  fontFamily: "'Work Sans', sans-serif",
+                  fontWeight: '600',
+                  lineHeight: '28px',
+                }}
+              >
+                {getPageHeaderTitle()}
+              </span>
+            </div>
           </div>
 
-          {/* Page Title Breadcrumb (desktop) */}
-          <div className="hidden md:flex items-center gap-2 mr-4 shrink-0">
-            <span className="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant">
-              {clinic?.clinic_name || 'Happy Smiles'}
+          {/* Page Title (desktop) */}
+          <div className="hidden md:flex flex-col">
+            <span
+              style={{
+                color: '#99A1AF',
+                fontSize: 12,
+                fontFamily: "'Work Sans', sans-serif",
+                fontWeight: '500',
+                textTransform: 'uppercase',
+                lineHeight: '16px',
+              }}
+            >
+              clinic owner
             </span>
-            <span className="material-symbols-outlined text-outline-variant" style={{ fontSize: '14px' }}>chevron_right</span>
-            <span className="text-[10px] font-bold tracking-widest uppercase text-primary">
+            <h2
+              style={{
+                color: '#0E3F39',
+                fontSize: 18,
+                fontFamily: "'Work Sans', sans-serif",
+                fontWeight: '600',
+                lineHeight: '28px',
+              }}
+            >
               {getPageHeaderTitle()}
-            </span>
-          </div>
-
-          {/* Search Bar */}
-          <div className="hidden md:flex items-center flex-1 max-w-md relative group">
-            <span className="material-symbols-outlined absolute left-3 text-on-surface-variant group-focus-within:text-primary transition-colors" style={{ fontSize: '20px' }}>search</span>
-            <input
-              className="w-full h-10 pl-10 pr-4 bg-white dark:bg-[#0a100f]/60 border border-outline-variant/55 rounded-lg text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary-fixed transition-all shadow-xs"
-              placeholder="Search patients, appointments..."
-              type="text"
-            />
+            </h2>
           </div>
 
           {/* Trailing Actions */}
-          <div className="flex items-center gap-4 ml-auto">
+          <div className="flex items-center gap-5 ml-auto">
             {/* Notification Bell */}
             <div className="relative">
               <button 
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="notification-bell-btn p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors relative cursor-pointer"
+                className="notification-bell-btn p-2 hover:bg-slate-50 rounded-full transition-colors relative cursor-pointer flex items-center justify-center"
+                aria-label="Notifications"
               >
-                <span className="material-symbols-outlined">notifications</span>
-                {/* Badge */}
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-error text-[9px] font-bold text-white border-2 border-white animate-pulse">
-                    {unreadCount}
-                  </span>
-                )}
+                <img src={assets.iconBell} alt="Notifications" className="w-[18px] h-[18px] object-contain" />
+                {/* Red dot badge */}
+                <div
+                  style={{
+                    width: 8,
+                    height: 8,
+                    position: 'absolute',
+                    top: 6,
+                    right: 6,
+                    background: '#E05252',
+                    borderRadius: '50%',
+                  }}
+                />
               </button>
               
               <NotificationCenter 
@@ -534,40 +571,62 @@ export function AppContent() {
               />
             </div>
 
-            {/* Theme Toggle Button */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors cursor-pointer flex items-center justify-center"
-              aria-label="Toggle Theme"
-            >
-              <span className="material-symbols-outlined">
-                {theme === 'dark' ? 'light_mode' : 'dark_mode'}
-              </span>
-            </button>
-
-            <button className="p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors hidden sm:block">
-              <span className="material-symbols-outlined">help_outline</span>
-            </button>
-
-            <div className="h-8 w-px bg-outline-variant/50 hidden sm:block" />
-
-            {/* User Avatar Button */}
-            <button className="flex items-center gap-2 hover:bg-surface-container p-1 pr-3 rounded-full transition-colors border border-transparent hover:border-outline-variant/30">
-              <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center border border-outline-variant/50">
-                <span className="material-symbols-outlined text-on-primary-container text-sm" style={{ fontVariationSettings: "'FILL' 1", fontSize: '16px' }}>person</span>
+            {/* User Avatar Pill */}
+            <div className="flex items-center gap-2.5 select-none">
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  background: '#1A8A7A',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <span
+                  style={{
+                    color: 'white',
+                    fontSize: 12,
+                    fontFamily: "'Work Sans', sans-serif",
+                    fontWeight: '700',
+                    lineHeight: '16px',
+                  }}
+                >
+                  {user?.name ? user.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : 'AD'}
+                </span>
               </div>
-              <div className="hidden lg:flex flex-col items-start">
-                <span className="text-xs font-bold text-on-surface leading-none">{user?.name || 'Dr. Juan Santos'}</span>
-                <span className="text-[10px] text-on-surface-variant leading-none mt-0.5 uppercase font-bold tracking-wider">{user?.role || 'Owner'}</span>
+              <div className="hidden sm:flex flex-col items-start leading-none">
+                <span
+                  style={{
+                    color: '#1E2939',
+                    fontSize: 14,
+                    fontFamily: "'Work Sans', sans-serif",
+                    fontWeight: '600',
+                    lineHeight: '20px',
+                  }}
+                >
+                  {user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Owner'}
+                </span>
+                <span
+                  style={{
+                    color: '#99A1AF',
+                    fontSize: 12,
+                    fontFamily: "'Work Sans', sans-serif",
+                    fontWeight: '400',
+                    lineHeight: '16px',
+                  }}
+                >
+                  {user?.email || 'admin@pivodent.com'}
+                </span>
               </div>
-              <span className="material-symbols-outlined text-on-surface-variant hidden lg:block" style={{ fontSize: '18px' }}>arrow_drop_down</span>
-            </button>
+            </div>
           </div>
         </header>
 
         {/* Scrollable content canvas */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-          <div className="max-w-[1280px] mx-auto">
+        <div className="flex-1 overflow-y-auto p-4 md:p-5" style={{ background: '#F0F4F3' }}>
+          <div className="max-w-[1360px] mx-auto">
             {renderTabContent()}
           </div>
 
@@ -585,19 +644,6 @@ export function AppContent() {
             }}
             onCancel={() => setShowLogoutConfirm(false)}
           />
-
-          {/* Footer */}
-          <footer className="mt-12 border-t border-outline-variant flex flex-col md:flex-row justify-between items-center w-full px-8 py-6 gap-4 mx-auto bg-surface-container-lowest">
-            <div className="flex flex-col items-center md:items-start">
-              <span className="text-base font-bold text-primary">{clinic?.clinic_name || 'Happy Smiles Dental'}</span>
-              <p className="text-[11px] text-on-surface-variant mt-1">© 2026 Dental Appointment Chatbot System · All Rights Reserved</p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
-              {['Privacy', 'Terms', 'Support'].map(link => (
-                <a key={link} href="#" className="text-[11px] font-bold text-on-surface-variant hover:text-primary transition-colors">{link}</a>
-              ))}
-            </div>
-          </footer>
         </div>
       </main>
     </div>

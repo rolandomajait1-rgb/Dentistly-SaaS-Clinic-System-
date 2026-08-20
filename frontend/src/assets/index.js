@@ -34,7 +34,43 @@ import authLogoBadge         from './log in and sign up/Container_margin.svg';
 import authPivodentLogo      from './log in and sign up/Image (Pivodent).svg';
 import authSuccessModalBg    from './log in and sign up/SuccessModal.svg';
 
+// Dashboard Icons (from dashboard icons/Clinic Owner)
+import dashboardLogo          from './dashboard icons/Clinic Owner/Pivodent 2.png';
+import iconArrowRight         from './dashboard icons/Clinic Owner/Icon.svg';
+import iconAlertMsg           from './dashboard icons/Clinic Owner/Icon-1.svg';
+import iconAppointmentsToday  from './dashboard icons/Clinic Owner/Icon-2.svg';
+import iconClinicSettings     from './dashboard icons/Clinic Owner/Icon-3.svg';
+import iconRevenue            from './dashboard icons/Clinic Owner/Icon-4.svg';
+import iconNoShows            from './dashboard icons/Clinic Owner/Icon-5.svg';
+import iconBell               from './dashboard icons/Clinic Owner/Icon-6.svg';
+import iconNewPatients        from './dashboard icons/Clinic Owner/Icon-7.svg';
+import iconSignOut            from './dashboard icons/Clinic Owner/Icon-8.svg';
+import iconDashboardActive    from './dashboard icons/Clinic Owner/Icon-9.svg';
+import iconReports            from './dashboard icons/Clinic Owner/Icon-10.svg';
+import iconPatients           from './dashboard icons/Clinic Owner/Icon-11.svg';
+import iconCancellation       from './dashboard icons/Clinic Owner/Icon-12.svg';
+import iconStaffUsers         from './dashboard icons/Clinic Owner/Icon-13.svg';
+import iconAppointments       from './dashboard icons/Clinic Owner/Icon-14.svg';
+
 export default {
+  // Dashboard Icons
+  dashboardLogo,
+  iconArrowRight,
+  iconAlertMsg,
+  iconAppointmentsToday,
+  iconClinicSettings,
+  iconRevenue,
+  iconNoShows,
+  iconBell,
+  iconNewPatients,
+  iconSignOut,
+  iconDashboardActive,
+  iconReports,
+  iconPatients,
+  iconCancellation,
+  iconStaffUsers,
+  iconAppointments,
+
   // Auth Assets
   authBg: authRectangle,
   authRectangle,
