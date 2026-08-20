@@ -19,6 +19,8 @@ class DashboardApiController extends Controller
     public function login(Request $request) { return resolve(AuthController::class)->login($request); }
     public function logout(Request $request) { return resolve(AuthController::class)->logout($request); }
     public function register(Request $request) { return resolve(AuthController::class)->register($request); }
+    public function verifyEmail(Request $request) { return resolve(AuthController::class)->verifyEmail($request); }
+    public function resendVerification(Request $request) { return resolve(AuthController::class)->resendVerification($request); }
     public function googleLogin(Request $request) { return resolve(AuthController::class)->googleLogin($request); }
 
     // Appointments & Walk-In delegations

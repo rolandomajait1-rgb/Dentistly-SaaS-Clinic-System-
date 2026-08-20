@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { register as apiRegister } from '../../api';
+import { register as apiRegister, resendVerification } from '../../api';
 import { useNotifications } from '../../context/NotificationContext';
 import assets from '../../assets';
 
@@ -22,9 +22,21 @@ export default function RegisterPage({ onRegister, onBack, onSwitchToLogin }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [authData, setAuthData] = useState(null);
   
   const formRef = useRef(null);
+
+  /* Resend countdown timer */
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setResendCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendCooldown]);
 
   /* Entrance animation */
   useEffect(() => {
@@ -96,8 +108,13 @@ export default function RegisterPage({ onRegister, onBack, onSwitchToLogin }) {
           contact_number: contactNumber,
           address,
         });
-        setAuthData(data);
-        setShowSuccessModal(true);
+        if (data.requires_verification) {
+          setShowVerificationModal(true);
+          showToast('Verification email sent! Please check your inbox.', 'info');
+        } else {
+          setAuthData(data);
+          setShowSuccessModal(true);
+        }
       } catch (err) {
         const errorMsg = err.message || 'Registration failed. Please try again.';
         setError(errorMsg);
@@ -105,6 +122,20 @@ export default function RegisterPage({ onRegister, onBack, onSwitchToLogin }) {
       } finally {
         setIsLoading(false);
       }
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (resendCooldown > 0 || resendLoading) return;
+    setResendLoading(true);
+    try {
+      await resendVerification(email);
+      showToast('A fresh verification link has been sent to your email.', 'success');
+      setResendCooldown(60);
+    } catch (err) {
+      showToast(err.message || 'Failed to resend verification link.', 'error');
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -117,6 +148,87 @@ export default function RegisterPage({ onRegister, onBack, onSwitchToLogin }) {
   return (
     <div className="min-h-screen flex bg-white text-slate-900 font-sans relative overflow-x-hidden">
       
+      {/* ════════════════════════════════════════════════
+          EMAIL VERIFICATION PENDING MODAL
+      ════════════════════════════════════════════════ */}
+      {showVerificationModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-[4px] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[32px] p-8 sm:p-9 max-w-[420px] w-full text-center shadow-[0_20px_50px_rgba(0,0,0,0.18)] relative border border-slate-100/80 flex flex-col items-center">
+            {/* Close button */}
+            <button
+              onClick={() => {
+                setShowVerificationModal(false);
+                if (onSwitchToLogin) onSwitchToLogin();
+              }}
+              className="absolute top-5 right-5 text-slate-300 hover:text-slate-500 transition-colors p-1 cursor-pointer"
+              aria-label="Close"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Email Icon */}
+            <div className="mb-4 mt-1">
+              <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center mx-auto text-emerald-600 shadow-sm">
+                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-[21px] font-bold text-[#004E47] mb-2 tracking-tight leading-snug">
+              Verify Your Email Address
+            </h3>
+
+            <p className="text-[13.5px] text-slate-600 mb-3 leading-relaxed">
+              We've sent a verification link to:
+            </p>
+
+            <div className="bg-teal-50/80 border border-teal-200/60 rounded-xl py-2 px-3.5 mb-4 max-w-full text-center">
+              <span className="text-[13px] font-bold text-[#004E47] break-all select-all">
+                {email}
+              </span>
+            </div>
+            
+            {/* Subtitle */}
+            <p className="text-[12.5px] text-slate-500 mb-6 leading-relaxed">
+              Please click the link in your email to activate your clinic account and complete registration.
+            </p>
+
+            {/* Actions */}
+            <div className="w-full space-y-2.5">
+              <button
+                onClick={handleResendVerification}
+                disabled={resendCooldown > 0 || resendLoading}
+                className={`w-full h-11 rounded-full flex items-center justify-center font-bold text-xs tracking-wider uppercase transition-all cursor-pointer ${
+                  resendCooldown > 0 || resendLoading
+                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    : 'bg-[#00B074] hover:bg-[#009e68] text-white shadow-[0_4px_14px_rgba(0,176,116,0.3)] hover:shadow-[0_6px_18px_rgba(0,176,116,0.4)] hover:scale-[1.02] active:scale-[0.98]'
+                }`}
+              >
+                {resendLoading
+                  ? 'Sending...'
+                  : resendCooldown > 0
+                  ? `Resend in ${resendCooldown}s`
+                  : 'Resend Verification Email'}
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowVerificationModal(false);
+                  if (onSwitchToLogin) onSwitchToLogin();
+                }}
+                className="w-full h-10 rounded-full flex items-center justify-center font-bold text-xs tracking-wider text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Back to Sign in
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ════════════════════════════════════════════════
           SUCCESS MODAL (Matches user reference design)
       ════════════════════════════════════════════════ */}
@@ -140,14 +252,9 @@ export default function RegisterPage({ onRegister, onBack, onSwitchToLogin }) {
             </div>
 
             {/* Title */}
-            <h3 className="text-[22px] font-bold text-[#004E47] mb-1.5 tracking-tight leading-snug">
+            <h3 className="text-[22px] font-bold text-[#004E47] mb-7 tracking-tight leading-snug">
               Registered Successfully!
             </h3>
-            
-            {/* Subtitle */}
-            <p className="text-[13px] text-slate-600 mb-7 font-medium">
-              Check your Email for verification
-            </p>
 
             {/* Checkmark Action Button */}
             <button

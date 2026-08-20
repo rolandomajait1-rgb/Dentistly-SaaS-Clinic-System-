@@ -41,6 +41,8 @@ Route::prefix('dashboard')->group(function () {
     // Public auth routes
     Route::post('/auth/login', [DashboardApiController::class, 'login']);
     Route::post('/auth/register', [DashboardApiController::class, 'register']);
+    Route::post('/auth/verify-email', [DashboardApiController::class, 'verifyEmail']);
+    Route::post('/auth/resend-verification', [DashboardApiController::class, 'resendVerification']);
     Route::post('/auth/google-login', [DashboardApiController::class, 'googleLogin']);
     
     // Protected routes - require authentication

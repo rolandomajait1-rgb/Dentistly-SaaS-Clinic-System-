@@ -25,6 +25,7 @@ class ClinicStaff extends Authenticatable
         'permissions',
         'is_active',
         'email_verified_at',
+        'verification_token',
     ];
 
     protected $hidden = [

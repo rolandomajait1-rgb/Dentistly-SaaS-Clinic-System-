@@ -20,14 +20,26 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        $staff = ClinicStaff::where('email', $request->email)
-            ->where('is_active', true)
-            ->first();
+        $staff = ClinicStaff::where('email', $request->email)->first();
 
         if (!$staff || !Hash::check($request->password, $staff->password)) {
             return response()->json([
                 'message' => 'Invalid email or password.'
             ], 401);
+        }
+
+        if (!$staff->email_verified_at) {
+            return response()->json([
+                'requires_verification' => true,
+                'email' => $staff->email,
+                'message' => 'Please verify your email address to activate your account. Check your inbox for the verification link.'
+            ], 403);
+        }
+
+        if (!$staff->is_active) {
+            return response()->json([
+                'message' => 'Your account is deactivated. Please contact support.'
+            ], 403);
         }
 
         $clinic = Clinic::with('fbPageIntegration')->find($staff->clinic_id);
@@ -126,7 +138,9 @@ class AuthController extends Controller
                 ]);
             }
 
-            // Create owner staff account
+            $verificationToken = Str::random(64);
+
+            // Create owner staff account (unverified until email link is clicked)
             $staff = ClinicStaff::create([
                 'clinic_id' => $clinic->id,
                 'name' => $request->owner_name,
@@ -134,8 +148,9 @@ class AuthController extends Controller
                 'password' => Hash::make($request->password),
                 'role' => 'owner',
                 'permissions' => ['all'],
-                'is_active' => true,
-                'email_verified_at' => now(),
+                'is_active' => false,
+                'email_verified_at' => null,
+                'verification_token' => $verificationToken,
             ]);
 
             // Create default dental services
@@ -160,33 +175,32 @@ class AuthController extends Controller
 
             DB::commit();
 
-            // Send registration confirmation notification email
+            // Send registration email verification link
             try {
                 $mailService = resolve(\App\Services\MailService::class);
-                $subject = "Welcome to Dentistly! Your account has been created";
+                $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+                $verifyUrl = rtrim($frontendUrl, '/') . '/verify-email?token=' . $verificationToken;
+                $subject = "Verify your email - Pivodent Dental System";
                 $body = "
-                    <p>If you have any questions or need support getting started, feel free to contact us.</p>
-                    <p>Best regards,<br>The Dentistly Team</p>
+                    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b;'>
+                        <h2 style='color: #004E47; margin-bottom: 8px;'>Welcome to Pivodent, {$request->owner_name}!</h2>
+                        <p style='font-size: 15px; line-height: 1.5; color: #475569;'>Thank you for registering <strong>{$request->clinic_name}</strong>. Before you can access your clinic dashboard, please verify your email address by clicking the button below:</p>
+                        <div style='text-align: center; margin: 32px 0;'>
+                            <a href='{$verifyUrl}' style='background-color: #00B074; color: #ffffff; padding: 14px 32px; border-radius: 9999px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;'>Verify Email & Activate Clinic</a>
+                        </div>
+                        <p style='font-size: 13px; color: #64748b; margin-top: 24px;'>If the button doesn't work, copy and paste this link into your browser:<br><a href='{$verifyUrl}' style='color: #00B074; word-break: break-all;'>{$verifyUrl}</a></p>
+                        <p style='font-size: 12px; color: #94a3b8; margin-top: 20px;'>If you did not create this account, you can safely ignore this email.</p>
+                    </div>
                 ";
-                $mailService->sendEmail($staff->email, $subject, $body, 'Dentistly');
+                $mailService->sendEmail($staff->email, $subject, $body, 'Pivodent');
             } catch (\Exception $e) {
-                Log::error('Failed to send registration confirmation email: ' . $e->getMessage());
+                Log::error('Failed to send registration verification email: ' . $e->getMessage());
             }
 
-            // Generate token
-            $token = $staff->createToken('dashboard-access')->plainTextToken;
-
             return response()->json([
-                'message' => 'Registration successful! Welcome to Dentistly.',
-                'user' => [
-                    'id' => $staff->id,
-                    'name' => $staff->name,
-                    'email' => $staff->email,
-                    'role' => $staff->role,
-                    'clinic_id' => $staff->clinic_id,
-                ],
-                'clinic' => $clinic->load('fbPageIntegration'),
-                'token' => $token
+                'requires_verification' => true,
+                'email' => $staff->email,
+                'message' => 'Registration initiated! Please check your email to verify your account.'
             ], 201);
 
         } catch (\Exception $e) {
@@ -197,6 +211,106 @@ class AuthController extends Controller
                 'message' => 'Registration failed. Please try again.'
             ], 500);
         }
+    }
+
+    /**
+     * Verify email via token
+     */
+    public function verifyEmail(Request $request)
+    {
+        $request->validate([
+            'token' => 'required|string',
+        ]);
+
+        $staff = ClinicStaff::where('verification_token', $request->token)->first();
+
+        if (!$staff) {
+            return response()->json([
+                'message' => 'Invalid or expired verification link.'
+            ], 400);
+        }
+
+        $staff->update([
+            'email_verified_at' => now(),
+            'is_active' => true,
+            'verification_token' => null,
+        ]);
+
+        $clinic = Clinic::with('fbPageIntegration')->find($staff->clinic_id);
+
+        // Delete old tokens and generate new session token
+        $staff->tokens()->delete();
+        $token = $staff->createToken('dashboard-access')->plainTextToken;
+
+        return response()->json([
+            'verified' => true,
+            'message' => 'Email verified successfully! Your clinic account is now active.',
+            'user' => [
+                'id' => $staff->id,
+                'name' => $staff->name,
+                'email' => $staff->email,
+                'role' => $staff->role,
+                'clinic_id' => $staff->clinic_id,
+            ],
+            'clinic' => $clinic,
+            'token' => $token,
+        ]);
+    }
+
+    /**
+     * Resend verification email
+     */
+    public function resendVerification(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $staff = ClinicStaff::where('email', $request->email)->first();
+
+        if (!$staff) {
+            return response()->json([
+                'message' => 'No account found with this email address.'
+            ], 404);
+        }
+
+        if ($staff->email_verified_at) {
+            return response()->json([
+                'message' => 'This account has already been verified. You can log in directly.'
+            ], 400);
+        }
+
+        $verificationToken = Str::random(64);
+        $staff->update([
+            'verification_token' => $verificationToken,
+        ]);
+
+        $clinic = Clinic::find($staff->clinic_id);
+        $clinicName = $clinic ? $clinic->clinic_name : 'your clinic';
+
+        try {
+            $mailService = resolve(\App\Services\MailService::class);
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+            $verifyUrl = rtrim($frontendUrl, '/') . '/verify-email?token=' . $verificationToken;
+            $subject = "Verify your email - Pivodent Dental System";
+            $body = "
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b;'>
+                    <h2 style='color: #004E47; margin-bottom: 8px;'>Verify your email address</h2>
+                    <p style='font-size: 15px; line-height: 1.5; color: #475569;'>Here is your new verification link for <strong>{$clinicName}</strong>. Please click the button below to activate your account:</p>
+                    <div style='text-align: center; margin: 32px 0;'>
+                        <a href='{$verifyUrl}' style='background-color: #00B074; color: #ffffff; padding: 14px 32px; border-radius: 9999px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;'>Verify Email & Activate Clinic</a>
+                    </div>
+                    <p style='font-size: 13px; color: #64748b; margin-top: 24px;'>If the button doesn't work, copy and paste this link into your browser:<br><a href='{$verifyUrl}' style='color: #00B074; word-break: break-all;'>{$verifyUrl}</a></p>
+                </div>
+            ";
+            $mailService->sendEmail($staff->email, $subject, $body, 'Pivodent');
+        } catch (\Exception $e) {
+            Log::error('Failed to resend verification email: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'message' => 'A fresh verification email has been sent. Please check your inbox.'
+        ]);
     }
 
     /**

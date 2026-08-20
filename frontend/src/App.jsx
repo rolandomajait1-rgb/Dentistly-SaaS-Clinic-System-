@@ -11,7 +11,7 @@ import RegisterPage from './pages/auth/RegisterPage';
 import SuperadminDashboard from './pages/superadmin/SuperadminDashboard';
 import PublicBookingPortal from './pages/booking/PublicBookingPortal';
 import OnboardingWizard from './pages/onboarding/OnboardingWizard';
-import { logout } from './api';
+import { logout, verifyEmail } from './api';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
 import NotificationCenter from './components/layout/NotificationCenter';
 import ConfirmModal from './components/ui/ConfirmModal';
@@ -27,8 +27,10 @@ const NAV_ITEMS = [
 ];
 
 export function AppContent() {
-  const { unreadCount } = useNotifications();
+  const { unreadCount, showToast } = useNotifications();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showVerifiedSuccessModal, setShowVerifiedSuccessModal] = useState(false);
+  const [verifyErrorModal, setVerifyErrorModal] = useState('');
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('theme') || 'light';
   });
@@ -118,6 +120,29 @@ export function AppContent() {
     setView('dashboard');
   };
 
+  /* Email Verification Token Detector */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const isVerifyPath = window.location.pathname.startsWith('/verify-email') || params.has('token');
+
+    if (token && isVerifyPath) {
+      // Clear token from browser URL cleanly without reload
+      window.history.replaceState({}, document.title, window.location.pathname.startsWith('/verify-email') ? '/' : window.location.pathname);
+
+      verifyEmail(token)
+        .then((data) => {
+          handleLoginSuccess(data);
+          setShowVerifiedSuccessModal(true);
+          showToast('Email verified successfully! Welcome to Pivodent.', 'success');
+        })
+        .catch((err) => {
+          setVerifyErrorModal(err.message || 'The email verification link is invalid or has expired.');
+          showToast(err.message || 'Verification failed.', 'error');
+        });
+    }
+  }, [showToast]);
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -200,42 +225,147 @@ export function AppContent() {
     }
   };
 
+  const renderModals = () => (
+    <>
+      {/* EMAIL VERIFICATION SUCCESS MODAL */}
+      {showVerifiedSuccessModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-[3px] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[32px] p-8 sm:p-9 max-w-[390px] w-full text-center shadow-[0_20px_50px_rgba(0,0,0,0.18)] relative border border-slate-100/80 flex flex-col items-center">
+            {/* Close button */}
+            <button
+              onClick={() => setShowVerifiedSuccessModal(false)}
+              className="absolute top-5 right-5 text-slate-300 hover:text-slate-500 transition-colors p-1 cursor-pointer"
+              aria-label="Close"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Pivodent Logo */}
+            <div className="mb-5 mt-2">
+              <img src={assets.pivodentLogo} alt="Pivodent" className="h-14 w-auto object-contain mx-auto" />
+            </div>
+
+            {/* Title */}
+            <h3 className="text-[22px] font-bold text-[#004E47] mb-1.5 tracking-tight leading-snug">
+              Registered Successfully!
+            </h3>
+            
+            <p className="text-[13px] text-slate-600 mb-7 font-medium">
+              Your email has been verified. Welcome to Pivodent!
+            </p>
+
+            {/* Checkmark Action Button */}
+            <button
+              onClick={() => setShowVerifiedSuccessModal(false)}
+              className="bg-[#00B074] hover:bg-[#009e68] active:bg-[#008c5c] text-white w-36 h-11 rounded-full flex items-center justify-center shadow-[0_4px_14px_rgba(0,176,116,0.35)] hover:shadow-[0_6px_18px_rgba(0,176,116,0.45)] hover:scale-102 active:scale-98 transition-all cursor-pointer"
+            >
+              <svg className="w-6 h-6 stroke-white" fill="none" viewBox="0 0 24 24" strokeWidth="3.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* VERIFY ERROR MODAL */}
+      {verifyErrorModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-[3px] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[32px] p-8 max-w-[390px] w-full text-center shadow-[0_20px_50px_rgba(0,0,0,0.18)] relative border border-slate-100 flex flex-col items-center">
+            <button
+              onClick={() => setVerifyErrorModal('')}
+              className="absolute top-5 right-5 text-slate-300 hover:text-slate-500 transition-colors p-1 cursor-pointer"
+              aria-label="Close"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="w-14 h-14 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500 mb-4 mt-2">
+              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+
+            <h3 className="text-[20px] font-bold text-slate-900 mb-2">
+              Verification Failed
+            </h3>
+            <p className="text-[13px] text-slate-600 mb-6 leading-relaxed">
+              {verifyErrorModal}
+            </p>
+
+            <button
+              onClick={() => {
+                setVerifyErrorModal('');
+                setView('login');
+              }}
+              className="bg-slate-900 hover:bg-slate-800 text-white w-full h-11 rounded-full font-bold text-xs tracking-wider uppercase transition-all cursor-pointer"
+            >
+              Go to Sign In
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   if (view === 'superadmin') {
-    return <SuperadminDashboard />;
+    return (
+      <>
+        {renderModals()}
+        <SuperadminDashboard />
+      </>
+    );
   }
 
   if (view === 'public-booking') {
-    return <PublicBookingPortal />;
+    return (
+      <>
+        {renderModals()}
+        <PublicBookingPortal />
+      </>
+    );
   }
 
   if (view === 'landing') {
     return (
-      <LandingPage
-        onLogin={() => setView('login')}
-        onGetStarted={() => setView('register')}
-        theme={theme}
-        toggleTheme={toggleTheme}
-      />
+      <>
+        {renderModals()}
+        <LandingPage
+          onLogin={() => setView('login')}
+          onGetStarted={() => setView('register')}
+          theme={theme}
+          toggleTheme={toggleTheme}
+        />
+      </>
     );
   }
 
   if (view === 'login') {
     return (
-      <LoginPage
-        onLogin={handleLoginSuccess}
-        onBack={() => setView('landing')}
-        onSwitchToRegister={() => setView('register')}
-      />
+      <>
+        {renderModals()}
+        <LoginPage
+          onLogin={handleLoginSuccess}
+          onBack={() => setView('landing')}
+          onSwitchToRegister={() => setView('register')}
+        />
+      </>
     );
   }
 
   if (view === 'register') {
     return (
-      <RegisterPage
-        onRegister={handleLoginSuccess}
-        onBack={() => setView('landing')}
-        onSwitchToLogin={() => setView('login')}
-      />
+      <>
+        {renderModals()}
+        <RegisterPage
+          onRegister={handleLoginSuccess}
+          onBack={() => setView('landing')}
+          onSwitchToLogin={() => setView('login')}
+        />
+      </>
     );
   }
 
@@ -244,6 +374,7 @@ export function AppContent() {
       className="flex h-screen overflow-hidden"
       style={{ background: 'var(--color-background)' }}
     >
+      {renderModals()}
       {showWizard && (
         <OnboardingWizard 
           clinicData={clinic} 
