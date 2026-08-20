@@ -26,7 +26,24 @@ import footerChat        from './footer/Group.svg';
 import footerMeta        from './footer/images 2.svg';
 import footerSocialGrid  from './footer/Social Media Icons.svg';
 
+// Auth / Login and Sign up Assets (from log in and sign up)
+import authRectangle         from './log in and sign up/Rectangle2.png';
+import authBody              from './log in and sign up/Body.png';
+import authContainerGradient from './log in and sign up/Container.svg';
+import authLogoBadge         from './log in and sign up/Container_margin.svg';
+import authPivodentLogo      from './log in and sign up/Image (Pivodent).svg';
+import authSuccessModalBg    from './log in and sign up/SuccessModal.svg';
+
 export default {
+  // Auth Assets
+  authBg: authRectangle,
+  authRectangle,
+  authBody,
+  authContainerGradient,
+  authLogoBadge,
+  authPivodentLogo,
+  authSuccessModalBg,
+
   // Hero section images
   heroAppointments,
   heroDashboard,
