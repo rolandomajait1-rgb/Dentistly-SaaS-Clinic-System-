@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Section, Container, Heading } from '../../../design-system';
 import { FADE_UP_VARIANTS, STAGGER_CONTAINER_VARIANTS, STAGGER_ITEM_VARIANTS } from '../constants.jsx';
 import UnifiedBackground from './UnifiedBackground.jsx';
+import assets from '../../../assets';
 
 export default function ChatbotDemo() {
   const [chatState, setChatState] = useState('initial');
@@ -185,7 +186,7 @@ export default function ChatbotDemo() {
         case 'booking_phone':
           if (id === 'submit_phone') {
             userMsg = "+63 917 123 4567 📱";
-            botReply = "Thank you! Your appointment is confirmed! 🎉 You will receive an SMS reminder shortly. Looking forward to seeing you!";
+            botReply = "Thank you! Your appointment is confirmed! 🎉 You will receive a confirmation reminder shortly. Looking forward to seeing you!";
             nextState = 'booking_finished';
           }
           break;
@@ -386,23 +387,13 @@ export default function ChatbotDemo() {
                 </div>
               </div>
 
-              {/* Chat App Header */}
-              <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100 bg-white/95 backdrop-blur-md z-30 select-none">
-                <div className="flex items-center gap-3">
-                  {/* Bot Avatar Circle */}
-                  <div className="w-9 h-9 rounded-xl bg-linear-to-br from-primary to-emerald-500 flex items-center justify-center text-white shrink-0 shadow-md shadow-primary/10 relative">
-                    <span className="material-symbols-outlined text-white" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>dentistry</span>
-                    {/* Active Blinking Dot */}
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-800 text-[13.5px] tracking-tight leading-none font-display">SmileBot</p>
-                    <p className="text-[9px] text-emerald-600 font-bold mt-1 tracking-wider uppercase">
-                      Active Now
-                    </p>
-                  </div>
-                </div>
-                <span className="text-[9px] px-2.5 py-0.5 rounded-full bg-slate-50 border border-slate-150 text-slate-400 font-bold uppercase tracking-wider">Messenger</span>
+              {/* Chat App Header using official phone design SVG */}
+              <div className="px-4 py-2.5 border-b border-slate-100 bg-white/95 backdrop-blur-md z-30 select-none shrink-0 flex items-center justify-center">
+                <img 
+                  src={assets.phoneChatbotLogo} 
+                  alt="Pivodent Bot Active Now" 
+                  className="w-full h-auto max-h-9 object-contain" 
+                />
               </div>
 
               {/* Messages Body */}
@@ -418,9 +409,11 @@ export default function ChatbotDemo() {
                     >
                       {/* Bot Message Avatar */}
                       {m.who === 'bot' && (
-                        <div className="w-7 h-7 rounded-full bg-primary/5 border border-primary/10 flex items-center justify-center text-[10px] text-primary shrink-0 self-end mb-1">
-                          🤖
-                        </div>
+                        <img 
+                          src={assets.phoneIconContainer} 
+                          alt="SmileBot" 
+                          className="w-9 h-9 object-contain shrink-0 self-end mb-0.5" 
+                        />
                       )}
                       
                       {/* Message Bubble */}

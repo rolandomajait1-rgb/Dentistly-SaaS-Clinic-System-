@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Section, Container, Heading } from '../../../design-system';
 import { FADE_UP_VARIANTS, STAGGER_CONTAINER_VARIANTS, STAGGER_ITEM_VARIANTS } from '../constants.jsx';
 import UnifiedBackground from './UnifiedBackground.jsx';
+import assets from '../../../assets';
 
 export default function EmailAutomation() {
   const [activeEmailIndex, setActiveEmailIndex] = useState(null);
@@ -38,16 +39,16 @@ export default function EmailAutomation() {
   const emails = [
     {
       id: 'email-1',
-      sender: 'Pixodent Clinic',
+      sender: 'Pivodent Clinic',
       time: '10:02 AM',
       unread: true,
       subject: 'Your appointment is confirmed ✓',
-      snippet: 'Hi Maria! Your dental checkup is scheduled for Friday, June 27 at 10:00 AM. Click here to add to calendar...',
+      snippet: 'Hi Maria! Your dental checkup is scheduled for...',
       tag: 'Confirmation',
       fullBody: {
         title: 'Appointment Confirmed! 🦷',
         greeting: 'Dear Maria Santos,',
-        desc: 'Your dental appointment has been successfully scheduled with Dr. Sarah Jenkins at Pixodent Clinic.',
+        desc: 'Your dental appointment has been successfully scheduled with Dr. Sarah Jenkins at Pivodent Clinic.',
         details: [
           { label: 'Service', val: 'Comprehensive Oral Checkup & Cleaning' },
           { label: 'Date & Time', val: 'Friday, June 27, 2026 at 10:00 AM' },
@@ -59,36 +60,36 @@ export default function EmailAutomation() {
     },
     {
       id: 'email-2',
-      sender: 'Pixodent Clinic',
+      sender: 'Pivodent Clinic',
       time: 'Yesterday',
       unread: false,
       subject: 'Reminder: appointment tomorrow',
-      snippet: 'Just a reminder that you have an appointment scheduled for tomorrow at 2:00 PM with Dr. Jenkins...',
+      snippet: 'Just a reminder that you have an appointment...',
       tag: 'Reminder',
       fullBody: {
         title: 'Appointment Reminder ⏰',
         greeting: 'Hi Maria,',
-        desc: 'This is a friendly reminder for your upcoming appointment tomorrow at Pixodent Clinic.',
+        desc: 'This is a friendly reminder for your upcoming appointment tomorrow at Pivodent Clinic.',
         details: [
           { label: 'Service', val: 'Routine Cleaning & Polishing' },
           { label: 'Date & Time', val: 'Tomorrow at 2:00 PM' },
-          { label: 'Clinic', val: 'Pixodent Clinic Main Branch' },
+          { label: 'Clinic', val: 'Pivodent Clinic Main Branch' },
         ],
         note: 'Please arrive 10 minutes early to complete your quick digital check-in.',
       }
     },
     {
       id: 'email-3',
-      sender: 'Pixodent Clinic',
+      sender: 'Pivodent Clinic',
       time: 'Mon',
       unread: false,
-      subject: 'How was your visit? 💛',
-      snippet: 'We hope you had a great experience. Here are post-care instructions and a quick link to rate us...',
+      subject: 'How was your visit? 😊',
+      snippet: 'We hope you had a great experience. Here are...',
       tag: 'Follow-up',
       fullBody: {
-        title: 'Post-Care Instructions & Feedback 💛',
+        title: 'Post-Care Instructions & Feedback 😊',
         greeting: 'Hello Maria,',
-        desc: 'Thank you for visiting Pixodent Clinic today! We hope your treatment went smoothly.',
+        desc: 'Thank you for visiting Pivodent Clinic today! We hope your treatment went smoothly.',
         details: [
           { label: 'Post-Care', val: 'Avoid hot/cold drinks for the next 2 hours' },
           { label: 'Next Visit', val: 'Recommended in 6 months (Dec 2026)' },
@@ -101,9 +102,9 @@ export default function EmailAutomation() {
   const featureCards = [
     {
       title: 'Appointment Reminders',
-      desc: 'Automatic emails 24h and 1h before every appointment — zero manual sending.',
+      desc: 'Automatic emails 24h & 1h prior',
       icon: (
-        <svg className="w-5 h-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+        <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
           <circle cx="12" cy="12" r="9" />
           <polyline points="12 7 12 12 15 15" />
         </svg>
@@ -111,27 +112,27 @@ export default function EmailAutomation() {
     },
     {
       title: 'Follow-up Sequences',
-      desc: 'Post-visit care instructions and rebooking nudges sent on your schedule.',
+      desc: 'Care steps & rebooking nudges',
       icon: (
-        <svg className="w-5 h-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+        <svg className="w-5 h-5 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
         </svg>
       ),
     },
     {
       title: 'Instant Confirmations',
-      desc: 'Booking confirmed? Patient gets a branded email with all the details right away.',
+      desc: 'Branded email sent on booking',
       icon: (
-        <svg className="w-5 h-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+        <svg className="w-5 h-5 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
       ),
     },
     {
       title: 'No-show Recovery',
-      desc: 'Missed appointment detected — a re-engagement email goes out automatically.',
+      desc: 'Auto-reactivate missed patients',
       icon: (
-        <svg className="w-5 h-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+        <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
       ),
@@ -161,7 +162,7 @@ export default function EmailAutomation() {
       />
 
       <Container className="relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-20 items-center">
           
           {/* Left Column: Phone Mockup with Email Inbox */}
           <motion.div
@@ -169,75 +170,70 @@ export default function EmailAutomation() {
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
             onMouseEnter={handleMouseEnter}
-            className="lg:col-span-5 flex justify-center perspective-1000"
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="w-full flex justify-center perspective-1000 py-8"
+            initial={{ opacity: 0, scale: 0.96, y: 15 }}
             whileInView={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 1, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            viewport={{ once: true, margin: '-80px' }}
           >
             {/* Phone Outer Bezel */}
             <div
               ref={cardRef}
-              className="relative w-full max-w-[330px] sm:max-w-[350px] bg-linear-to-b from-[#e5e7eb] via-[#d1d5db] to-[#e5e7eb] rounded-[48px] p-[8px] shadow-[0_25px_60px_rgba(0,78,71,0.08),0_12px_30px_rgba(0,0,0,0.12)] border border-[#9ca3af] transition-all duration-500 transform-gpu select-none"
+              className="relative w-full max-w-[325px] sm:max-w-[345px] bg-linear-to-b from-[#e3e4e6] via-[#d1d2d5] to-[#e3e4e6] rounded-[52px] p-[8px] shadow-[0_30px_70px_rgba(0,78,71,0.06),0_15px_35px_rgba(0,0,0,0.16)] border border-[#afb1b4] transition-all duration-500 transform-gpu select-none"
               style={{ transform: 'perspective(1000px) rotateX(2deg) rotateY(-4deg)', transformStyle: 'preserve-3d' }}
             >
               {/* Hardware buttons */}
-              <div className="absolute left-[-2.5px] top-[100px] w-[3px] h-[32px] bg-[#9ca3af] rounded-r-[1.5px]" />
-              <div className="absolute left-[-2.5px] top-[140px] w-[3px] h-[32px] bg-[#9ca3af] rounded-r-[1.5px]" />
-              <div className="absolute right-[-2.5px] top-[120px] w-[3px] h-[50px] bg-[#9ca3af] rounded-l-[1.5px]" />
+              <div className="absolute left-[-2.5px] top-[105px] w-[3px] h-[35px] bg-[#b0b2b5] rounded-r-[1.5px] border border-black/15" />
+              <div className="absolute left-[-2.5px] top-[150px] w-[3px] h-[35px] bg-[#b0b2b5] rounded-r-[1.5px] border border-black/15" />
+              <div className="absolute right-[-2.5px] top-[130px] w-[3px] h-[52px] bg-[#b0b2b5] rounded-l-[1.5px] border border-black/15" />
 
               {/* Screen Inner Frame */}
-              <div className="relative bg-white rounded-[40px] overflow-hidden border border-slate-200/80 shadow-inner flex flex-col h-[580px] text-slate-800">
+              <div className="relative bg-white rounded-[44px] overflow-hidden border-[4px] border-black shadow-[inset_0_0_8px_rgba(0,0,0,0.2)] flex flex-col h-[585px] text-slate-800">
                 
+                {/* Curved Top Notch */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[110px] h-[18px] bg-black rounded-b-[12px] z-50 pointer-events-none flex flex-col items-center justify-start pt-[3px]">
+                  {/* Thin speaker line */}
+                  <div className="w-[30px] h-[2px] bg-neutral-800 rounded-full" />
+                </div>
+
                 {/* Top Status Bar */}
-                <div className="pt-3 px-6 pb-2 flex items-center justify-between text-[11px] font-semibold tracking-tight text-slate-800 shrink-0">
-                  <span>9:41</span>
-                  {/* Dynamic Island */}
-                  <div className="w-20 h-4 bg-black rounded-full flex items-center justify-end px-2">
-                    <div className="w-2 h-2 rounded-full bg-[#1c1c1e] mr-1" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#0a84ff]/60" />
-                  </div>
+                <div className="h-9.5 bg-white flex items-end justify-between px-6 pb-2 shrink-0 z-40">
+                  <span className="text-[10.5px] text-slate-900 font-bold font-sans">9:41</span>
                   {/* Status Icons */}
-                  <div className="flex items-center gap-1.5">
-                    {/* Signal */}
-                    <div className="flex items-end gap-0.5 h-2.5">
-                      <span className="w-0.5 h-1 bg-slate-800 rounded-xs" />
-                      <span className="w-0.5 h-1.5 bg-slate-800 rounded-xs" />
-                      <span className="w-0.5 h-2 bg-slate-800 rounded-xs" />
-                      <span className="w-0.5 h-2.5 bg-slate-800 rounded-xs" />
-                    </div>
-                    {/* Wifi */}
+                  <div className="flex items-center gap-1.5 text-slate-700 text-[10px]">
+                    {/* Cellular signal bars */}
                     <svg className="w-3 h-3 text-slate-800" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98A17.9 17.9 0 0012 4zm0 3.5c3.67 0 7.02 1.34 9.61 3.58L12 19.34 2.39 11.08C4.98 8.84 8.33 7.5 12 7.5z" />
+                      <rect x="2" y="16" width="3" height="5" rx="0.5" />
+                      <rect x="7" y="12" width="3" height="9" rx="0.5" />
+                      <rect x="12" y="8" width="3" height="13" rx="0.5" />
+                      <rect x="17" y="3" width="3" height="18" rx="0.5" />
+                    </svg>
+                    {/* WiFi Icon */}
+                    <svg className="w-3.5 h-3.5 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071a9.9 9.9 0 0114.14 0M1.93 7.93a15.9 15.9 0 0122.14 0" />
                     </svg>
                     {/* Battery */}
-                    <div className="w-4 h-2.5 border border-slate-800 rounded-[3px] p-[1px] flex items-center">
-                      <div className="h-full w-full bg-emerald-500 rounded-[1px]" />
+                    <div className="w-5 h-2.5 border border-slate-800 rounded-[3px] p-[1px] flex items-center">
+                      <div className="h-full w-full bg-[#00e676] rounded-[1px]" />
                     </div>
                   </div>
                 </div>
 
                 {/* Inbox App Header */}
-                <div className="px-4 py-2 flex items-center justify-between shrink-0 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-slate-900 tracking-tight">Inbox</h3>
-                  </div>
-                  {/* Search Capsule */}
-                  <div className="flex-1 max-w-[145px] mx-2 h-7 bg-slate-100 rounded-full px-2.5 flex items-center gap-1.5 text-slate-400">
-                    <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <circle cx="11" cy="11" r="8" />
-                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
-                    <span className="text-[10px] truncate">Search emails</span>
-                  </div>
-                  {/* Clinic/User Avatar */}
-                  <div className="w-6 h-6 rounded-full bg-[#004e47] text-white text-[10px] font-bold flex items-center justify-center shadow-xs">
-                    D
+                <div className="px-4 py-2.5 flex items-center justify-between shrink-0 border-b border-slate-100 bg-white">
+                  <h3 className="text-[17px] font-bold text-slate-900 tracking-tight">Inbox</h3>
+                  
+                  {/* Search Pill */}
+                  <div className="flex-1 max-w-[145px] mx-3 h-6 bg-[#e9ebed] rounded-full" />
+                  
+                  {/* Green '3' Badge */}
+                  <div className="w-5.5 h-5.5 rounded-full bg-[#004e47] text-white text-[10.5px] font-bold flex items-center justify-center shadow-xs">
+                    3
                   </div>
                 </div>
 
                 {/* Email List or Detail View */}
-                <div className="flex-1 overflow-y-auto relative bg-[#fcfdfe]">
+                <div className="flex-1 overflow-y-auto relative bg-white">
                   <AnimatePresence mode="wait">
                     {activeEmailIndex === null ? (
                       /* List View */
@@ -253,50 +249,39 @@ export default function EmailAutomation() {
                           <div
                             key={email.id}
                             onClick={() => setActiveEmailIndex(idx)}
-                            className={`px-3.5 py-3 flex items-start gap-3 transition-colors cursor-pointer hover:bg-slate-50/80 active:bg-slate-100/80 ${
-                              email.unread ? 'bg-teal-50/20' : 'bg-transparent'
-                            }`}
+                            className="px-3 py-3 flex items-start gap-2.5 transition-colors cursor-pointer hover:bg-slate-50 active:bg-slate-100 bg-white"
                           >
-                            {/* Tooth Brand Avatar */}
-                            <div className="shrink-0 w-8 h-8 rounded-full bg-emerald-50 border border-emerald-100/80 flex items-center justify-center text-teal-600 mt-0.5 shadow-2xs">
-                              {/* Tooth SVG Icon */}
-                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 2C8.5 2 6 4 6 7c0 4.5 2 9 3 13 0 1 .5 2 1.5 2s1.5-1 1.5-2c0-2 .5-4 0-6-.5 2 0 4 0 6 0 1 .5 2 1.5 2s1.5-1 1.5-2c1-4 3-8.5 3-13 0-3-2.5-5-6-5z" />
-                              </svg>
-                            </div>
+                            {/* Exact Pivodent Tooth Brand Avatar from SVG Asset - enlarged */}
+                            <img 
+                              src={assets.phoneIconContainer} 
+                              alt="Pivodent Clinic" 
+                              className="shrink-0 w-11 h-11 object-contain -mt-1" 
+                            />
 
                             {/* Email Item Content */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
-                                <span className={`text-[12px] ${email.unread ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'}`}>
+                                <span className="text-[12px] font-bold text-slate-900 leading-tight">
                                   {email.sender}
                                 </span>
                                 <div className="flex items-center gap-1.5">
-                                  <span className="text-[10px] text-slate-400 font-medium">
+                                  <span className="text-[10px] text-slate-400 font-normal">
                                     {email.time}
                                   </span>
                                   {email.unread && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#004e47]" />
                                   )}
                                 </div>
                               </div>
-                              <p className={`text-[11.5px] truncate mt-0.5 ${email.unread ? 'font-bold text-slate-900' : 'font-medium text-slate-800'}`}>
+                              <p className={`text-[11px] truncate mt-0.5 ${email.unread ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
                                 {email.subject}
                               </p>
-                              <p className="text-[10.5px] text-slate-400 truncate mt-0.5 leading-tight">
+                              <p className="text-[10px] text-slate-400 truncate mt-0.5 leading-tight">
                                 {email.snippet}
                               </p>
                             </div>
                           </div>
                         ))}
-
-                        {/* Subtle helper text at bottom of inbox list */}
-                        <div className="px-4 py-6 text-center">
-                          <p className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
-                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                            Tap any email to preview patient receipt
-                          </p>
-                        </div>
                       </motion.div>
                     ) : (
                       /* Detailed Email View */
@@ -323,12 +308,14 @@ export default function EmailAutomation() {
                             {/* Email Subject & Brand Header */}
                             <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
                               <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center text-[10px] font-bold">
-                                  🦷
-                                </div>
+                                <img 
+                                  src={assets.phoneIconContainer} 
+                                  alt="Pivodent Clinic" 
+                                  className="w-10 h-10 object-contain shrink-0" 
+                                />
                                 <div>
-                                  <h4 className="text-[11px] font-bold text-slate-900 leading-tight">Pixodent Clinic</h4>
-                                  <span className="text-[9px] text-slate-400">notifications@pixodent.com</span>
+                                  <h4 className="text-[11px] font-bold text-slate-900 leading-tight">Pivodent Clinic</h4>
+                                  <span className="text-[9px] text-slate-400">notifications@pivodent.ph</span>
                                 </div>
                               </div>
                               <span className="text-[9px] bg-teal-50 text-teal-700 font-semibold px-2 py-0.5 rounded-full border border-teal-100">
@@ -371,87 +358,83 @@ export default function EmailAutomation() {
                   {/* Floating Action Button (FAB) Compose */}
                   {activeEmailIndex === null && (
                     <div className="absolute bottom-4 right-4 z-20">
-                      <button className="flex items-center gap-1.5 bg-[#28434e] hover:bg-[#1f353e] text-white px-3.5 py-2 rounded-full shadow-[0_6px_16px_rgba(0,0,0,0.18)] transition-transform active:scale-95">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <button className="flex items-center gap-1.5 bg-[#405f77] hover:bg-[#344f63] text-white px-3 py-1.5 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>
-                        <span className="text-[11px] font-semibold tracking-tight">Compose</span>
+                        <span className="text-[10.5px] font-semibold tracking-tight">Compose</span>
                       </button>
                     </div>
                   )}
                 </div>
 
                 {/* Bottom App Navigation Bar */}
-                <div className="h-12 bg-white border-t border-slate-100 px-10 flex items-center justify-around shrink-0">
-                  {/* Mail icon active */}
-                  <div className="flex flex-col items-center gap-0.5 text-teal-700 cursor-pointer">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    <span className="w-1 h-1 rounded-full bg-teal-600" />
-                  </div>
-                  {/* Video / Meet icon */}
-                  <div className="flex flex-col items-center gap-0.5 text-slate-400 hover:text-slate-600 cursor-pointer">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                <div className="h-11 bg-white border-t border-slate-100 px-12 flex items-center justify-around shrink-0">
+                  {/* Mail icon */}
+                  <div className="flex items-center justify-center text-slate-700 cursor-pointer">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.6">
+                      <rect x="3" y="5" width="18" height="14" rx="2" />
+                      <path d="M3 7l9 6 9-6" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>
+                  {/* Video icon */}
+                  <div className="flex items-center justify-center text-slate-700 cursor-pointer">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.6">
+                      <path d="M15 10l5-3v10l-5-3v-4z" strokeLinejoin="round" />
+                      <rect x="3" y="6" width="12" height="12" rx="2" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Home Indicator Bar */}
+                <div className="h-2 bg-white flex items-center justify-center shrink-0">
+                  <div className="w-24 h-[3px] bg-slate-300 rounded-full" />
                 </div>
 
               </div>
             </div>
           </motion.div>
 
-          {/* Right Column: Copy & 2x2 Feature Cards Grid */}
-          <motion.div
-            className="lg:col-span-7"
-            variants={FADE_UP_VARIANTS}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-60px' }}
-          >
-            {/* Main Header */}
-            <Heading level={2} className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold text-slate-900 tracking-tight leading-[1.15] mb-4">
+          {/* Right Column: Copy & Improved Features Grid */}
+          <motion.div variants={FADE_UP_VARIANTS} initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-linear-to-r from-primary/10 to-emerald-500/10 border border-primary/20 mb-8">
+              <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary">Smart Email Automation</span>
+            </div>
+
+            <Heading level={2} className="my-6">
               Your Email Inbox.
               <br />
-              <span className="text-[#008770] font-extrabold">
-                Working for You.
-              </span>
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-emerald-500 to-teal-400">Working for You.</span>
             </Heading>
 
-            {/* Subtitle description */}
-            <p className="text-slate-600 text-base sm:text-[16.5px] leading-relaxed mb-10 max-w-xl font-normal">
+            <p className="text-slate-600 text-[15.5px] leading-relaxed mb-12 max-w-[480px] font-medium">
               Every patient touchpoint — confirmations, reminders, follow-ups — handled automatically by email. Your staff focuses on care, not copy-paste.
             </p>
 
-            {/* 2x2 Feature Cards Grid */}
-            <motion.div
-              className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5"
+            {/* Upgraded Glassmorphic Feature Grid */}
+            <motion.div 
+              className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg"
               variants={STAGGER_CONTAINER_VARIANTS}
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-60px' }}
             >
-              {featureCards.map((card) => (
-                <motion.div
-                  key={card.title}
-                  variants={STAGGER_ITEM_VARIANTS}
-                  className="p-5 sm:p-6 rounded-[22px] bg-white border border-slate-200/70 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_28px_rgba(0,78,71,0.06)] hover:border-teal-300/60 transition-all duration-300 group flex flex-col justify-between"
+              {featureCards.map((item) => (
+                <motion.div 
+                  key={item.title} 
+                  variants={STAGGER_ITEM_VARIANTS} 
+                  className="flex gap-4 items-start p-4 rounded-2xl bg-white/25 dark:bg-slate-900/10 border border-slate-200/50 dark:border-slate-800/40 shadow-xs hover:shadow-[0_8px_30px_rgb(0,0,0,0.02)] transition-all duration-300 group cursor-default"
                 >
+                  <div className="p-2.5 bg-primary/8 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                    {item.icon}
+                  </div>
                   <div>
-                    {/* Icon Container */}
-                    <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-100/80 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform duration-300">
-                      {card.icon}
-                    </div>
-
-                    {/* Card Title */}
-                    <h4 className="text-[15px] font-bold text-slate-900 group-hover:text-teal-700 transition-colors duration-200">
-                      {card.title}
-                    </h4>
-
-                    {/* Card Description */}
-                    <p className="text-[12.5px] sm:text-[13px] text-slate-500 leading-relaxed mt-1.5 font-normal">
-                      {card.desc}
+                    <p className="text-[13.5px] font-bold text-slate-800 dark:text-slate-100 group-hover:text-primary transition-colors duration-300">
+                      {item.title}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      {item.desc}
                     </p>
                   </div>
                 </motion.div>

@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const LIVE_ACTIVITIES = [
   { clinic: 'Happy Smiles Dental, Makati', action: 'booked an appointment', time: '2 min ago', avatar: 'HS', color: '#14b8a6' },
-  { clinic: 'Bright Dental Clinic, QC', action: 'sent 12 SMS reminders', time: '5 min ago', avatar: 'BD', color: '#6366f1' },
-  { clinic: 'CebuSmile Dental Group', action: 'completed patient charting', time: '8 min ago', avatar: 'CS', color: '#f43f5e' },
+  { clinic: 'Bright Dental Clinic, QC', action: 'sent 12 email reminders', time: '5 min ago', avatar: 'BD', color: '#6366f1' },
+  { clinic: 'CebuSmile Dental Group', action: 'updated patient EHR record', time: '8 min ago', avatar: 'CS', color: '#f43f5e' },
   { clinic: 'Dr. Cruz Dental, BGC', action: 'received chatbot booking', time: '11 min ago', avatar: 'DC', color: '#f59e0b' },
   { clinic: 'PediDental Clinic, Pasig', action: 'generated prescription', time: '14 min ago', avatar: 'PC', color: '#8b5cf6' },
 ];

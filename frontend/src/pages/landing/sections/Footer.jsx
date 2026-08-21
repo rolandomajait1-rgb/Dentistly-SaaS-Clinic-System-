@@ -58,7 +58,6 @@ export default function Footer({ onLogin }) {
     { name: 'Facebook', icon: assets.footerFacebook, href: 'https://facebook.com', scale: 'scale-100' },
     { name: 'Gmail', icon: assets.footerGmail, href: 'mailto:contact@pivodent.ph', scale: 'scale-100' },
     { name: 'Messenger', icon: assets.footerMessenger, href: 'https://m.me', scale: 'scale-100' },
-    { name: 'Chat', icon: assets.footerChat, href: '#', scale: 'scale-100' },
     { name: 'Meta', icon: assets.footerMeta, href: 'https://meta.com', scale: 'scale-100' },
     { name: 'Social', icon: assets.footerSocialGrid, href: '#', scale: 'scale-[1.28]' },
   ];

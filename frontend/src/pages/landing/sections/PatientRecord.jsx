@@ -5,7 +5,6 @@ import UnifiedBackground from './UnifiedBackground.jsx';
 
 export default function PatientRecord() {
   const [mockupTab, setMockupTab] = useState('profile');
-  const [selectedTooth, setSelectedTooth] = useState(14);
   const containerRef = useRef(null);
   const cardRef = useRef(null);
 
@@ -65,7 +64,7 @@ export default function PatientRecord() {
           <ul className="space-y-6">
             {[
               { icon: 'clinical_notes', title: 'Per-Visit EHR Notes', desc: 'Secure medical history, clinical findings, active allergy list, and next steps in one place.', grad: 'from-primary/10 to-primary/5 text-primary' },
-              { icon: 'dentistry', title: '32-Tooth Visual Charting', desc: 'Interactive upper & lower arch dentition charting to easily map and track crowns, caries, and fillings.', grad: 'from-blue-500/10 to-blue-500/5 text-blue-600' },
+              { icon: 'medical_services', title: 'Treatment & Procedure History', desc: 'Comprehensive log of completed dental procedures, clinician notes, and follow-up schedules.', grad: 'from-blue-500/10 to-blue-500/5 text-blue-600' },
               { icon: 'medication', title: 'Digital Prescription Generator', desc: 'Instantly write prescriptions with local dosage templates and generate print-ready PDFs for patients.', grad: 'from-purple-500/10 to-purple-500/5 text-purple-600' },
               { icon: 'search', title: 'Full-Text Patient Search', desc: 'Find patient files, treatment logs, or medical conditions in milliseconds using phone numbers or names.', grad: 'from-emerald-500/10 to-emerald-500/5 text-emerald-600' },
               { icon: 'local_hospital', title: 'Priority High-Risk Flagging', desc: 'Instantly label patients with chronic conditions or allergies to guarantee clinical precision.', grad: 'from-rose-500/10 to-rose-500/5 text-rose-600' },
@@ -121,7 +120,7 @@ export default function PatientRecord() {
               <div className="flex border-b border-slate-200/30 p-1" style={{ backgroundColor: '#f1f5f9' }}>
                 {[
                   { id: 'profile', label: 'EHR Profile', icon: 'person' },
-                  { id: 'charting', label: 'Tooth Chart', icon: 'dentistry' },
+                  { id: 'treatments', label: 'Treatments', icon: 'medical_services' },
                   { id: 'prescriptions', label: 'Digital Rx', icon: 'medication' }
                 ].map((tab) => (
                   <button 
@@ -150,7 +149,7 @@ export default function PatientRecord() {
                   >
                     {[
                       { l: 'Last Visit', v: 'June 10, 2026', icon: 'history' },
-                      { l: 'Treatment', v: 'Dental Cleaning · Tooth #14', icon: 'medical_services' },
+                      { l: 'Treatment', v: 'Oral Prophylaxis & Cleaning', icon: 'medical_services' },
                       { l: 'Diagnosis', v: 'Gingivitis — mild', icon: 'healing' },
                       { l: 'Prescription', v: 'Amoxicillin 500mg · 3×/day', icon: 'pill' },
                       { l: 'Next Booking', v: 'June 20 · 9:00 AM', hi: true, icon: 'event' },
@@ -166,55 +165,31 @@ export default function PatientRecord() {
                   </motion.div>
                 )}
 
-                {mockupTab === 'charting' && (
+                {mockupTab === 'treatments' && (
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4 }}
-                    className="flex flex-col items-center h-full justify-center text-center"
+                    className="space-y-3"
                   >
-                    {/* Interactive Tooth Visual Chart Mockup */}
-                    <div className="flex items-center justify-center gap-3.5 mb-6">
-                      {[11, 12, 13, 14, 15].map((t) => (
-                    <div 
-                      key={t}
-                      onClick={(e) => { e.stopPropagation(); setSelectedTooth(t); }}
-                      className={`w-12 h-16 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all relative cursor-pointer ${
-                        selectedTooth === t 
-                          ? 'border-primary bg-primary/20 scale-110 shadow-sm'
-                          : t === 14 
-                            ? 'border-error/45 bg-error/10 hover:border-error' 
-                            : 'border-slate-300/40 hover:border-primary/50 text-slate-700'
-                      }`}
-                      style={selectedTooth !== t && t !== 14 ? { backgroundColor: '#f8fafc' } : {}}
-                    >
-                          <span className="text-[8px] font-black text-on-surface-variant dark:text-slate-600">{t}</span>
-                          <span className={`material-symbols-outlined text-[18px] ${t === 14 ? 'text-error animate-pulse' : 'text-primary'}`} style={{ fontVariationSettings: "'FILL' 1" }}>dentistry</span>
-                          {t === 14 && (
-                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-error animate-ping" />
-                          )}
+                    {[
+                      { name: 'Comprehensive Oral Prophylaxis', date: 'June 10, 2026', status: 'Completed', cost: '₱1,500' },
+                      { name: 'Composite Dental Restoration', date: 'March 15, 2026', status: 'Completed', cost: '₱2,200' },
+                      { name: 'Diagnostic Oral Consultation', date: 'January 08, 2026', status: 'Completed', cost: '₱500' },
+                    ].map((item, idx) => (
+                      <div key={idx} className="p-3.5 rounded-2xl border border-slate-200/60 bg-slate-50/50 flex flex-col gap-1.5">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[12.5px] font-bold text-slate-900">{item.name}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-emerald-500/15 text-emerald-700 border border-emerald-500/25">
+                            {item.status}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                    <div className="p-4 rounded-2xl border border-slate-200/50 w-full text-left" style={{ backgroundColor: '#f8fafc' }}>
-                      <p className="text-[9px] font-extrabold uppercase tracking-widest text-primary mb-1">Tooth Condition</p>
-                      <div className="flex justify-between items-center">
-                        <p className="text-[13px] font-black text-slate-900">Tooth #{selectedTooth}</p>
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
-                          selectedTooth === 14 
-                            ? 'bg-error/20 text-red-400 border border-error/30' 
-                            : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                        }`}>
-                          {selectedTooth === 14 ? 'Decayed (Suggested Crown)' : 'Healthy / Normal'}
-                        </span>
+                        <div className="flex justify-between items-center text-[10.5px] text-slate-500 font-medium">
+                          <span>Date: {item.date}</span>
+                          <span className="font-bold text-primary">{item.cost}</span>
+                        </div>
                       </div>
-                      <p className="text-[11px] text-slate-600 mt-2 font-medium">
-                        {selectedTooth === 14 
-                          ? 'Root canal therapy suggested prior to tooth preparation for dental crown.' 
-                          : 'No dental caries detected. Excellent oral hygiene maintained.'
-                        }
-                      </p>
-                    </div>
+                    ))}
                   </motion.div>
                 )}
 

@@ -321,7 +321,7 @@ export default function Modules() {
             </div>
           </SpotlightCard>
 
-          {/* Card 5: 32-Tooth Charting */}
+          {/* Card 5: Clinical Notes & Diagnosis */}
           <SpotlightCard 
             variants={STAGGER_ITEM_VARIANTS}
             className="lg:col-span-3 h-full"
@@ -332,28 +332,28 @@ export default function Modules() {
             <div>
               <div className="w-9 h-9 rounded-xl bg-[#F4F6F6] flex items-center justify-center mb-4">
                 <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" className="text-[#004E47]">
-                  <path d="M12 2C15.5 2 18 3.5 19 6C20 8.5 19.5 11 18.5 12.5C17.5 14 17 15.5 17.5 18.5C17.7 20 17 21 16 21C15 21 14 20 13.5 17.5C13 15.5 12.5 15 12 15C11.5 15 11 15.5 10.5 17.5C10 20 9 21 8 21C7 21 6.3 20 6.5 18.5C7 15.5 6.5 14 5.5 12.5C4.5 11 4 8.5 5 6C6 3.5 8.5 2 12 2Z" />
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                 </svg>
               </div>
               <h3 className="text-[17px] font-extrabold text-[#004E47] mb-2 tracking-tight">
-                32-Tooth Charting
+                Clinical Diagnosis
               </h3>
               <p className="text-slate-500 text-[12.5px] leading-relaxed mb-6">
-                Interactive visual chart with condition annotations & colors.
+                Log patient findings, medical history, and procedure notes in seconds.
               </p>
             </div>
 
-            <div className="flex gap-2.5">
+            <div className="flex flex-wrap gap-2">
               {[
-                { t: '14', border: 'border-[#40C1A2] text-[#005743] bg-[#EAF7F4]/50' },
-                { t: '15', border: 'border-[#EC5F70] text-[#c01d33] bg-[#FDF2F4]/50' },
-                { t: '16', border: 'border-[#40C1A2] text-[#005743] bg-[#EAF7F4]/50' }
-              ].map((tooth) => (
+                { name: 'Prophylaxis', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+                { name: 'Restoration', bg: 'bg-blue-50 text-blue-700 border-blue-200' },
+                { name: 'Checkup', bg: 'bg-amber-50 text-amber-700 border-amber-200' }
+              ].map((item) => (
                 <div 
-                  key={tooth.t}
-                  className={`w-9 h-9 rounded-full border flex items-center justify-center text-[12.5px] font-extrabold ${tooth.border}`}
+                  key={item.name}
+                  className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold ${item.bg}`}
                 >
-                  {tooth.t}
+                  {item.name}
                 </div>
               ))}
             </div>
@@ -400,78 +400,75 @@ export default function Modules() {
             </div>
           </SpotlightCard>
 
-          {/* Card 7: SMS Notifications */}
+          {/* Card 7: Role-Based Staff Access */}
           <SpotlightCard 
             variants={STAGGER_ITEM_VARIANTS}
             className="lg:col-span-3 h-full"
             innerClassName="bg-white text-on-surface"
-            glowColor="rgba(16, 185, 129, 0.12)"
-            borderColor="rgba(16, 185, 129, 0.35)"
+            glowColor="rgba(20, 184, 166, 0.12)"
+            borderColor="rgba(20, 184, 166, 0.35)"
           >
             <div>
               <div className="w-9 h-9 rounded-xl bg-[#F4F6F6] flex items-center justify-center mb-4">
                 <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" className="text-[#004E47]">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                  <circle cx="9" cy="10" r="1.2" fill="currentColor" stroke="none" />
-                  <circle cx="12" cy="10" r="1.2" fill="currentColor" stroke="none" />
-                  <circle cx="15" cy="10" r="1.2" fill="currentColor" stroke="none" />
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
               </div>
               <h3 className="text-[17px] font-extrabold text-[#004E47] mb-2 tracking-tight">
-                SMS Notifications
+                Role-Based Staff Access
               </h3>
               <p className="text-slate-500 text-[12.5px] leading-relaxed mb-6">
-                Semaphore-powered SMS for confirmations & reminders.
+                Custom permissions and dedicated views for owners, dentists, and dental assistants.
               </p>
             </div>
 
-            <div className="border border-transparent rounded-2xl p-4 bg-[#EAF7F4] text-[11px] space-y-2.5 w-full">
-              <div className="flex items-center gap-1.5 text-[9px] font-extrabold text-[#005743] bg-white border border-[#D0EFE9] rounded-full px-2.5 py-0.5 w-fit">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#005743]" />
-                SMS Received
-              </div>
-              <p className="text-slate-800 font-medium leading-relaxed">
-                Confirmed: Dental Cleaning at Happy Smiles.
-              </p>
+            <div className="flex items-center gap-2 py-1 w-full">
+              {[
+                { label: 'Admin', bg: 'bg-[#004E47] text-white', status: 'Full Access' },
+                { label: 'Dentist', bg: 'bg-[#007065] text-white', status: 'Clinical' },
+                { label: 'Staff', bg: 'bg-[#EAFDF8] text-[#005743] border border-[#A7F3D0]/50', status: 'Reception' }
+              ].map((role) => (
+                <div key={role.label} className={`flex-1 flex flex-col items-center py-2 px-1.5 rounded-xl ${role.bg} shadow-xs text-center`}>
+                  <span className="text-[11px] font-extrabold tracking-tight">{role.label}</span>
+                  <span className="text-[8px] opacity-80 font-bold uppercase mt-0.5 tracking-wider">{role.status}</span>
+                </div>
+              ))}
             </div>
           </SpotlightCard>
 
-          {/* Card 8: Google Calendar Sync */}
+          {/* Card 8: No-Show & Policy Protection */}
           <SpotlightCard 
             variants={STAGGER_ITEM_VARIANTS}
             className="lg:col-span-3 h-full"
             innerClassName="bg-white text-on-surface"
-            glowColor="rgba(99, 102, 241, 0.12)"
-            borderColor="rgba(99, 102, 241, 0.35)"
+            glowColor="rgba(245, 158, 11, 0.12)"
+            borderColor="rgba(245, 158, 11, 0.35)"
           >
             <div>
               <div className="w-9 h-9 rounded-xl bg-[#F4F6F6] flex items-center justify-center mb-4">
                 <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" className="text-[#004E47]">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                  <polyline points="9 16 11 18 15 13" />
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
               </div>
               <h3 className="text-[17px] font-extrabold text-[#004E47] mb-2 tracking-tight">
-                Google Calendar Sync
+                No-Show Protection
               </h3>
               <p className="text-slate-500 text-[12.5px] leading-relaxed mb-6">
-                Every appointment synced two-way with your Google Calendar.
+                Auto-flag missed visits after grace periods and protect chair capacity with cutoff rules.
               </p>
             </div>
 
-            <div className="border border-transparent rounded-2xl p-4 bg-[#eef2ff] text-[11px] space-y-1.5 w-full text-left">
-              <div className="flex items-center gap-1.5 text-[9px] font-extrabold text-[#1a56db] bg-white border border-blue-100 rounded-full px-2.5 py-0.5 w-fit">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                Google Calendar Sync
+            <div className="border border-transparent rounded-2xl p-3.5 bg-[#FFF7ED] text-[11px] space-y-1.5 w-full text-left">
+              <div className="flex items-center gap-1.5 text-[9px] font-extrabold text-[#D97706] bg-white border border-amber-200/60 rounded-full px-2.5 py-0.5 w-fit">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#D97706]" />
+                15-min Grace Exceeded
               </div>
-              <p className="font-extrabold text-slate-800 text-[12px] mt-1">
-                Dental Cleaning — Maria S.
+              <p className="font-extrabold text-slate-800 text-[11.5px] mt-1">
+                Chair #2 Released for Walk-in
               </p>
               <p className="text-slate-500 font-semibold text-[9.5px] leading-none mt-0.5">
-                Friday, 10:00 AM - 11:00 AM
+                No-Show Logged Automatically
               </p>
             </div>
           </SpotlightCard>
@@ -480,3 +477,4 @@ export default function Modules() {
     </section>
   );
 }
+

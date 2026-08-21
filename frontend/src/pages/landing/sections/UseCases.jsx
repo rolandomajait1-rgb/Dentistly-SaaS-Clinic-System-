@@ -8,21 +8,21 @@ const ROW_1_SCREENS = [
   { image: assets.dentalScheduleUi, alt: 'pivodent.ph/scheduler', title: 'Clinical Scheduler Desk' },
   { image: assets.dentalPatientsUi, alt: 'pivodent.ph/records', title: 'Electronic EHR Records' },
   { image: assets.dentalOfficeMockup, alt: 'pivodent.ph/analytics', title: 'Executive Analytics Panel' },
-  { image: assets.illustrationCharting, alt: 'pivodent.ph/charting', title: '32-Tooth Dental Charting' },
+  { image: assets.dentalPatientsUi, alt: 'pivodent.ph/prescriptions', title: 'Digital Prescription Desk' },
 ];
 
 const ROW_2_SCREENS = [
   { image: assets.illustrationChatbot, alt: 'pivodent.ph/chatbot', title: 'SmileBot AI Messenger' },
   { image: assets.illustrationScheduling, alt: 'pivodent.ph/scheduler', title: 'Drag-and-Drop Clinic Calendar' },
   { image: assets.illustrationPatients, alt: 'pivodent.ph/patients', title: 'Patient Profile Intake' },
-  { image: assets.dentalOfficeMockup, alt: 'pivodent.ph/hq-panel', title: 'Multi-Branch HQ Overview' },
+  { image: assets.dentalOfficeMockup, alt: 'pivodent.ph/calendar', title: 'Multi-Dentist Clinic Overview' },
 ];
 
 export default function UseCases() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
-  const tierKeys = ['solo', 'group', 'enterprise'];
+  const tierKeys = ['solo', 'group'];
 
   const tiers = {
     solo: {
@@ -31,7 +31,7 @@ export default function UseCases() {
       color: 'text-cyan-600 border-cyan-500/20 bg-cyan-500/5',
       glow: 'rgba(6, 182, 212, 0.12)',
       description: 'Manage scheduling, patients, and frontdesk logs all on your own without administrative overwhelm.',
-      features: ['24/7 AI booking assistant', 'SMS check-in reminders', 'Walk-in queue manager'],
+      features: ['24/7 AI booking assistant', 'Automated check-in reminders', 'Walk-in queue manager'],
       accentColor: '#0891b2',
       url: 'pivodent.ph/smilebot-ai',
       title: 'SmileBot AI Messenger',
@@ -53,12 +53,12 @@ export default function UseCases() {
       )
     },
     group: {
-      type: 'Multi-Dentist Group',
+      type: 'Multi-Dentist Group Clinic',
       icon: 'groups',
       color: 'text-purple-600 border-purple-500/20 bg-purple-500/5',
       glow: 'rgba(139, 92, 246, 0.12)',
       description: 'Coordinate multiple doctor agendas, treatment chairs, and billing files under one clinical database.',
-      features: ['Shared patient EHR records', 'Multi-calendar timeline views', 'Staff access permissions'],
+      features: ['Shared patient EHR records', 'Multi-calendar timeline per dentist', 'Staff & associate role permissions'],
       accentColor: '#7c3aed',
       url: 'pivodent.ph/scheduler',
       title: 'Clinician Calendar Timeline',
@@ -90,60 +90,23 @@ export default function UseCases() {
           </div>
         </div>
       )
-    },
-    enterprise: {
-      type: 'Multi-Branch Enterprise',
-      icon: 'apartment',
-      color: 'text-orange-600 border-orange-500/20 bg-orange-500/5',
-      glow: 'rgba(249, 115, 22, 0.12)',
-      description: 'Oversee multiple physical clinic branches with a centralized executive panel and real-time operations data.',
-      features: ['Centralized branch dropdown', 'Enterprise billing statements', 'HQ-level performance audits'],
-      accentColor: '#ea580c',
-      url: 'pivodent.ph/hq-analytics',
-      title: 'Executive HQ Panel',
-      mockup: (
-        <div className="space-y-4 font-sans text-xs flex-1">
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3.5">
-              <div className="bg-slate-800/80 p-3 rounded-2xl border border-slate-700/50">
-                <p className="text-[9px] uppercase font-bold tracking-wider text-slate-400 mb-1">Total Group Revenue</p>
-                <p className="text-[16px] font-black text-orange-400">₱284,500.00</p>
-              </div>
-              <div className="bg-slate-800/80 p-3 rounded-2xl border border-slate-700/50">
-                <p className="text-[9px] uppercase font-bold tracking-wider text-slate-400 mb-1">Branch Sync Link</p>
-                <p className="text-[16px] font-black text-emerald-400">Secure (VPN)</p>
-              </div>
-            </div>
-            <div className="bg-slate-850/60 p-3.5 rounded-2xl border border-slate-750/80 space-y-2.5">
-              <div className="flex items-center justify-between pb-1 border-b border-slate-800/40">
-                <span className="text-slate-350 font-medium">Quezon City Branch</span>
-                <span className="text-[10px] bg-emerald-950/80 text-emerald-300 px-3 py-0.5 rounded-full border border-emerald-800/50 font-bold">Active</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-350 font-medium">Cebu IT Park Branch</span>
-                <span className="text-[10px] bg-emerald-950/80 text-emerald-300 px-3 py-0.5 rounded-full border border-emerald-800/50 font-bold">Active</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )
     }
   };
 
   const getCardStyle = (index, hovered) => {
-    // Relative position in stack: 0 (front), 1 (middle), 2 (back)
-    const position = (index - activeIndex + 3) % 3;
+    // Relative position in stack: 0 (front), 1 (back)
+    const position = (index - activeIndex + 2) % 2;
     
-    const zIndex = 30 - position * 10;
-    const scale = 1 - position * 0.06;
+    const zIndex = 20 - position * 10;
+    const scale = 1 - position * 0.05;
     
     // Spread cards further down when fanned on hover
-    const fanMultiplier = hovered ? 2.4 : 1.0;
-    const translateY = position * 22 * fanMultiplier;
+    const fanMultiplier = hovered ? 2.2 : 1.0;
+    const translateY = position * 20 * fanMultiplier;
     
-    // Alternate slight rotational slant for stacked realism
-    const rotate = position === 0 ? 0 : position === 1 ? -2.5 : 2.5;
-    const opacity = 1 - position * 0.28;
+    // Slight rotational slant for stacked realism
+    const rotate = position === 0 ? 0 : -2.5;
+    const opacity = 1 - position * 0.25;
     
     return {
       zIndex,
@@ -155,12 +118,10 @@ export default function UseCases() {
   };
 
   const handleCardClick = (index) => {
-    const position = (index - activeIndex + 3) % 3;
+    const position = (index - activeIndex + 2) % 2;
     if (position === 0) {
-      // Sweeps top card to the back
-      setActiveIndex((prev) => (prev + 1) % 3);
+      setActiveIndex((prev) => (prev + 1) % 2);
     } else {
-      // Brings selected background card to the front
       setActiveIndex(index);
     }
   };
@@ -179,7 +140,7 @@ export default function UseCases() {
             Solo Practice or Group Clinic?<br />We've Got You Covered.
           </Heading>
           <p className="font-body-lg text-[15.5px] text-slate-650 max-w-2xl mx-auto leading-relaxed font-medium">
-            Whether you are a solo practitioner operating a neighborhood cabinet or a healthcare executive managing multi-city networks, Pivodent scales dynamically.
+            Whether you are a solo practitioner managing appointments on your own or a busy clinic with multiple associate dentists, Pivodent scales effortlessly.
           </p>
         </FadeIn>
 

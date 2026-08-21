@@ -3,20 +3,20 @@ import assets from '../../../assets';
 
 export default function CTABanner({ onGetStarted, onLogin }) {
   return (
-    <section id="cta-banner" className="pt-12 md:pt-16 pb-0 relative overflow-hidden">
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
+    <section id="cta-banner" className="pt-12 md:pt-16 pb-0 relative overflow-hidden w-full">
+      <div className="w-full mx-auto px-0">
         <FadeIn className="w-full">
-          {/* Card Container with Soft Rounded Corners matching Rectangle.png */}
-          <div className="relative rounded-t-[36px] md:rounded-t-[48px] rounded-b-none overflow-hidden border border-b-0 border-slate-200/80 shadow-[0_20px_60px_rgba(0,0,0,0.06)] bg-linear-to-b from-[#eaf4f7] via-[#f1f7f9] to-[#ffffff] min-h-[500px] md:min-h-[560px] flex flex-col justify-between items-center text-center px-6 pt-14 md:pt-18 pb-0 mb-0">
+          {/* Full-width Stretched Banner Card Container */}
+          <div className="relative w-full rounded-t-[32px] md:rounded-t-[48px] rounded-b-none overflow-hidden border-t border-x-0 border-b-0 border-slate-200/80 shadow-[0_-15px_50px_rgba(0,0,0,0.04)] bg-linear-to-b from-[#eaf4f7] via-[#f1f7f9] to-[#ffffff] min-h-[500px] md:min-h-[580px] flex flex-col justify-between items-center text-center px-6 pt-14 md:pt-20 pb-0 mb-0">
             
-            {/* Background Local Clinic Image from Assets (Fits card perfectly) */}
+            {/* Background Local Clinic Image Stretched Full Width */}
             <img 
               src={assets.ctaBannerBg} 
               alt="Dental Clinic Interior" 
               className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none"
             />
             {/* Subtle Lighting Overlay for optimal text contrast */}
-            <div className="absolute inset-0 bg-linear-to-b from-white/30 via-white/5 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-linear-to-b from-white/35 via-white/10 to-transparent pointer-events-none" />
 
             {/* Top & Middle Content */}
             <div className="relative z-10 max-w-2xl mx-auto pt-2 space-y-4">

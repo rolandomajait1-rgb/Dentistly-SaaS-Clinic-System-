@@ -105,19 +105,6 @@ export const INTEGRATIONS = [
     ),
   },
   {
-    name: 'Twilio SMS',
-    glow: 'rgba(242,47,70,0.20)',
-    icon: (
-      <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="12" cy="12" r="10" fill="#F22F46"/>
-        <circle cx="9" cy="9" r="2" fill="white"/>
-        <circle cx="15" cy="9" r="2" fill="white"/>
-        <circle cx="9" cy="15" r="2" fill="white"/>
-        <circle cx="15" cy="15" r="2" fill="white"/>
-      </svg>
-    ),
-  },
-  {
     name: 'Stripe Payments',
     glow: 'rgba(99,91,255,0.20)',
     icon: (
@@ -151,90 +138,89 @@ export const PAIN_POINTS = [
   },
   {
     before: { icon: 'folder_off',        text: 'Patient records buried in filing cabinets or scattered spreadsheets.' },
-    after:  { icon: 'clinical_notes',    text: 'Full EHR, tooth chart & prescriptions — searchable in seconds.' },
+    after:  { icon: 'clinical_notes',    text: 'Full EHR, treatment history & prescriptions — searchable in seconds.' },
   },
   {
     before: { icon: 'notifications_off', text: 'Forgotten reminders and last-minute no-shows cost real revenue.' },
-    after:  { icon: 'sms',              text: 'Automated SMS & email reminders fired the moment you approve.' },
+    after:  { icon: 'mail',             text: 'Automated email confirmations and reminders fired instantly.' },
   },
 ];
 
 export const PRICING_PLANS = [
   {
     name: 'Starter',
-    price: 'Free',
-    period: ' (Beta)',
+    price: '₱1,499',
+    period: '/mo',
     tagline: 'Perfect for solo practitioners.',
     features: [
       'Up to 100 patient records',
-      'Appointment scheduling',
-      'Queue manager',
-      'Basic SMS reminders (Semaphore)',
-      'Email confirmations',
-      'Dashboard KPIs',
-      'Services catalog',
+      'Appointment scheduling calendar',
+      'Live waiting queue manager',
+      'Automated email confirmations',
+      'Patient check-in notices',
+      'Dashboard KPIs & clinic overview',
+      'Services & procedure catalog',
       'In-app notification center',
-      'Email support',
+      'Standard email support',
     ],
-    cta: 'Get Started',
+    cta: 'Start 14-Day Free Trial',
     highlight: false,
-    badge: 'Free',
+    badge: 'Starter',
   },
   {
     name: 'Professional',
-    price: 'Free',
-    period: ' (Beta)',
+    price: '₱2,499',
+    period: '/mo',
     tagline: 'The complete clinic toolkit.',
     features: [
       'Unlimited patient records',
-      '32-Tooth dentition charting',
+      'EHR & clinical diagnosis history',
       'AI Facebook Messenger chatbot (24/7)',
-      'Google Calendar two-way sync',
-      'Full SMS + Email automation',
-      'Custom SMS & email templates',
-      'Electronic Health Records (EHR)',
-      'Digital prescription generator',
+      'Automated email reminders & notices',
+      'Customizable email templates',
+      'Digital prescription generator (e-Rx)',
       'Multi-role access (Owner, Dentist, Staff)',
+      'No-show & cancellation protection',
       'Priority support',
     ],
-    cta: 'Get Started',
+    cta: 'Start 14-Day Free Trial',
     highlight: true,
     badge: 'Most Popular',
   },
   {
     name: 'Enterprise Clinic',
-    price: 'Free',
-    period: ' (Beta)',
-    tagline: 'Multi-dentist, multi-clinic power.',
+    price: '₱4,999',
+    period: '/mo',
+    tagline: 'Multi-dentist clinic power.',
     features: [
       'Everything in Professional',
-      'Superadmin multi-clinic dashboard',
+      'Multi-chair schedule coordination',
       'Custom chatbot message templates',
       'Custom SMTP server integration',
-      'Advanced analytics & CSV exports',
-      'Onboarding wizard for each clinic',
-      'Dedicated account manager',
-      '24/7 priority phone + chat support',
-      'SLA uptime guarantee',
+      'Advanced financial & clinical exports',
+      'Role-based granular permissions',
+      'Dedicated onboarding manager',
+      'Priority phone & chat support',
+      '99.9% uptime SLA guarantee',
     ],
-    cta: 'Get Started',
+    cta: 'Contact Sales',
     highlight: false,
-    badge: 'Enterprise',
+    badge: 'Group Clinic',
   },
 ];
 
 export const FAQS = [
   {
     q: 'Do I need technical knowledge to set up Pivodent?',
-    a: 'No. The guided onboarding wizard walks you through everything — clinic profile, Facebook connection, SMS setup, and more. Most clinics are live in under 30 minutes.',
+    a: 'No. The guided onboarding wizard walks you through everything — clinic profile, Facebook connection, and email setup. Most clinics are live in under 30 minutes.',
   },
   {
     q: 'Does the Facebook chatbot require a developer to set up?',
     a: 'No. The Settings panel has a built-in Facebook integration wizard. You just paste your Page ID, Access Token, and verify token — no code needed.',
   },
   {
-    q: 'Is the SMS service compatible with Philippine networks?',
-    a: 'Yes. We use Semaphore, a Philippine-based SMS gateway that supports all local networks (Globe, Smart, DITO) with local sender name support.',
+    q: 'How does automated patient communication work?',
+    a: 'Pivodent automatically dispatches instant email confirmations, check-in reminders, and digital prescriptions to your patients as soon as appointments are booked or updated.',
   },
   {
     q: 'Is my patient data secure?',
@@ -262,7 +248,7 @@ export const TESTIMONIALS = [
     avatarColor: 'from-teal-400 to-emerald-500',
     image: assets.docAnaReyes,
     rating: 5,
-    quote: 'Before Pivodent, our front desk was drowning in missed calls and double-bookings. Within 2 weeks, our no-show rate dropped 30% and patients love the SMS reminders. Best investment we ever made for our clinic.',
+    quote: 'Before Pivodent, our front desk was drowning in missed calls and double-bookings. Within 2 weeks, our no-show rate dropped 30% and patients love the automated reminders. Best investment we ever made for our clinic.',
     stat: '−30% No-Shows',
   },
   {
@@ -292,7 +278,7 @@ export const TESTIMONIALS = [
     avatarColor: 'from-amber-400 to-orange-500',
     image: assets.docLizaMendoza,
     rating: 5,
-    quote: 'Pivodent replaced 3 separate apps we were paying for. Everything is in one place — charting, prescriptions, patient history. Setup took 20 minutes. Absolutely love it.',
+    quote: 'Pivodent replaced 3 separate apps we were paying for. Everything is in one place — patient files, prescriptions, and visit logs. Setup took 20 minutes. Absolutely love it.',
     stat: '₱18k/mo Saved',
   },
 ];
@@ -306,7 +292,6 @@ export const getIntegrationTheme = (name) => {
     case 'Semaphore': return 'hover:shadow-[0_8px_24px_rgba(0,210,138,0.18)] hover:border-[#00D28A]';
     case 'Messenger': return 'hover:shadow-[0_8px_24px_rgba(160,51,255,0.18)] hover:border-[#a033ff]';
     case 'Google Calendar': return 'hover:shadow-[0_8px_24px_rgba(26,115,232,0.18)] hover:border-[#1A73E8]';
-    case 'Twilio SMS': return 'hover:shadow-[0_8px_24px_rgba(242,47,70,0.18)] hover:border-[#F22F46]';
     case 'Stripe Payments': return 'hover:shadow-[0_8px_24px_rgba(99,91,255,0.18)] hover:border-[#635BFF]';
     case 'SendGrid Email': return 'hover:shadow-[0_8px_24px_rgba(0,179,227,0.18)] hover:border-[#00B3E3]';
     default: return 'hover:shadow-md hover:border-primary';

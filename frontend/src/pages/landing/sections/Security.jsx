@@ -94,24 +94,36 @@ export default function Security() {
 
           {/* Card 3: Bottom Left - Medium Card (6 Columns) */}
           <div className="lg:col-span-6 bg-white border border-slate-100/90 rounded-[28px] p-8 flex flex-col justify-between min-h-[300px] shadow-[0_8px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_20px_50px_rgba(0,78,71,0.05)] transition-all duration-500 hover:-translate-y-1">
-            <div className="w-11 h-11 rounded-[14px] bg-[#e6f4f1] text-[#0d9488] flex items-center justify-center self-start select-none">
-              <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>
-                dns
+            <div className="flex justify-between items-start">
+              <div className="w-11 h-11 rounded-[14px] bg-[#e6f4f1] text-[#0d9488] flex items-center justify-center select-none">
+                <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  shield_lock
+                </span>
+              </div>
+              <span className="bg-[#e6f4f1] text-[#0d9488] px-3.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider">
+                TENANT PRIVACY
               </span>
             </div>
 
             <div className="my-6">
               <h3 className="text-[20px] font-black text-slate-800 tracking-tight leading-tight font-display mb-2.5">
-                AWS Cloud Infrastructure
+                Isolated Clinic Data Protection
               </h3>
               <p className="text-slate-500 text-[13px] font-medium leading-relaxed">
-                Hosted inside Virtual Private Clouds (VPC) with real-time multi-zone failovers, stateless API server instances, and hourly backups.
+                Strict multi-tenant segregation ensures your clinic's patient records, financial transactions, and medical notes are 100% isolated and never accessible by other clinics.
               </p>
             </div>
 
-            <button className="w-fit border border-slate-200 hover:border-slate-350 text-slate-800 text-[11px] font-bold uppercase tracking-wider px-5 py-2.5 rounded-full hover:bg-slate-50 transition-colors cursor-pointer">
-              Request SOC 2 Report
-            </button>
+            <div className="flex items-center gap-3 pt-2">
+              <div className="bg-slate-50/90 border border-slate-100 p-3 rounded-2xl flex-1 text-left">
+                <p className="text-[9px] font-extrabold text-slate-400 tracking-wider uppercase">DATA SEPARATION</p>
+                <p className="text-[14px] font-black text-slate-800 mt-0.5 leading-none">100% Isolated</p>
+              </div>
+              <div className="bg-slate-50/90 border border-slate-100 p-3 rounded-2xl flex-1 text-left">
+                <p className="text-[9px] font-extrabold text-slate-400 tracking-wider uppercase">CROSS-ACCESS</p>
+                <p className="text-[14px] font-black text-emerald-600 mt-0.5 leading-none">Zero Bleed</p>
+              </div>
+            </div>
           </div>
 
           {/* Card 4: Bottom Right - Medium Card (6 Columns) */}

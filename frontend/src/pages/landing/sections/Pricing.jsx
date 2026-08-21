@@ -164,7 +164,7 @@ export default function Pricing({ onGetStarted, onLogin }) {
         </motion.div>
         
         <motion.p className="text-center text-on-surface-variant text-[13px] mt-10" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }} viewport={{ once: true }}>
-          All plans are currently <strong className="text-primary">free during our beta release</strong> – no credit card required.
+          All plans include a <strong className="text-primary font-bold">14-day free trial</strong> with full access – no credit card required. Upgrade or cancel anytime.
         </motion.p>
       </div>
     </section>
