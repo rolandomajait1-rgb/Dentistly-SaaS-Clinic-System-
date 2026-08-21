@@ -4,6 +4,8 @@ import DashboardOverview from './pages/dashboard/DashboardOverview';
 import ScheduleCalendar from './pages/dashboard/ScheduleCalendar';
 import QueueManager from './pages/dashboard/QueueManager';
 import PatientRecords from './pages/dashboard/PatientRecords';
+import ReportsAnalytics from './pages/dashboard/ReportsAnalytics';
+import StaffUsers from './pages/dashboard/StaffUsers';
 import ClinicSettings from './pages/dashboard/settings/ClinicSettings';
 import LandingPage from './pages/landing/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
@@ -19,11 +21,12 @@ import assets from './assets';
 
 
 const NAV_ITEMS = [
-  { id: 'overview',  label: 'Dashboard',         icon: 'dashboard' },
-  { id: 'patients',  label: 'Patient Records',    icon: 'clinical_notes' },
-  { id: 'schedule',  label: 'Appointment Desk',   icon: 'calendar_month' },
-  { id: 'queue',     label: 'Queue Manager',      icon: 'analytics' },
-  { id: 'settings',  label: 'Settings',           icon: 'settings' },
+  { id: 'overview',  label: 'Dashboard',           icon: 'dashboard' },
+  { id: 'schedule',  label: 'Appointments',        icon: 'calendar_month' },
+  { id: 'patients',  label: 'Patients',            icon: 'clinical_notes' },
+  { id: 'reports',   label: 'Reports & Analytics', icon: 'analytics' },
+  { id: 'staff',     label: 'Staff & Users',       icon: 'group' },
+  { id: 'settings',  label: 'Clinic Settings',     icon: 'settings' },
 ];
 
 export function AppContent() {
@@ -189,6 +192,21 @@ export function AppContent() {
         return (
           <PatientRecords 
             clinicId={clinic?.id} 
+            user={user}
+          />
+        );
+      case 'reports':
+        return (
+          <ReportsAnalytics 
+            clinicId={clinic?.id} 
+            user={user}
+          />
+        );
+      case 'staff':
+        return (
+          <StaffUsers 
+            clinicId={clinic?.id} 
+            user={user}
           />
         );
       case 'settings':
@@ -217,9 +235,11 @@ export function AppContent() {
   const getPageHeaderTitle = () => {
     switch (activeTab) {
       case 'overview': return 'Overview Dashboard';
-      case 'schedule': return 'Appointment Schedule';
+      case 'schedule': return 'Appointments';
       case 'queue': return 'Queue Console';
-      case 'patients': return 'Patient Records';
+      case 'patients': return 'Patients';
+      case 'reports': return 'Reports & Analytics';
+      case 'staff': return 'Users';
       case 'settings': return 'Clinic Profile & API Config';
       default: return 'Dashboard';
     }
@@ -625,10 +645,8 @@ export function AppContent() {
         </header>
 
         {/* Scrollable content canvas */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-5" style={{ background: '#F0F4F3' }}>
-          <div className="max-w-[1360px] mx-auto">
-            {renderTabContent()}
-          </div>
+        <div className="flex-1 overflow-y-auto w-full flex flex-col min-w-0" style={{ background: '#F0F4F3' }}>
+          {renderTabContent()}
 
           {/* Confirm Modal */}
           <ConfirmModal
