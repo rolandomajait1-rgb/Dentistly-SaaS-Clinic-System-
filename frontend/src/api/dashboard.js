@@ -8,6 +8,14 @@ export async function getOverview() {
   return res.json();
 }
 
+export async function getAnalytics(range = '6months') {
+  const res = await fetch(`${BASE_URL}/analytics?range=${encodeURIComponent(range)}`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to fetch analytics data.');
+  return res.json();
+}
+
 export async function getAppointments() {
   const res = await fetch(`${BASE_URL}/appointments`, {
     headers: getHeaders()
@@ -114,5 +122,36 @@ export async function testEmailWorkflow(email, subject, body) {
   }
   return res.json();
 }
+
+export async function getStaff() {
+  const res = await fetch(`${BASE_URL}/staff`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to fetch staff directory.');
+  return res.json();
+}
+
+export async function createStaff(data) {
+  const res = await fetch(`${BASE_URL}/staff`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message || 'Failed to create staff member.');
+  }
+  return res.json();
+}
+
+export async function deleteStaff(id) {
+  const res = await fetch(`${BASE_URL}/staff/${id}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to delete staff member.');
+  return res.json();
+}
+
 
 

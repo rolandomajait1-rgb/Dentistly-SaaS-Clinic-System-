@@ -16,6 +16,19 @@ export async function getPatientEhr(patientId) {
   return res.json();
 }
 
+export async function createPatient(data) {
+  const res = await fetch(`${BASE_URL}/patients`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message || 'Failed to create patient.');
+  }
+  return res.json();
+}
+
 export async function createPrescription(patientId, data) {
   const res = await fetch(`${BASE_URL}/patients/${patientId}/prescriptions`, {
     method: 'POST',
@@ -25,3 +38,4 @@ export async function createPrescription(patientId, data) {
   if (!res.ok) throw new Error('Failed to create prescription.');
   return res.json();
 }
+
