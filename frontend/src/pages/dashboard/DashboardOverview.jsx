@@ -113,7 +113,7 @@ export default function DashboardOverview({ setActiveTab }) {
   }
 
   return (
-    <div style={{ alignSelf: 'stretch', width: '100%', flexDirection: 'column', display: 'flex', gap: 15 }}>
+    <div className="w-full flex flex-col gap-4 p-4 md:p-6" style={{ fontFamily: "'Work Sans', sans-serif" }}>
 
       {/* ── ROW 1: 3 METRIC CARDS ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-[15px]">
