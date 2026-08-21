@@ -9,7 +9,8 @@ use App\Http\Controllers\Clinic\{
     PrescriptionController,
     ServiceController,
     SettingController,
-    IntegrationController
+    IntegrationController,
+    StaffController
 };
 use Illuminate\Http\Request;
 
@@ -25,6 +26,7 @@ class DashboardApiController extends Controller
 
     // Appointments & Walk-In delegations
     public function getOverview(Request $request) { return resolve(AppointmentController::class)->getOverview($request); }
+    public function getAnalytics(Request $request) { return resolve(AppointmentController::class)->getAnalytics($request); }
     public function getAppointments(Request $request) { return resolve(AppointmentController::class)->getAppointments($request); }
     public function createAppointment(Request $request) { return resolve(AppointmentController::class)->createAppointment($request); }
     public function updateAppointmentStatus(Request $request, int $id) { return resolve(AppointmentController::class)->updateAppointmentStatus($request, $id); }
@@ -32,11 +34,17 @@ class DashboardApiController extends Controller
 
     // Patients & EHR delegations
     public function getPatients(Request $request) { return resolve(PatientController::class)->getPatients($request); }
+    public function createPatient(Request $request) { return resolve(PatientController::class)->createPatient($request); }
     public function getPatientEhr(Request $request, int $id) { return resolve(PatientController::class)->getPatientEhr($request, $id); }
     public function createPrescription(Request $request, int $id) { return resolve(PrescriptionController::class)->createPrescription($request, $id); }
     public function updateToothChart(Request $request, int $id) {
         return response()->json(['success' => true, 'message' => 'Tooth chart legacy call noted.']);
     }
+
+    // Staff & Users delegations
+    public function getStaff(Request $request) { return resolve(StaffController::class)->getStaff($request); }
+    public function createStaff(Request $request) { return resolve(StaffController::class)->createStaff($request); }
+    public function deleteStaff(Request $request, int $id) { return resolve(StaffController::class)->deleteStaff($request, $id); }
 
     // Dental Services delegations
     public function getServices(Request $request) { return resolve(ServiceController::class)->getServices($request); }

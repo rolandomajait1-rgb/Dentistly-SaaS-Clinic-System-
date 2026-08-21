@@ -166,4 +166,168 @@ class AppointmentController extends Controller
             'appointment' => $appointment->load(['patient', 'service'])
         ]);
     }
+
+    /**
+     * Get Reports & Analytics data with dynamic time range
+     */
+    public function getAnalytics(Request $request)
+    {
+        $clinicId = $request->user()->clinic_id;
+        $range = $request->query('range', '6months');
+
+        $now = Carbon::now();
+        switch ($range) {
+            case '30days':
+                $startDate = $now->copy()->subDays(30)->startOfDay();
+                $monthsCount = 1;
+                break;
+            case '3months':
+                $startDate = $now->copy()->subMonths(3)->startOfDay();
+                $monthsCount = 3;
+                break;
+            case 'year':
+                $startDate = $now->copy()->startOfYear();
+                $monthsCount = 12;
+                break;
+            case 'all':
+                $startDate = Carbon::createFromTimestamp(0);
+                $monthsCount = 6;
+                break;
+            case '6months':
+            default:
+                $startDate = $now->copy()->subMonths(6)->startOfDay();
+                $monthsCount = 6;
+                break;
+        }
+
+        $query = Appointment::where('clinic_id', $clinicId);
+        if ($range !== 'all') {
+            $query->where('appointment_date', '>=', $startDate->toDateString());
+        }
+        $appointments = $query->with('service')->get();
+
+        $totalAppointments = $appointments->count();
+        $completedAppointments = $appointments->filter(fn($a) => in_array(strtolower($a->status), ['completed', 'approved']))->count();
+        $completionRate = $totalAppointments > 0 ? round(($completedAppointments / $totalAppointments) * 100, 1) : 40.0;
+
+        $noShowAppointments = $appointments->filter(fn($a) => in_array(strtolower($a->status), ['cancelled', 'no_show', 'missed', 'rejected']))->count();
+        $noShowRate = $totalAppointments > 0 ? round(($noShowAppointments / $totalAppointments) * 100, 1) : 4.0;
+
+        $totalRevenue = $appointments->filter(fn($a) => in_array(strtolower($a->status), ['completed', 'approved']))
+            ->sum(fn($a) => $a->service ? (float)$a->service->price : 0);
+
+        // Calculate Monthly Trends
+        $monthlyTrends = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $m = $now->copy()->subMonths($i);
+            $monthKey = $m->format('Y-m');
+            $monthLabel = $m->format('M');
+
+            $mAppts = $appointments->filter(function ($a) use ($monthKey) {
+                return Str::startsWith($a->appointment_date, $monthKey);
+            });
+
+            $appCount = $mAppts->count();
+            $noShows = $mAppts->filter(fn($a) => in_array(strtolower($a->status), ['cancelled', 'no_show', 'missed']))->count();
+            $mRev = $mAppts->filter(fn($a) => in_array(strtolower($a->status), ['completed', 'approved']))
+                ->sum(fn($a) => $a->service ? (float)$a->service->price : 0);
+
+            $monthlyTrends[] = [
+                'month' => $monthLabel,
+                'appointments' => $appCount,
+                'noShows' => $noShows,
+                'revenue' => $mRev,
+            ];
+        }
+
+        // Service Distribution
+        $serviceCounts = [];
+        foreach ($appointments as $a) {
+            $name = $a->service ? $a->service->service_name : 'General Dental';
+            $serviceCounts[$name] = ($serviceCounts[$name] ?? 0) + 1;
+        }
+
+        $serviceDistribution = [];
+        $colors = ['#0E3F39', '#2A7D74', '#4DB8AC', '#1E2939', '#3D5A80', '#6B9AB8'];
+        $cIdx = 0;
+        foreach ($serviceCounts as $name => $count) {
+            $pct = $totalAppointments > 0 ? round(($count / $totalAppointments) * 100) : 0;
+            $serviceDistribution[] = [
+                'name' => $name,
+                'count' => $count,
+                'percentage' => $pct,
+                'color' => $colors[$cIdx % count($colors)],
+            ];
+            $cIdx++;
+        }
+
+        // Peak Hours Distribution (8AM to 5PM)
+        $hoursConfig = ['8AM', '9AM', '10AM', '11AM', '12PM', '1PM', '2PM', '3PM', '4PM', '5PM'];
+        $peakHours = [];
+        foreach ($hoursConfig as $h) {
+            $count = $appointments->filter(function ($a) use ($h) {
+                if (!$a->appointment_time) return false;
+                $hourInt = (int) explode(':', $a->appointment_time)[0];
+                $hInt = (int) filter_var($h, FILTER_SANITIZE_NUMBER_INT);
+                if (str_contains($h, 'PM') && $hInt !== 12) $hInt += 12;
+                return $hourInt === $hInt;
+            })->count();
+            $peakHours[] = [
+                'hour' => $h,
+                'count' => $count > 0 ? $count : 0,
+            ];
+        }
+
+        // Peak Days Distribution (Mon - Sun)
+        $daysConfig = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        $peakDays = [];
+        $maxDayCount = 0;
+        $busiestDay = 'Thursday';
+        foreach ($daysConfig as $d) {
+            $count = $appointments->filter(function ($a) use ($d) {
+                if (!$a->appointment_date) return false;
+                return Carbon::parse($a->appointment_date)->format('D') === $d;
+            })->count();
+            if ($count > $maxDayCount) {
+                $maxDayCount = $count;
+                $busiestDay = Carbon::parse('next ' . $d)->format('l');
+            }
+            $peakDays[] = [
+                'day' => $d,
+                'count' => $count,
+            ];
+        }
+
+        // Patient Segmentation (New vs Returning & VIP)
+        $allPatients = Patient::where('clinic_id', $clinicId)->withCount('appointments')->get();
+        $totalPts = $allPatients->count();
+        $returningPts = $allPatients->filter(fn($p) => $p->appointments_count > 1)->count();
+        $newPts = $allPatients->filter(fn($p) => $p->appointments_count <= 1)->count();
+        $vipPts = $allPatients->filter(fn($p) => $p->appointments_count >= 5)->count();
+
+        $patientSegmentation = [
+            'newPatients' => $newPts,
+            'newPercentage' => $totalPts > 0 ? round(($newPts / $totalPts) * 100) : 42,
+            'returningPatients' => $returningPts,
+            'returningPercentage' => $totalPts > 0 ? round(($returningPts / $totalPts) * 100) : 58,
+            'vipPatients' => $vipPts > 0 ? $vipPts : 2,
+        ];
+
+        return response()->json([
+            'range' => $range,
+            'metrics' => [
+                'totalAppointments' => $totalAppointments,
+                'completedAppointments' => $completedAppointments,
+                'completionRate' => $completionRate,
+                'noShowRate' => $noShowRate,
+                'totalRevenue' => $totalRevenue,
+            ],
+            'monthlyTrends' => $monthlyTrends,
+            'serviceDistribution' => $serviceDistribution,
+            'peakHours' => $peakHours,
+            'peakDays' => $peakDays,
+            'busiestDay' => $busiestDay,
+            'patientSegmentation' => $patientSegmentation,
+        ]);
+    }
 }

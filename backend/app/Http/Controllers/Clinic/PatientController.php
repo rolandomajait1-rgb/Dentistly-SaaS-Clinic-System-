@@ -17,6 +17,9 @@ class PatientController extends Controller
 
         $patients = Patient::where('clinic_id', $clinicId)
             ->withCount('appointments')
+            ->with(['appointments' => function ($q) {
+                $q->orderBy('appointment_date', 'desc')->with(['service', 'approver']);
+            }])
             ->orderBy('full_name')
             ->get();
 
@@ -47,5 +50,42 @@ class PatientController extends Controller
             'tooth_charts' => $toothCharts,
             'prescriptions' => $prescriptions,
         ]);
+    }
+
+    /**
+     * Create a new patient manually from directory
+     */
+    public function createPatient(Request $request)
+    {
+        $clinicId = $request->user()->clinic_id;
+
+        $request->validate([
+            'full_name' => 'required|string|max:255',
+            'contact_number' => 'required|string|max:50',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:500',
+            'medical_history' => 'nullable|string',
+            'gender' => 'nullable|string|max:20',
+            'age' => 'nullable|integer',
+            'birth_date' => 'nullable|date',
+        ]);
+
+        $patient = Patient::create([
+            'clinic_id' => $clinicId,
+            'fb_messenger_id' => 'walkin_' . \Illuminate\Support\Str::random(12),
+            'full_name' => $request->full_name,
+            'contact_number' => $request->contact_number,
+            'email' => $request->email,
+            'address' => $request->address,
+            'medical_history' => $request->medical_history ?? 'None',
+            'gender' => $request->gender,
+            'age' => $request->age,
+            'birth_date' => $request->birth_date,
+        ]);
+
+        return response()->json([
+            'message' => 'Patient created successfully.',
+            'patient' => $patient->load(['appointments'])
+        ], 201);
     }
 }

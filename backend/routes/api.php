@@ -49,11 +49,13 @@ Route::prefix('dashboard')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/auth/logout', [DashboardApiController::class, 'logout']);
         Route::get('/overview', [DashboardApiController::class, 'getOverview']);
+        Route::get('/analytics', [DashboardApiController::class, 'getAnalytics']);
         Route::get('/appointments', [DashboardApiController::class, 'getAppointments']);
         Route::post('/appointments', [DashboardApiController::class, 'createAppointment']);
         Route::post('/appointments/{id}/status', [DashboardApiController::class, 'updateAppointmentStatus']);
         Route::get('/queue', [DashboardApiController::class, 'getQueue']);
         Route::get('/patients', [DashboardApiController::class, 'getPatients']);
+        Route::post('/patients', [DashboardApiController::class, 'createPatient']);
         Route::get('/patients/{id}/ehr', [DashboardApiController::class, 'getPatientEhr']);
         Route::post('/patients/{id}/prescriptions', [DashboardApiController::class, 'createPrescription']);
         Route::get('/settings', [DashboardApiController::class, 'getSettings']);
@@ -63,6 +65,11 @@ Route::prefix('dashboard')->group(function () {
         Route::post('/services', [DashboardApiController::class, 'addService']);
         Route::put('/services/{id}', [DashboardApiController::class, 'updateService']);
         Route::delete('/services/{id}', [DashboardApiController::class, 'deleteService']);
+
+        // Staff & Users routes
+        Route::get('/staff', [DashboardApiController::class, 'getStaff']);
+        Route::post('/staff', [DashboardApiController::class, 'createStaff']);
+        Route::delete('/staff/{id}', [DashboardApiController::class, 'deleteStaff']);
 
         // Facebook Integration Routes
         Route::prefix('facebook')->group(function () {
