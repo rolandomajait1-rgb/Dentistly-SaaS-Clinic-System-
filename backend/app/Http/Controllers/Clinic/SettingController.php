@@ -31,6 +31,10 @@ class SettingController extends Controller
             'clinic_name' => 'required|string',
             'contact_number' => 'required|string',
             'address' => 'required|string',
+            'email' => 'nullable|string',
+            'logo_url' => 'nullable|string',
+            'branding_settings' => 'nullable|array',
+            'operating_hours' => 'nullable|array',
             'fb_page_id' => 'nullable|string',
             'page_access_token' => 'nullable|string',
             'webhook_verify_token' => 'nullable|string',
@@ -38,12 +42,28 @@ class SettingController extends Controller
         ]);
 
         $clinic = Clinic::findOrFail($clinicId);
-        $clinic->update([
+
+        $updateData = [
             'clinic_name' => $request->clinic_name,
             'contact_number' => $request->contact_number,
             'address' => $request->address,
             'notification_settings' => $request->notification_settings,
-        ]);
+        ];
+
+        if ($request->has('email') && !empty($request->email)) {
+            $updateData['email'] = $request->email;
+        }
+        if ($request->has('logo_url')) {
+            $updateData['logo_url'] = $request->logo_url;
+        }
+        if ($request->has('branding_settings')) {
+            $updateData['branding_settings'] = $request->branding_settings;
+        }
+        if ($request->has('operating_hours')) {
+            $updateData['operating_hours'] = $request->operating_hours;
+        }
+
+        $clinic->update($updateData);
 
         $notifSettings = $request->notification_settings ?? [];
 
