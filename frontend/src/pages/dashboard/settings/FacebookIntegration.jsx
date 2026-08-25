@@ -1,54 +1,104 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FacebookLogo,
-  CheckCircle,
-  Warning,
-  LinkBreak,
-  ArrowRight,
-  Copy,
-  Flask,
-  Info,
-  CaretDown,
-  CaretUp,
-  PaperPlaneRight,
   ShieldCheck,
-  User,
-  Robot,
-  GearSix
+  CheckCircle,
+  PaperPlaneRight
 } from '@phosphor-icons/react';
 
 import ConfirmModal from '../../../components/ui/ConfirmModal';
+import { useNotifications } from '../../../context/NotificationContext';
 
-const MOCK_CHAT_STEPS = [
-  { sender: 'user', text: 'Hi! Meron po ba kayong slot for Teeth Cleaning bukas?' },
-  { sender: 'bot', text: 'Hello! Yes, we have slots open for Teeth Cleaning tomorrow at 10:00 AM and 2:00 PM. Gusto niyo po bang ipareserve ko?' },
-  { sender: 'user', text: 'Gusto ko po sana ng 10:00 AM. Magkano po pala ang paglilinis?' },
-  { sender: 'bot', text: 'Perfect! Reserved for 10:00 AM. Ang Teeth Cleaning po ay nagmula sa ₱800. Pwede po bang makuha ang Full Name at Phone Number niyo para sa booking?' },
-  { sender: 'user', text: 'Si Maria Cruz po, 09171234567.' },
-  { sender: 'bot', text: 'Salamat Maria! Naka-book na po ang appointment niyo bukas, July 4, 10:00 AM. Makakatanggap po kayo ng SMS confirmation shortly. Reference: BS-8472. See you! 😊' }
-];
+// Official Meta Facebook SVG Icon
+export const FacebookIcon = ({ size = 24, className = '' }) => (
+  <svg
+    viewBox="0 0 36 36"
+    width={size}
+    height={size}
+    className={`shrink-0 ${className}`}
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M36 18C36 8.05887 27.9411 0 18 0C8.05887 0 0 8.05887 0 18C0 26.9859 6.58789 34.4355 15.1875 35.7869V23.2031H10.6172V18H15.1875V14.0344C15.1875 9.525 17.8734 7.03125 21.9891 7.03125C23.9602 7.03125 26.0203 7.38281 26.0203 7.38281V11.8125H23.7504C21.5156 11.8125 20.8125 13.1988 20.8125 14.6203V18H25.8047L25.0066 23.2031H20.8125V35.7869C29.4121 34.4355 36 26.9859 36 18Z"
+      fill="#0866FF"
+    />
+    <path
+      d="M25.0066 23.2031L25.8047 18H20.8125V14.6203C20.8125 13.1988 21.5156 11.8125 23.7504 11.8125H26.0203V7.38281C26.0203 7.38281 23.9602 7.03125 21.9891 7.03125C17.8734 7.03125 15.1875 9.525 15.1875 14.0344V18H10.6172V23.2031H15.1875V35.7869C16.1133 35.932 17.0508 36 18 36C18.9492 36 19.8867 35.932 20.8125 35.7869V23.2031H25.0066Z"
+      fill="white"
+    />
+  </svg>
+);
 
-const FacebookIntegration = ({ clinicData, onIntegrationUpdate }) => {
+// Official Messenger SVG Icon
+export const MessengerIcon = ({ size = 20, className = '' }) => (
+  <svg
+    viewBox="0 0 36 36"
+    width={size}
+    height={size}
+    className={`shrink-0 ${className}`}
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M18 0C8.05887 0 0 7.575 0 16.92C0 22.245 2.61 27 6.705 30.15V36L12.345 32.895C14.13 33.39 16.005 33.66 18 33.66C27.9411 33.66 36 26.085 36 16.74C36 7.575 27.9411 0 18 0Z"
+      fill="url(#paint0_linear_messenger)"
+    />
+    <path
+      d="M7.2002 21.6002L15.3002 12.9752L19.6502 17.3252L28.2002 12.9752L20.1002 21.6002L15.7502 17.2502L7.2002 21.6002Z"
+      fill="white"
+    />
+    <defs>
+      <linearGradient
+        id="paint0_linear_messenger"
+        x1="0"
+        y1="0"
+        x2="36"
+        y2="33.66"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop stopColor="#0099FF" />
+        <stop offset="0.6" stopColor="#A033FF" />
+        <stop offset="1" stopColor="#FF5280" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+const FacebookIntegration = ({
+  clinicData,
+  messengerEnabled = true,
+  onToggleMessenger,
+  onIntegrationUpdate
+}) => {
+  const { showToast } = useNotifications();
   const oauthProcessed = useRef(false);
 
-  // Derive step and selectedPage initial values from clinicData to avoid synchronous updates in useEffect
-  const [step, setStep] = useState(() => {
-    return clinicData?.fb_page_integration?.is_active ? 'connected' : 'initial';
-  });
-  const [selectedPage, setSelectedPage] = useState(() => {
-    return clinicData?.fb_page_integration?.is_active ? {
-      id: clinicData.fb_page_integration.fb_page_id,
-      name: clinicData.fb_page_integration.fb_page_name,
-    } : null;
-  });
+  // Derived connection state (strict two-state pattern)
+  const isConnected = Boolean(
+    clinicData?.fb_page_integration?.is_active &&
+    clinicData?.fb_page_integration?.fb_page_id
+  );
 
-  // Track the integration state to update step/selectedPage if it changes after mount
+  const [step, setStep] = useState(isConnected ? 'connected' : 'initial');
+  const [selectedPage, setSelectedPage] = useState(
+    isConnected
+      ? {
+          id: clinicData.fb_page_integration.fb_page_id,
+          name: clinicData.fb_page_integration.fb_page_name,
+        }
+      : null
+  );
+
   const [prevFbIntegration, setPrevFbIntegration] = useState(clinicData?.fb_page_integration);
 
   if (clinicData?.fb_page_integration !== prevFbIntegration) {
     setPrevFbIntegration(clinicData?.fb_page_integration);
-    if (clinicData?.fb_page_integration?.is_active) {
+    const active = Boolean(
+      clinicData?.fb_page_integration?.is_active &&
+      clinicData?.fb_page_integration?.fb_page_id
+    );
+    if (active) {
       setStep('connected');
       setSelectedPage({
         id: clinicData.fb_page_integration.fb_page_id,
@@ -62,18 +112,21 @@ const FacebookIntegration = ({ clinicData, onIntegrationUpdate }) => {
 
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [pageDetails, setPageDetails] = useState(null);
-  const [testingWebhook, setTestingWebhook] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
 
-  // Mock Chat Simulator States
-  const [simVisibleMessages, setSimVisibleMessages] = useState([]);
-  const [simStepIndex, setSimStepIndex] = useState(0);
+  // Interactive Live Messenger Test Sandbox States
+  const clinicDisplayName = clinicData?.clinic_name || 'our dental clinic';
+  const [testInput, setTestInput] = useState('');
+  const [simMessages, setSimMessages] = useState([
+    { sender: 'user', text: 'Hi! May available slot po ba for Teeth Cleaning bukas?' },
+    {
+      sender: 'bot',
+      text: `Hello! Yes, we have open slots for Teeth Cleaning tomorrow at 10:00 AM and 2:00 PM at ${clinicDisplayName}. Would you like to reserve a time?`
+    }
+  ]);
   const [simIsTyping, setSimIsTyping] = useState(false);
-  const simTimeoutRef = useRef(null);
+  const chatScrollRef = useRef(null);
 
   const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
 
@@ -85,10 +138,7 @@ const FacebookIntegration = ({ clinicData, onIntegrationUpdate }) => {
   const fetchPageDetails = useCallback(async () => {
     try {
       const res = await fetch(`${BASE_URL}/dashboard/facebook/page-details`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        headers: getHeaders()
       });
       if (res.ok) {
         const data = await res.json();
@@ -99,72 +149,39 @@ const FacebookIntegration = ({ clinicData, onIntegrationUpdate }) => {
     }
   }, [BASE_URL]);
 
-  // Fetch page details when integration becomes active
   useEffect(() => {
-    if (clinicData?.fb_page_integration?.is_active) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (isConnected) {
       fetchPageDetails();
     }
-  }, [clinicData?.fb_page_integration?.is_active, fetchPageDetails]);
+  }, [isConnected, fetchPageDetails]);
 
-  // Chat Simulator Script Controller
+  // Auto-scroll chat preview
   useEffect(() => {
-    const triggerNextMessage = () => {
-      if (simStepIndex >= MOCK_CHAT_STEPS.length) {
-        simTimeoutRef.current = setTimeout(() => {
-          setSimVisibleMessages([]);
-          setSimStepIndex(0);
-        }, 5000);
-        return;
-      }
-
-      const nextMsg = MOCK_CHAT_STEPS[simStepIndex];
-      
-      if (nextMsg.sender === 'bot') {
-        setSimIsTyping(true);
-        simTimeoutRef.current = setTimeout(() => {
-          setSimIsTyping(false);
-          setSimVisibleMessages(prev => [...prev, nextMsg]);
-          setSimStepIndex(prev => prev + 1);
-        }, 2200);
-      } else {
-        simTimeoutRef.current = setTimeout(() => {
-          setSimVisibleMessages(prev => [...prev, nextMsg]);
-          setSimStepIndex(prev => prev + 1);
-        }, 1500);
-      }
-    };
-
-    triggerNextMessage();
-
-    return () => {
-      if (simTimeoutRef.current) clearTimeout(simTimeoutRef.current);
-    };
-  }, [simStepIndex]);
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [simMessages, simIsTyping]);
 
   const handleStartConnection = async () => {
     setLoading(true);
-    setError('');
     try {
       localStorage.setItem('oauth_provider', 'facebook');
       const res = await fetch(`${BASE_URL}/dashboard/facebook/auth-url`, {
         headers: getHeaders()
       });
       if (!res.ok) throw new Error('Failed to get authorization URL');
-      
+
       const data = await res.json();
       window.location.href = data.auth_url;
     } catch (err) {
-      setError(err.message);
+      showToast(err.message || 'Connection failed', 'error');
       setLoading(false);
     }
   };
 
   const handlePageSelect = async (page) => {
     setSelectedPage(page);
-    setStep('connecting');
     setLoading(true);
-    setError('');
 
     try {
       const res = await fetch(`${BASE_URL}/dashboard/facebook/connect`, {
@@ -183,16 +200,16 @@ const FacebookIntegration = ({ clinicData, onIntegrationUpdate }) => {
       }
 
       const data = await res.json();
-      setSuccess('Facebook page connected successfully!');
+      showToast('Facebook page connected successfully!', 'success');
       setStep('connected');
-      
+
       if (onIntegrationUpdate) {
         onIntegrationUpdate(data.integration);
       }
 
-      setTimeout(() => fetchPageDetails(), 500);
+      setTimeout(() => fetchPageDetails(), 400);
     } catch (err) {
-      setError(err.message);
+      showToast(err.message || 'Failed to connect page', 'error');
       setStep('selecting');
     } finally {
       setLoading(false);
@@ -205,7 +222,6 @@ const FacebookIntegration = ({ clinicData, onIntegrationUpdate }) => {
 
   const executeDisconnect = async () => {
     setLoading(true);
-    setError('');
 
     try {
       const res = await fetch(`${BASE_URL}/dashboard/facebook/disconnect`, {
@@ -215,39 +231,18 @@ const FacebookIntegration = ({ clinicData, onIntegrationUpdate }) => {
 
       if (!res.ok) throw new Error('Failed to disconnect page');
 
-      setSuccess('Facebook page disconnected successfully');
+      showToast('Facebook page disconnected successfully', 'info');
       setStep('initial');
       setSelectedPage(null);
       setPageDetails(null);
-      
+
       if (onIntegrationUpdate) {
         onIntegrationUpdate(null);
       }
     } catch (err) {
-      setError(err.message);
+      showToast(err.message || 'Failed to disconnect page', 'error');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleTestWebhook = async () => {
-    setTestingWebhook(true);
-    setError('');
-
-    try {
-      const res = await fetch(`${BASE_URL}/dashboard/facebook/test-webhook`, {
-        method: 'POST',
-        headers: getHeaders()
-      });
-
-      if (!res.ok) throw new Error('Webhook test failed');
-
-      const data = await res.json();
-      setSuccess(data.message || 'Webhook test successful');
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setTestingWebhook(false);
     }
   };
 
@@ -263,7 +258,6 @@ const FacebookIntegration = ({ clinicData, onIntegrationUpdate }) => {
       if (oauthProcessed.current) return;
       oauthProcessed.current = true;
 
-      // Yield execution to avoid calling setState synchronously within useEffect
       await Promise.resolve();
 
       setLoading(true);
@@ -271,21 +265,18 @@ const FacebookIntegration = ({ clinicData, onIntegrationUpdate }) => {
         localStorage.removeItem('oauth_provider');
         const res = await fetch(`${BASE_URL}/dashboard/facebook/callback`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
+          headers: getHeaders(),
           body: JSON.stringify({ code, state })
         });
 
         if (!res.ok) throw new Error('OAuth callback failed');
 
         const data = await res.json();
-        setPages(data.pages);
+        setPages(data.pages || []);
         setStep('selecting');
-        setSuccess('Facebook pages retrieved successfully');
+        showToast('Facebook authorized! Please select your clinic page.', 'success');
       } catch (err) {
-        setError(err.message);
+        showToast(err.message || 'OAuth authorization failed', 'error');
         setStep('initial');
       } finally {
         setLoading(false);
@@ -295,352 +286,383 @@ const FacebookIntegration = ({ clinicData, onIntegrationUpdate }) => {
   }, [BASE_URL]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     handleOAuthCallback();
   }, [handleOAuthCallback]);
-  const copyToClipboard = (text, label) => {
-    navigator.clipboard.writeText(text);
-    setSuccess(`${label} copied to clipboard`);
-    setTimeout(() => setSuccess(''), 2000);
+
+  // Interactive Live Chat Simulator Test Action
+  const handleSendTestMessage = (e) => {
+    e?.preventDefault();
+    if (!testInput.trim() || simIsTyping) return;
+
+    const userText = testInput.trim();
+    setTestInput('');
+
+    setSimMessages((prev) => [...prev, { sender: 'user', text: userText }]);
+    setSimIsTyping(true);
+
+    setTimeout(() => {
+      setSimIsTyping(false);
+
+      const lower = userText.toLowerCase();
+      let reply = `Thank you for contacting ${clinicDisplayName}! We are pleased to assist you with your dental needs.`;
+
+      if (lower.includes('cleaning') || lower.includes('linis') || lower.includes('rate') || lower.includes('price') || lower.includes('magkano') || lower.includes('cost')) {
+        reply = `Our Teeth Cleaning (Oral Prophylaxis) starts at ₱800. We also provide tooth extractions, pasta (fillings), and orthodontic braces. Would you like to schedule an appointment?`;
+      } else if (lower.includes('sched') || lower.includes('book') || lower.includes('appointment') || lower.includes('bukas') || lower.includes('tomorrow') || lower.includes('oras') || lower.includes('open') || lower.includes('hours') || lower.includes('time')) {
+        reply = `We are open Monday to Saturday from 8:00 AM to 5:00 PM. Please reply with your Full Name and Contact Number so we can reserve your schedule! 😊`;
+      } else if (lower.includes('location') || lower.includes('saan') || lower.includes('address') || lower.includes('where')) {
+        reply = `We are located at ${clinicData?.address || 'our clinic address'}. You are welcome to visit during our operating hours!`;
+      }
+
+      setSimMessages((prev) => [...prev, { sender: 'bot', text: reply }]);
+    }, 1000);
   };
 
+  const activePageName =
+    selectedPage?.name ||
+    clinicData?.fb_page_integration?.fb_page_name ||
+    clinicData?.clinic_name ||
+    'Dental Clinic Page';
+
+  const activePageId =
+    selectedPage?.id ||
+    clinicData?.fb_page_integration?.fb_page_id ||
+    '';
+
   return (
-    <div className="bg-white dark:bg-[#131f1e] border border-outline-variant/50 dark:border-[#1b2b29] rounded-3xl shadow-xs overflow-hidden text-on-surface dark:text-[#f2f0ed] transition-all duration-300">
-      
-      {/* Header */}
-      <div className="px-6 py-4.5 border-b border-outline-variant/50 dark:border-[#1b2b29] bg-slate-50/40 dark:bg-[#182625] flex items-center justify-between">
+    <div
+      className="w-full bg-white dark:bg-[#131f1e] rounded-[12px] p-5 flex flex-col gap-4 transition-all shadow-xs border border-slate-200/80 dark:border-[#213533] font-sans"
+      style={{
+        outline: '1.33px rgba(14, 63, 57, 0.15) solid',
+        outlineOffset: '-1.33px',
+      }}
+    >
+      {/* Header Bar */}
+      <div className="w-full flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-[#1b2b29]">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 text-blue-600 dark:text-blue-400">
-            <FacebookLogo size={20} weight="fill" />
-          </div>
+          <FacebookIcon size={26} />
           <div>
-            <h3 className="font-extrabold text-sm text-on-surface dark:text-[#f2f0ed] tracking-wide font-sans">Facebook Messenger Connection</h3>
-            <p className="text-[11px] font-semibold text-on-surface-variant/70 dark:text-slate-400 mt-0.5 font-sans">Connect your page inbox for automated AI scheduling answers.</p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-slate-800 dark:text-white">
+                Facebook Messenger
+              </span>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-[#0866FF] dark:bg-blue-950/50 dark:text-blue-300">
+                Official API
+              </span>
+            </div>
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+              Automated patient appointment bookings and 24/7 AI inquiry handling
+            </p>
           </div>
         </div>
-        {step === 'connected' && (
-          <span className="flex items-center gap-1.5 text-[9px] font-black border px-3 py-1 rounded-full uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 dark:border-emerald-500/30 shadow-3xs animate-pulse">
-            <CheckCircle size={12} weight="bold" />
+
+        {/* Single Authoritative Status Badge */}
+        {isConnected ? (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             Connected
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+            <span className="w-2 h-2 rounded-full bg-slate-400" />
+            Not Connected
           </span>
         )}
       </div>
 
-      {/* Content */}
-      <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-7">
+      {/* Main Two-Pane Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         
-        {/* Left Side: Setup Panel */}
-        <div className="lg:col-span-7 flex flex-col justify-between space-y-6">
+        {/* Left Column: Connection & Rules */}
+        <div className="lg:col-span-7 flex flex-col h-full">
           
-          {/* Alerts */}
-          <div className="space-y-3">
-            {error && (
-              <div className="flex gap-3 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl animate-fadeIn font-bold text-xs text-rose-600 dark:text-rose-455 leading-relaxed font-sans">
-                <Warning size={16} className="shrink-0 mt-0.5" weight="bold" />
-                <p className="leading-relaxed">{error}</p>
-              </div>
-            )}
-            {success && (
-              <div className="flex gap-3 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl animate-fadeIn font-bold text-xs text-emerald-600 dark:text-emerald-455 leading-relaxed font-sans">
-                <CheckCircle size={16} className="shrink-0 mt-0.5" weight="bold" />
-                <p className="leading-relaxed">{success}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Initial State - Not Connected */}
-          {step === 'initial' && (
-            <div className="space-y-5 py-3">
-              <div className="bg-slate-50 dark:bg-[#182625] p-5 rounded-2xl border border-outline-variant/60 dark:border-[#213533] space-y-3">
-                <h4 className="font-extrabold text-xs text-on-surface dark:text-[#f2f0ed] uppercase tracking-wider flex items-center gap-1.5 font-sans">
-                  <Info size={14} className="text-blue-600 dark:text-blue-400" weight="bold" />
-                  Doctor & Nurse Friendly Integration
+          {/* State A: Disconnected */}
+          {!isConnected && step === 'initial' && (
+            <div className="p-5 sm:p-6 rounded-xl bg-[#F8FAFC] dark:bg-[#182625] border border-slate-200/80 dark:border-[#213533] flex flex-col justify-between h-full gap-5">
+              <div className="space-y-2">
+                <h4 className="font-bold text-sm text-slate-900 dark:text-white">
+                  Connect Facebook Page
                 </h4>
-                <p className="text-[11.5px] text-on-surface-variant/70 dark:text-slate-400 font-semibold leading-relaxed font-sans">
-                  No complex setup required. Click the button below, log in with Facebook, select your clinic's business page, and we will configure the chatbot instantly.
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Connect your clinic's Facebook business page to activate SmileBot for 24/7 automated appointment booking, treatment rates, and operating hours inquiries.
                 </p>
-                <ol className="list-decimal list-inside text-[11px] text-on-surface-variant/50 dark:text-slate-500 font-bold space-y-1 pt-1.5 border-t border-outline-variant/30 dark:border-[#1b2b29] font-sans">
-                  <li>Log in with your clinic's Facebook account</li>
-                  <li>Grant permissions for Page Messaging</li>
-                  <li>Your virtual assistant is ready to accept patients!</li>
-                </ol>
+                <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-300">
+                  <div className="flex items-center gap-1.5 bg-white dark:bg-[#131f1e] p-2.5 rounded-lg border border-slate-200/60 dark:border-[#213533]">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shrink-0" />
+                    <span>24/7 Automated Replies</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-white dark:bg-[#131f1e] p-2.5 rounded-lg border border-slate-200/60 dark:border-[#213533]">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shrink-0" />
+                    <span>Live Booking Scheduling</span>
+                  </div>
+                </div>
               </div>
 
-              <button
-                onClick={handleStartConnection}
-                disabled={loading}
-                className="w-full py-3 bg-primary hover:bg-primary/95 text-white dark:text-on-primary text-xs font-black rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-xs font-sans"
-              >
-                <FacebookLogo size={16} weight="fill" />
-                {loading ? 'Initiating Facebook Portal...' : 'Connect Clinic Facebook Page'}
-              </button>
+              <div className="pt-3 border-t border-slate-200/60 dark:border-[#213533] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={handleStartConnection}
+                  disabled={loading}
+                  className="px-6 py-2.5 bg-[#0866FF] hover:bg-[#075CE5] active:bg-[#0650C9] text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <FacebookIcon size={18} />
+                  <span>{loading ? 'Connecting...' : 'Connect with Facebook'}</span>
+                </button>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  Official Meta Business API
+                </span>
+              </div>
             </div>
           )}
 
-          {/* Page Selection State */}
+          {/* State A2: Page Selection Screen */}
           {step === 'selecting' && pages.length > 0 && (
-            <div className="space-y-4 py-3">
-              <div>
-                <p className="text-xs font-black text-on-surface dark:text-[#f2f0ed] uppercase tracking-wider font-sans">Select a Facebook Page</p>
-                <p className="text-[11px] text-on-surface-variant/70 dark:text-slate-400 font-semibold mt-0.5 font-sans">Which Facebook business page represents your dental practice?</p>
+            <div className="p-5 rounded-xl bg-[#F8FAFC] dark:bg-[#182625] border border-slate-200/80 dark:border-[#213533] flex flex-col justify-between h-full gap-4">
+              <div className="space-y-3">
+                <div>
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">Select a Facebook Page</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Choose which Facebook page represents your dental practice:</p>
+                </div>
+
+                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                  {pages.map((page) => (
+                    <div
+                      key={page.id}
+                      className="p-3 bg-white dark:bg-[#131f1e] border border-slate-200 dark:border-[#213533] rounded-xl flex items-center justify-between gap-3 shadow-3xs"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {page.picture?.data?.url ? (
+                          <img
+                            src={page.picture.data.url}
+                            alt={page.name}
+                            className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-[#0866FF]/10 text-[#0866FF] flex items-center justify-center font-bold text-xs shrink-0">
+                            {page.name.charAt(0)}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                            {page.name}
+                          </p>
+                          <p className="text-[11px] text-slate-400 truncate">
+                            {page.category || 'Dental Clinic'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handlePageSelect(page)}
+                        disabled={loading}
+                        className="px-3.5 py-1.5 bg-[#0866FF] hover:bg-[#075CE5] text-white text-xs font-semibold rounded-lg transition-all shrink-0 cursor-pointer disabled:opacity-50"
+                      >
+                        Connect
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-1 gap-3.5 max-h-[250px] overflow-y-auto pr-1">
-                {pages.map((page) => (
-                  <button
-                    key={page.id}
-                    onClick={() => handlePageSelect(page)}
-                    disabled={loading}
-                    className="p-4 bg-slate-50 hover:bg-slate-100/80 dark:bg-[#182625] hover:dark:bg-[#131f1e] border border-outline-variant/60 dark:border-[#213533] rounded-2xl hover:border-primary transition-all text-left disabled:opacity-50 cursor-pointer shadow-3xs flex items-center justify-between text-[#f2f0ed]"
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      {page.picture?.data?.url ? (
-                        <img 
-                          src={page.picture.data.url} 
-                          alt={page.name} 
-                          className="w-10 h-10 rounded-full object-cover border border-outline-variant/50 dark:border-[#213533]"
+
+              <div className="pt-2 border-t border-slate-200/60 dark:border-[#213533]">
+                <button
+                  type="button"
+                  onClick={() => setStep('initial')}
+                  className="text-xs text-slate-500 hover:text-slate-700 underline cursor-pointer"
+                >
+                  Cancel selection
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* State B: Connected - Manage Integration Card */}
+          {isConnected && (
+            <div className="p-5 rounded-xl bg-[#F8FAFC] dark:bg-[#182625] border border-slate-200/80 dark:border-[#213533] flex flex-col justify-between h-full gap-4">
+              <div className="space-y-4">
+                {/* Connected Page Identity */}
+                <div className="flex items-center justify-between gap-3 pb-3.5 border-b border-slate-200/70 dark:border-[#213533]">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="relative shrink-0">
+                      {pageDetails?.picture?.data?.url ? (
+                        <img
+                          src={pageDetails.picture.data.url}
+                          alt={activePageName}
+                          className="w-11 h-11 rounded-full object-cover border border-slate-200"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-blue-500/5 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs shrink-0">
-                          FB
+                        <div className="w-11 h-11 rounded-full bg-[#0866FF] text-white flex items-center justify-center font-bold text-sm">
+                          {activePageName.charAt(0)}
                         </div>
                       )}
-                      <div className="min-w-0 font-sans">
-                        <h5 className="font-extrabold text-sm text-on-surface dark:text-[#f2f0ed] truncate">{page.name}</h5>
-                        <p className="text-[10px] text-on-surface-variant/50 dark:text-slate-500 font-bold leading-none mt-0.5">{page.category || 'Dental Clinic'}</p>
+                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-[#182625] rounded-full" />
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                          {activePageName}
+                        </h4>
+                        <span className="text-[#0866FF]" title="Verified Facebook Page">
+                          <ShieldCheck size={16} weight="fill" />
+                        </span>
                       </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        ID: {activePageId} • {pageDetails?.category || 'Dental Clinic'}
+                      </p>
                     </div>
-                    <span className="text-primary dark:text-inverse-primary">
-                      <ArrowRight size={16} weight="bold" />
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Connected State */}
-          {step === 'connected' && selectedPage && (
-            <div className="space-y-5 py-1">
-              
-              {/* Page Profile picture ("Face Logo") */}
-              <div className="p-5 bg-slate-50/50 dark:bg-[#182625] border border-outline-variant/60 dark:border-[#213533] rounded-3xl flex items-center gap-4.5 shadow-3xs relative overflow-hidden">
-                <div className="relative shrink-0 flex items-center">
-                  {pageDetails?.picture?.data?.url ? (
-                    <img 
-                      src={pageDetails.picture.data.url} 
-                      alt={selectedPage.name} 
-                      className="w-14 h-14 rounded-full object-cover border-2 border-primary/20 shadow-xs"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-full bg-blue-500/5 dark:bg-blue-500/10 border-2 border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 text-lg font-bold">
-                      FB
-                    </div>
-                  )}
-                  <span className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-slate-50 dark:border-[#131f1e] rounded-full shadow-3xs" />
-                </div>
-                
-                <div className="min-w-0 flex-1 font-sans">
-                  <div className="flex items-center gap-1.5">
-                    <h4 className="font-extrabold text-base text-on-surface dark:text-[#f2f0ed] truncate">{selectedPage.name}</h4>
-                    <span className="text-blue-500 dark:text-blue-400 hover:scale-105 transition-all" title="Facebook Page Synced">
-                      <ShieldCheck size={16} weight="fill" />
-                    </span>
                   </div>
-                  <p className="text-[10px] text-on-surface-variant/60 dark:text-slate-500 font-mono mt-0.5">ID: {selectedPage.id}</p>
-                  <p className="text-[10px] font-black text-primary dark:text-inverse-primary uppercase tracking-wider mt-1">{pageDetails?.category || 'Medical & Dental Clinic'}</p>
+
+                  <button
+                    type="button"
+                    onClick={triggerDisconnect}
+                    disabled={loading}
+                    className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline shrink-0 cursor-pointer disabled:opacity-50"
+                  >
+                    Disconnect Page
+                  </button>
+                </div>
+
+                {/* Master 24/7 AI Auto-Replies Toggle Switch */}
+                <div className="flex items-center justify-between gap-3 p-3.5 bg-white dark:bg-[#131f1e] rounded-xl border border-slate-200/70 dark:border-[#213533]">
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      Enable 24/7 AI Auto-Replies
+                    </p>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-400 mt-0.5">
+                      Automatically replies to incoming patient inquiries and booking requests
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => onToggleMessenger && onToggleMessenger(!messengerEnabled)}
+                    className="w-[50px] p-[2.5px] rounded-full transition-colors flex items-center cursor-pointer shrink-0"
+                    style={{
+                      background: messengerEnabled ? '#1A8A7A' : '#CECECE',
+                      justifyContent: messengerEnabled ? 'flex-end' : 'flex-start',
+                    }}
+                  >
+                    <div className="w-[16px] h-[16px] bg-white rounded-full shadow-[0px_1px_2px_rgba(0,0,0,0.15)]" />
+                  </button>
                 </div>
               </div>
 
-              {/* Doctor / Nurse Explanation Panel */}
-              <div className="p-4 bg-emerald-500/5 border border-emerald-500/15 dark:border-emerald-500/10 rounded-2xl flex gap-3 text-xs leading-relaxed font-semibold text-on-surface-variant/70 dark:text-slate-400 font-sans">
-                <CheckCircle size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" weight="bold" />
-                <p>
-                  <strong>Ang AI assistant ay aktibo na!</strong> Lahat ng magme-message sa inyong Facebook page ay sasagutin ng AI para mag-schedule ng appointments, sumagot ng operating hours, at mag-check ng presyo ng treatments.
+              {/* Status Explanation Note */}
+              <div className="pt-2 border-t border-slate-200/60 dark:border-[#213533] flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <CheckCircle size={15} className="text-emerald-600 shrink-0 mt-0.5" weight="bold" />
+                <p className="leading-relaxed text-[11.5px]">
+                  SmileBot is active on this Facebook Page. All incoming patient inquiries receive instant responses.
                 </p>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap sm:flex-nowrap gap-3 pt-2 font-sans">
-                <button
-                  onClick={handleTestWebhook}
-                  disabled={testingWebhook}
-                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200/80 dark:bg-[#182625] border border-outline-variant/75 dark:border-[#213533] dark:hover:bg-[#213533] text-on-surface-variant dark:text-slate-200 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-3xs"
-                >
-                  <Flask size={15} weight="bold" />
-                  {testingWebhook ? 'Running System Check...' : 'Test Webhook Endpoint'}
-                </button>
-                <button
-                  onClick={triggerDisconnect}
-                  disabled={loading}
-                  className="w-full py-2.5 bg-rose-500/10 dark:bg-rose-500/15 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-black rounded-xl hover:bg-rose-500/20 dark:hover:bg-rose-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-3xs"
-                >
-                  <LinkBreak size={15} weight="bold" />
-                  Disconnect Messenger
-                </button>
-              </div>
             </div>
           )}
 
-          {/* Collapsible Advanced Credentials Drawer */}
-          <div className="pt-3 border-t border-outline-variant/30 dark:border-[#1b2b29] font-sans">
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center justify-between text-xs text-on-surface-variant/50 dark:text-slate-500 font-extrabold hover:text-on-surface dark:hover:text-slate-350 transition-colors w-full py-2 px-1 cursor-pointer"
-            >
-              <span className="flex items-center gap-1.5">
-                <GearSix size={14} weight="bold" />
-                ⚙️ Technical Developer settings (Nurses / Doctors can safely ignore this)
-              </span>
-              {showAdvanced ? <CaretUp size={14} weight="bold" /> : <CaretDown size={14} weight="bold" />}
-            </button>
-
-            <AnimatePresence>
-              {showAdvanced && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="space-y-4 mt-3 pl-3.5 border-l-2 border-outline-variant/40 dark:border-[#1b2b29] overflow-hidden pt-1"
-                >
-                  <div className="p-3 bg-slate-50 dark:bg-[#182625] rounded-xl border border-outline-variant/60 dark:border-[#213533] text-[10.5px] font-semibold text-on-surface-variant/65 dark:text-slate-500 leading-relaxed font-sans">
-                    ⚙️ These technical parameters link Meta App webhooks to your specific database tenant tunnel. They are populated automatically by OAuth, but can be modified manually by IT administrators.
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-[9px] font-extrabold text-on-surface-variant/60 dark:text-slate-500 uppercase tracking-widest leading-none font-sans">Verify Token</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        readOnly
-                        value={clinicData?.fb_page_integration?.webhook_verify_token || 'dental_appointment_webhook_token'}
-                        className="w-full pl-3.5 pr-12 py-2 bg-slate-100/80 dark:bg-[#101817] border border-outline-variant/60 dark:border-[#213533] rounded-xl text-xs font-mono text-on-surface-variant/60 dark:text-slate-500 cursor-not-allowed"
-                      />
-                      <button
-                        onClick={() => copyToClipboard(clinicData?.fb_page_integration?.webhook_verify_token || 'dental_appointment_webhook_token', 'Verify Token')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-on-surface-variant/60 hover:text-on-surface dark:text-slate-500 dark:hover:text-slate-350 cursor-pointer"
-                        title="Copy"
-                      >
-                        <Copy size={13} weight="bold" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-[9px] font-extrabold text-on-surface-variant/60 dark:text-slate-500 uppercase tracking-widest leading-none font-sans">Webhook URL Endpoint</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        readOnly
-                        value={`${window.location.origin}/api/webhook/dental`}
-                        className="w-full pl-3.5 pr-12 py-2 bg-slate-100/80 dark:bg-[#101817] border border-outline-variant/60 dark:border-[#213533] rounded-xl text-xs font-mono text-on-surface-variant/60 dark:text-slate-500 cursor-not-allowed"
-                      />
-                      <button
-                        onClick={() => copyToClipboard(`${window.location.origin}/api/webhook/dental`, 'Webhook URL')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-on-surface-variant/60 hover:text-on-surface dark:text-slate-500 dark:hover:text-slate-355 cursor-pointer"
-                        title="Copy"
-                      >
-                        <Copy size={13} weight="bold" />
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
         </div>
 
-        {/* Right Side: Interactive Messenger Chat Simulator */}
-        <div className="lg:col-span-5 flex flex-col">
-          
-          <div className="bg-slate-100 dark:bg-[#0b1211] border border-outline-variant/60 dark:border-[#1b2b29] rounded-3xl p-4.5 flex flex-col h-[400px] shadow-inner relative overflow-hidden">
+        {/* Right Column: Interactive Messenger Sandbox / Live Preview */}
+        <div className="lg:col-span-5 flex flex-col h-full">
+          <div className="bg-[#F8FAFC] dark:bg-[#0f1716] border border-slate-200 dark:border-[#1b2b29] rounded-xl flex flex-col h-full min-h-[350px] overflow-hidden">
             
-            {/* Simulator Header */}
-            <div className="flex items-center gap-2.5 pb-3.5 border-b border-outline-variant/50 dark:border-[#1b2b29] shrink-0">
-              <div className="relative w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-550/20 text-blue-600 dark:text-blue-400">
-                <Robot size={16} weight="bold" />
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-slate-100 dark:border-[#0b1211] rounded-full" />
-              </div>
-              <div className="font-sans">
-                <div className="flex items-center gap-1">
-                  <p className="font-extrabold text-[11px] text-on-surface dark:text-[#f2f0ed] leading-none">SmileBot Assistant</p>
-                  <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[8px] font-black uppercase px-1.5 py-0.5 rounded">AI Agent</span>
+            {/* Sandbox Header */}
+            <div className="px-3.5 py-2.5 bg-white dark:bg-[#182625] border-b border-slate-200/80 dark:border-[#1b2b29] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-[#0866FF] text-white flex items-center justify-center text-[10px] font-bold">
+                  SB
                 </div>
-                <p className="text-[9.5px] text-on-surface-variant/65 dark:text-slate-500 mt-0.5 font-bold">Live Booking Simulator</p>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white leading-none">SmileBot</p>
+                  <p className="text-[9px] text-slate-400 mt-0.5">Live Messenger Test</p>
+                </div>
               </div>
+
+              {/* Status indicator tied to live state */}
+              {isConnected ? (
+                messengerEnabled ? (
+                  <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                    Active
+                  </span>
+                ) : (
+                  <span className="text-[9.5px] font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                    Auto-Reply Paused
+                  </span>
+                )
+              ) : (
+                <span className="text-[9.5px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full" />
+                  Offline
+                </span>
+              )}
             </div>
 
-            {/* Chat Dialog Panel */}
-            <div className="flex-1 overflow-y-auto py-3 space-y-3 scrollbar-none flex flex-col">
+            {/* Chat Bubble Stream */}
+            <div ref={chatScrollRef} className="flex-1 p-3 overflow-y-auto space-y-2 flex flex-col min-h-[220px]">
               <AnimatePresence initial={false}>
-                {simVisibleMessages.map((msg, index) => {
+                {simMessages.map((msg, index) => {
                   const isUser = msg.sender === 'user';
                   return (
                     <motion.div
                       key={index}
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 0.25, ease: 'easeOut' }}
-                      className={`flex gap-2 max-w-[85%] ${isUser ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
-                    >
-                      <div className={`w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[10px] ${
-                        isUser 
-                          ? 'bg-slate-300 dark:bg-slate-800 text-slate-700 dark:text-slate-350' 
-                          : 'bg-primary/10 dark:bg-primary/20 text-primary dark:text-inverse-primary'
-                      }`}>
-                        {isUser ? <User size={12} weight="bold" /> : <Robot size={12} weight="bold" />}
-                      </div>
-
-                      <div className={`p-3 rounded-2xl text-[11px] font-semibold leading-relaxed shadow-3xs font-sans ${
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className={`max-w-[85%] text-[11.5px] leading-relaxed px-3 py-1.5 rounded-2xl ${
                         isUser
-                          ? 'bg-primary text-white rounded-tr-none'
-                          : 'bg-white dark:bg-[#182625] border border-outline-variant/60 dark:border-[#213533] text-on-surface dark:text-[#f2f0ed] rounded-tl-none'
-                      }`}>
-                        {msg.text}
-                      </div>
+                          ? 'ml-auto bg-[#0866FF] text-white rounded-br-xs'
+                          : 'mr-auto bg-white dark:bg-[#182625] text-slate-800 dark:text-slate-100 border border-slate-200/70 dark:border-[#213533] rounded-bl-xs shadow-3xs'
+                      }`}
+                    >
+                      {msg.text}
                     </motion.div>
                   );
                 })}
               </AnimatePresence>
 
-              {/* Mock typing bubble */}
               {simIsTyping && (
-                <div className="flex gap-2 mr-auto max-w-[85%]">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
-                    <Robot size={12} weight="bold" />
-                  </div>
-                  <div className="bg-white dark:bg-[#182625] border border-outline-variant/60 dark:border-[#213533] p-3 rounded-2xl rounded-tl-none flex items-center gap-1 shadow-3xs">
-                    <span className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
+                <div className="mr-auto bg-white dark:bg-[#182625] border border-slate-200/70 dark:border-[#213533] px-2.5 py-1.5 rounded-2xl rounded-bl-xs flex items-center gap-1 shadow-3xs">
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
               )}
             </div>
 
-            {/* Mock Chat Input Footer */}
-            <div className="pt-3 border-t border-outline-variant/40 dark:border-[#1b2b29] flex items-center gap-2 shrink-0">
+            {/* Interactive Test Input Bar */}
+            <form
+              onSubmit={handleSendTestMessage}
+              className="p-2 bg-white dark:bg-[#182625] border-t border-slate-200/80 dark:border-[#1b2b29] flex items-center gap-2 shrink-0"
+            >
               <input
-                disabled
                 type="text"
-                placeholder="Simulating patient messaging..."
-                className="flex-1 bg-white dark:bg-[#182625] border border-outline-variant/60 dark:border-[#213533] text-[10px] font-semibold text-on-surface-variant/40 dark:text-slate-500 rounded-xl px-3 py-2 focus:outline-none"
+                value={testInput}
+                onChange={(e) => setTestInput(e.target.value)}
+                placeholder="Send a test message to preview auto-replies..."
+                className="flex-1 bg-slate-100 dark:bg-[#131f1e] text-[11px] text-slate-800 dark:text-slate-100 px-3 py-1.5 rounded-full focus:outline-none focus:ring-1 focus:ring-[#0866FF]"
               />
-              <button disabled className="w-8 h-8 rounded-xl bg-primary/10 dark:bg-primary/15 text-primary flex items-center justify-center cursor-not-allowed">
-                <PaperPlaneRight size={14} weight="bold" />
+              <button
+                type="submit"
+                disabled={!testInput.trim() || simIsTyping}
+                className="w-7 h-7 rounded-full bg-[#0866FF] hover:bg-[#075CE5] text-white flex items-center justify-center shrink-0 cursor-pointer disabled:opacity-40 transition-all"
+                title="Send test message"
+              >
+                <PaperPlaneRight size={12} weight="bold" />
               </button>
-            </div>
+            </form>
 
           </div>
-
         </div>
 
       </div>
 
+      {/* Disconnect Confirmation Modal */}
       <ConfirmModal
         isOpen={showDisconnectConfirm}
-        title="Disconnect Messenger"
-        message="Are you sure you want to disconnect this Facebook page? The chatbot will stop automated responses and booking scheduling immediately."
+        title="Disconnect Facebook Page"
+        message="Are you sure you want to disconnect this Facebook page? Automated messaging and appointment scheduling will stop."
         confirmText="Disconnect"
         cancelText="Cancel"
         type="danger"
@@ -650,7 +672,6 @@ const FacebookIntegration = ({ clinicData, onIntegrationUpdate }) => {
         }}
         onCancel={() => setShowDisconnectConfirm(false)}
       />
-
     </div>
   );
 };

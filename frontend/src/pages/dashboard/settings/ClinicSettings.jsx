@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getSettings, updateSettings, getServices, addService, deleteService, updateService, testEmailWorkflow } from '../../../api';
 import FacebookIntegration from './FacebookIntegration';
+import EmailIntegration from './EmailIntegration';
 import { useNotifications } from '../../../context/NotificationContext';
 import {
   FloppyDisk,
@@ -13,7 +14,9 @@ import {
   Clock,
   PaperPlaneTilt,
   Camera,
-  ArrowsClockwise
+  ArrowsClockwise,
+  CaretDown,
+  CaretUp
 } from '@phosphor-icons/react';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
 import assets from '../../../assets';
@@ -74,21 +77,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
 
   // Tab 2: Communication Channels
   const [messengerEnabled, setMessengerEnabled] = useState(true);
-  const [messengerHandle, setMessengerHandle] = useState('pivo.dent');
-  const [showMessengerDrawer, setShowMessengerDrawer] = useState(false);
-
-  const [smsEnabled, setSmsEnabled] = useState(false);
-  const [showSmsConfig, setShowSmsConfig] = useState(false);
-  const [semaphoreApiKey, setSemaphoreApiKey] = useState('');
-  const [semaphoreName, setSemaphoreName] = useState('PIVODENT');
-  const [smsSenderName, setSmsSenderName] = useState('');
-  const [smsContactNumber, setSmsContactNumber] = useState('');
-  const [smsFooterAddress, setSmsFooterAddress] = useState('');
-  const [smsReminderEnabled, setSmsReminderEnabled] = useState(true);
-  const [smsConfirmationEnabled, setSmsConfirmationEnabled] = useState(true);
-  const [smsFollowupEnabled, setSmsFollowupEnabled] = useState(false);
-  const [smsTemplateApproved, setSmsTemplateApproved] = useState('');
-  const [smsTemplateCancelled, setSmsTemplateCancelled] = useState('');
+  const [messengerHandle, setMessengerHandle] = useState('');
 
   const [emailEnabled, setEmailEnabled] = useState(false);
   const [showEmailConfig, setShowEmailConfig] = useState(false);
@@ -163,22 +152,10 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
       const notifSettings = data.notification_settings || {};
 
       // Channels
-      setMessengerEnabled(notifSettings.messenger_enabled ?? (data.fb_page_integration?.is_active ?? true));
-      setMessengerHandle(notifSettings.messenger_handle ?? (data.fb_page_integration?.fb_page_name || 'pivo.dent'));
-      setSmsEnabled(notifSettings.sms_enabled ?? false);
+      const isFbActive = Boolean(data.fb_page_integration?.is_active && data.fb_page_integration?.fb_page_id);
+      setMessengerEnabled(notifSettings.messenger_enabled ?? isFbActive);
+      setMessengerHandle(isFbActive ? (data.fb_page_integration?.fb_page_name || '') : '');
       setEmailEnabled(notifSettings.email_enabled ?? false);
-
-      // SMS Settings
-      setSemaphoreApiKey(notifSettings.semaphore_api_key || '');
-      setSemaphoreName(notifSettings.semaphore_name || 'PIVODENT');
-      setSmsSenderName(notifSettings.sms_sender_name ?? data.clinic_name ?? 'PIVODENT');
-      setSmsContactNumber(notifSettings.sms_contact_number ?? data.contact_number ?? '');
-      setSmsFooterAddress(notifSettings.sms_footer_address ?? data.address ?? '');
-      setSmsReminderEnabled(notifSettings.sms_reminder_enabled ?? true);
-      setSmsConfirmationEnabled(notifSettings.sms_confirmation_enabled ?? true);
-      setSmsFollowupEnabled(notifSettings.sms_followup_enabled ?? false);
-      setSmsTemplateApproved(notifSettings.sms_template_approved ?? "Hi {patient_name}, your appointment at {clinic_name} on {date} at {time} for {service_name} has been APPROVED. Reference: {reference}. See you!");
-      setSmsTemplateCancelled(notifSettings.sms_template_cancelled ?? "Hi {patient_name}, your appointment at {clinic_name} has been CANCELLED. {reason} Contact us at {clinic_phone}.");
 
       // Email Settings
       setEmailFromName(notifSettings.email_from_name ?? data.clinic_name ?? 'PIVODENT');
@@ -291,20 +268,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
         notification_settings: {
           messenger_enabled: messengerEnabled,
           messenger_handle: messengerHandle,
-          sms_enabled: smsEnabled,
           email_enabled: emailEnabled,
-
-          // Granular SMS
-          semaphore_api_key: semaphoreApiKey,
-          semaphore_name: semaphoreName,
-          sms_sender_name: smsSenderName,
-          sms_contact_number: smsContactNumber,
-          sms_footer_address: smsFooterAddress,
-          sms_reminder_enabled: smsReminderEnabled,
-          sms_confirmation_enabled: smsConfirmationEnabled,
-          sms_followup_enabled: smsFollowupEnabled,
-          sms_template_approved: smsTemplateApproved,
-          sms_template_cancelled: smsTemplateCancelled,
 
           // Granular Email
           email_from_name: emailFromName,
@@ -906,326 +870,51 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
           {activeSubTab === 'commu' && (
             <div className="w-full flex flex-col gap-4 animate-fadeIn">
               
-              {/* Channel 1: Messenger */}
-              <div
-                className="w-full bg-white rounded-[10px] p-4 flex flex-col gap-3.5 transition-all"
-                style={{
-                  outline: '1.33px rgba(14, 63, 57, 0.15) solid',
-                  outlineOffset: '-1.33px',
+              {/* Channel 1: Facebook Messenger Integration */}
+              <FacebookIntegration
+                clinicData={clinicData || {}}
+                messengerEnabled={messengerEnabled}
+                onToggleMessenger={(val) => setMessengerEnabled(val)}
+                onIntegrationUpdate={(integration) => {
+                  fetchSettingsData();
+                  if (integration) {
+                    setMessengerHandle(integration.fb_page_name || integration.fb_page_id || '');
+                    setMessengerEnabled(true);
+                  } else {
+                    setMessengerHandle('');
+                    setMessengerEnabled(false);
+                  }
                 }}
-              >
-                <div className="w-full flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span
-                      style={{
-                        color: '#1E2939',
-                        fontSize: 14,
-                        fontFamily: "'Work Sans', sans-serif",
-                        fontWeight: '600',
-                        lineHeight: '20px',
-                      }}
-                    >
-                      Messenger
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
-                      AI Powered
-                    </span>
-                  </div>
+              />
 
-                  {/* Toggle Switch */}
-                  <button
-                    type="button"
-                    onClick={() => setMessengerEnabled(!messengerEnabled)}
-                    className="w-[60px] p-[3px] rounded-full transition-colors flex items-center cursor-pointer"
-                    style={{
-                      background: messengerEnabled ? '#1A8A7A' : '#CECECE',
-                      justifyContent: messengerEnabled ? 'flex-end' : 'flex-start',
-                    }}
-                  >
-                    <div className="w-[18px] h-[18px] bg-white rounded-full shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_rgba(0,0,0,0.10)]" />
-                  </button>
-                </div>
-
-                {/* Handle Input / Status */}
-                <div
-                  className="w-full h-[33px] bg-[#F6F6F6] rounded-[5px] flex items-center px-3 justify-between"
-                  style={{
-                    outline: '1px rgba(0, 0, 0, 0.10) solid',
-                    outlineOffset: '-1px',
-                  }}
-                >
-                  <span
-                    style={{
-                      color: '#99A1AF',
-                      fontSize: 12,
-                      fontFamily: "'Work Sans', sans-serif",
-                      fontWeight: '600',
-                      lineHeight: '16px',
-                    }}
-                  >
-                    {messengerHandle || 'pivo.dent'}
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowMessengerDrawer(!showMessengerDrawer)}
-                    className="text-xs font-semibold text-[#1A8A7A] hover:underline cursor-pointer"
-                  >
-                    {showMessengerDrawer ? 'Hide Connection Details' : 'Configure Meta OAuth'}
-                  </button>
-                </div>
-
-                {/* Expanded Facebook Integration Component */}
-                {showMessengerDrawer && (
-                  <div className="mt-3 pt-3 border-t border-slate-100">
-                    <FacebookIntegration
-                      clinicData={clinicData || {}}
-                      onIntegrationUpdate={(integration) => {
-                        fetchSettingsData();
-                        if (integration) {
-                          setMessengerHandle(integration.fb_page_name || integration.fb_page_id);
-                        }
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Channel 2: SMS */}
-              <div
-                className="w-full bg-white rounded-[10px] p-4 flex flex-col gap-3.5 transition-all"
-                style={{
-                  outline: '1.33px rgba(14, 63, 57, 0.15) solid',
-                  outlineOffset: '-1.33px',
-                }}
-              >
-                <div className="w-full flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span
-                      style={{
-                        color: '#1E2939',
-                        fontSize: 14,
-                        fontFamily: "'Work Sans', sans-serif",
-                        fontWeight: '600',
-                        lineHeight: '20px',
-                      }}
-                    >
-                      SMS
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                      Semaphore Gateway
-                    </span>
-                  </div>
-
-                  {/* Toggle Switch */}
-                  <button
-                    type="button"
-                    onClick={() => setSmsEnabled(!smsEnabled)}
-                    className="w-[60px] p-[3px] rounded-full transition-colors flex items-center cursor-pointer"
-                    style={{
-                      background: smsEnabled ? '#1A8A7A' : '#CECECE',
-                      justifyContent: smsEnabled ? 'flex-end' : 'flex-start',
-                    }}
-                  >
-                    <div className="w-[18px] h-[18px] bg-white rounded-full shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_rgba(0,0,0,0.10)]" />
-                  </button>
-                </div>
-
-                {smsEnabled && (
-                  <div className="pt-2 border-t border-slate-100 flex flex-col gap-3 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-600 font-medium">Semaphore API Gateway Settings:</span>
-                      <button
-                        type="button"
-                        onClick={() => setShowSmsConfig(!showSmsConfig)}
-                        className="text-xs font-semibold text-[#1A8A7A] hover:underline cursor-pointer"
-                      >
-                        {showSmsConfig ? 'Collapse' : 'Expand SMS Settings'}
-                      </button>
-                    </div>
-
-                    {showSmsConfig && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-slate-50 rounded-lg">
-                        <div>
-                          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Semaphore API Key</label>
-                          <input
-                            type="password"
-                            value={semaphoreApiKey}
-                            onChange={(e) => setSemaphoreApiKey(e.target.value)}
-                            placeholder="Enter Semaphore API Key"
-                            className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Sender Name</label>
-                          <input
-                            type="text"
-                            value={semaphoreName}
-                            onChange={(e) => setSemaphoreName(e.target.value)}
-                            placeholder="PIVODENT"
-                            className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs"
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Approval SMS Template</label>
-                          <textarea
-                            rows={2}
-                            value={smsTemplateApproved}
-                            onChange={(e) => setSmsTemplateApproved(e.target.value)}
-                            className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs font-mono"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Channel 3: Email */}
-              <div
-                className="w-full bg-white rounded-[10px] p-4 flex flex-col gap-3.5 transition-all"
-                style={{
-                  outline: '1.33px rgba(14, 63, 57, 0.15) solid',
-                  outlineOffset: '-1.33px',
-                }}
-              >
-                <div className="w-full flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span
-                      style={{
-                        color: '#1E2939',
-                        fontSize: 14,
-                        fontFamily: "'Work Sans', sans-serif",
-                        fontWeight: '600',
-                        lineHeight: '20px',
-                      }}
-                    >
-                      Email
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                      SMTP Automation
-                    </span>
-                  </div>
-
-                  {/* Toggle Switch */}
-                  <button
-                    type="button"
-                    onClick={() => setEmailEnabled(!emailEnabled)}
-                    className="w-[60px] p-[3px] rounded-full transition-colors flex items-center cursor-pointer"
-                    style={{
-                      background: emailEnabled ? '#1A8A7A' : '#CECECE',
-                      justifyContent: emailEnabled ? 'flex-end' : 'flex-start',
-                    }}
-                  >
-                    <div className="w-[18px] h-[18px] bg-white rounded-full shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_rgba(0,0,0,0.10)]" />
-                  </button>
-                </div>
-
-                {emailEnabled && (
-                  <div className="pt-2 border-t border-slate-100 flex flex-col gap-3 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-600 font-medium">SMTP Server &amp; Templates:</span>
-                      <button
-                        type="button"
-                        onClick={() => setShowEmailConfig(!showEmailConfig)}
-                        className="text-xs font-semibold text-[#1A8A7A] hover:underline cursor-pointer"
-                      >
-                        {showEmailConfig ? 'Collapse' : 'Configure SMTP & Templates'}
-                      </button>
-                    </div>
-
-                    {showEmailConfig && (
-                      <div className="p-3 bg-slate-50 rounded-lg flex flex-col gap-3">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div>
-                            <label className="block text-[11px] font-semibold text-slate-500 mb-1">SMTP Host</label>
-                            <input
-                              type="text"
-                              value={smtpHost}
-                              onChange={(e) => setSmtpHost(e.target.value)}
-                              placeholder="smtp.gmail.com"
-                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-slate-500 mb-1">SMTP Port</label>
-                            <input
-                              type="text"
-                              value={smtpPort}
-                              onChange={(e) => setSmtpPort(e.target.value)}
-                              placeholder="587"
-                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-slate-500 mb-1">Username / Email</label>
-                            <input
-                              type="text"
-                              value={smtpUsername}
-                              onChange={(e) => setSmtpUsername(e.target.value)}
-                              placeholder="admin@pivodent.com"
-                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-slate-500 mb-1">Password</label>
-                            <input
-                              type="password"
-                              value={smtpPassword}
-                              onChange={(e) => setSmtpPassword(e.target.value)}
-                              placeholder="App Password"
-                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-slate-500 mb-1">Encryption</label>
-                            <select
-                              value={smtpEncryption}
-                              onChange={(e) => setSmtpEncryption(e.target.value)}
-                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs"
-                            >
-                              <option value="tls">TLS</option>
-                              <option value="ssl">SSL</option>
-                              <option value="none">None</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-slate-500 mb-1">Sender Email</label>
-                            <input
-                              type="email"
-                              value={emailFromAddress}
-                              onChange={(e) => setEmailFromAddress(e.target.value)}
-                              placeholder="no-reply@pivodent.com"
-                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Test Email Row */}
-                        <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row items-center gap-2">
-                          <input
-                            type="email"
-                            value={testEmailAddress}
-                            onChange={(e) => setTestEmailAddress(e.target.value)}
-                            placeholder="Recipient email for test..."
-                            className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs"
-                          />
-                          <button
-                            type="button"
-                            onClick={handleTestEmail}
-                            disabled={sendingTestEmail}
-                            className="px-3 py-1.5 bg-[#0E3F39] text-white rounded text-xs font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                          >
-                            <PaperPlaneTilt size={14} />
-                            {sendingTestEmail ? 'Sending...' : 'Send Test Email'}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
+              {/* Channel 2: Email Notifications Integration */}
+              <EmailIntegration
+                clinicData={clinicData || {}}
+                emailEnabled={emailEnabled}
+                setEmailEnabled={setEmailEnabled}
+                emailFromName={emailFromName}
+                setEmailFromName={setEmailFromName}
+                emailFromAddress={emailFromAddress}
+                setEmailFromAddress={setEmailFromAddress}
+                emailReplyTo={emailReplyTo}
+                setEmailReplyTo={setEmailReplyTo}
+                emailConfirmationEnabled={emailConfirmationEnabled}
+                setEmailConfirmationEnabled={setEmailConfirmationEnabled}
+                emailReminderEnabled={emailReminderEnabled}
+                setEmailReminderEnabled={setEmailReminderEnabled}
+                smtpHost={smtpHost}
+                setSmtpHost={setSmtpHost}
+                smtpPort={smtpPort}
+                setSmtpPort={setSmtpPort}
+                smtpUsername={smtpUsername}
+                setSmtpUsername={setSmtpUsername}
+                smtpPassword={smtpPassword}
+                setSmtpPassword={setSmtpPassword}
+                smtpEncryption={smtpEncryption}
+                setSmtpEncryption={setSmtpEncryption}
+                emailSubjectApproved={emailSubjectApproved}
+                emailBodyApproved={emailBodyApproved}
+              />
             </div>
           )}
 
