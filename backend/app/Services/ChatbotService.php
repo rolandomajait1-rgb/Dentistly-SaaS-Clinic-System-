@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\{Clinic, ChatSession, Patient, Appointment, DentalService, CalendarSlot, Notification, PatientHistory, ClinicFaq};
+use App\Models\{Clinic, ChatSession, Patient, Appointment, DentalService, CalendarSlot, Notification, PatientHistory, ClinicFaq, FbPageIntegration};
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
@@ -19,10 +19,18 @@ class ChatbotService
     /**
      * Handle incoming message
      */
-    public function handleMessage(Clinic $clinic, string $senderId, string $message): void
+    public function handleMessage(Clinic $clinic, string $senderId, string $message, ?FbPageIntegration $integration = null): void
     {
-        $integration = $clinic->fbPageIntegration;
+        $integration = $integration ?? $clinic->fbPageIntegration()->where('is_active', true)->latest()->first() ?? $clinic->fbPageIntegration;
         
+        if (!$integration || empty($integration->page_access_token)) {
+            Log::warning('Chatbot cannot respond: No active Facebook Page integration found for clinic', [
+                'clinic_id' => $clinic->id,
+                'sender_id' => $senderId,
+            ]);
+            return;
+        }
+
         // Mark as seen and show typing
         $this->messenger->markSeen($senderId, $integration);
         $this->messenger->sendTypingOn($senderId, $integration);
@@ -50,10 +58,18 @@ class ChatbotService
     /**
      * Handle postback (button clicks)
      */
-    public function handlePostback(Clinic $clinic, string $senderId, string $payload): void
+    public function handlePostback(Clinic $clinic, string $senderId, string $payload, ?FbPageIntegration $integration = null): void
     {
-        $integration = $clinic->fbPageIntegration;
+        $integration = $integration ?? $clinic->fbPageIntegration()->where('is_active', true)->latest()->first() ?? $clinic->fbPageIntegration;
         
+        if (!$integration || empty($integration->page_access_token)) {
+            Log::warning('Chatbot cannot respond: No active Facebook Page integration found for clinic', [
+                'clinic_id' => $clinic->id,
+                'sender_id' => $senderId,
+            ]);
+            return;
+        }
+
         $this->messenger->markSeen($senderId, $integration);
         $this->messenger->sendTypingOn($senderId, $integration);
 
@@ -221,6 +237,52 @@ class ChatbotService
         $lower = strtolower(trim($message));
         $commonGreetings = ['hi', 'hello', 'hey', 'get started', 'start', ''];
         
+        // 0. Direct Keyword Matching (Robust fallback even when Wit.ai is unconfigured or offline)
+        if (
+            str_contains($lower, 'book') ||
+            str_contains($lower, 'appointment') ||
+            str_contains($lower, 'magpa-book') ||
+            str_contains($lower, 'magpabook') ||
+            str_contains($lower, 'pa-book') ||
+            str_contains($lower, 'pabook') ||
+            str_contains($lower, 'mag-schedule') ||
+            str_contains($lower, 'sched') ||
+            $lower === '1'
+        ) {
+            $this->startBooking($session, $integration);
+            return;
+        }
+
+        if (
+            str_contains($lower, 'my appointment') ||
+            str_contains($lower, 'schedules ko') ||
+            str_contains($lower, 'check appointment') ||
+            $lower === '2'
+        ) {
+            $this->showAppointments($session, $integration);
+            return;
+        }
+
+        if (
+            str_contains($lower, 'history') ||
+            str_contains($lower, 'records') ||
+            $lower === '3'
+        ) {
+            $this->showHistory($session, $integration);
+            return;
+        }
+
+        if (
+            str_contains($lower, 'contact') ||
+            str_contains($lower, 'phone') ||
+            str_contains($lower, 'tawagan') ||
+            str_contains($lower, 'address') ||
+            $lower === '5'
+        ) {
+            $this->showContactInfo($session, $integration);
+            return;
+        }
+
         // If it's not a generic greeting, try Wit.ai/Keywords immediately
         if (!in_array($lower, $commonGreetings) && strlen($lower) > 2) {
             // 1. Analyze with Wit.ai first to prioritize structured intents
@@ -476,55 +538,70 @@ class ChatbotService
     }
 
     /**
-     * Start booking process
+     * Start booking process by directing the patient to the Clinic's Public Booking Portal
      */
     protected function startBooking(ChatSession $session, $integration): void
     {
-        $session->updateStep('booking_category_selection', ['booking' => []]);
+        $clinic = $session->clinic;
+        $bookingUrl = $clinic->getPublicBookingUrl();
 
-        // Get unique categories
-        $categories = DentalService::where('clinic_id', $session->clinic_id)
-            ->active()
-            ->whereNotNull('category')
-            ->where('category', '!=', '')
-            ->select('category')
-            ->distinct()
-            ->orderBy('category')
-            ->pluck('category');
+        $lang = $session->getContext('language', 'en');
+        $this->translator->setLanguage($lang);
 
-        if ($categories->isEmpty()) {
-            $this->messenger->sendTextMessage(
-                $session->fb_messenger_id,
-                $this->translator->trans('error.no_services'),
-                $integration
-            );
-            $this->showMainMenu($session, $integration);
-            return;
+        $notifSettings = $clinic->notification_settings ?? [];
+        $policyNotice = $notifSettings['booking_policy_notice'] ?? null;
+        $allowSameDay = $notifSettings['allow_same_day_booking'] ?? true;
+        $advanceLimit = $notifSettings['advance_booking_limit'] ?? '4 weeks';
+
+        $isTagalog = ($lang === 'tl');
+
+        $message = "📅 " . ($isTagalog ? "Online Booking – " : "Book an Appointment – ") . $clinic->clinic_name . "\n\n";
+        $message .= ($isTagalog
+            ? "Pindutin ang button sa ibaba upang buksan ang aming Patient Booking Portal. Doon ay maaari mong piliin ang dental service, available na petsa at oras, at basahin ang patakaran ng clinic.\n\n"
+            : "Tap the button below to open our Patient Booking Portal where you can select your service, choose available dates and times, and review clinic guidelines.\n\n");
+
+        $message .= "📋 " . ($isTagalog ? "Mga Patakaran sa Booking:" : "Clinic Booking Guidelines:") . "\n";
+        $message .= "• " . ($allowSameDay 
+            ? ($isTagalog ? "Tumatanggap ng same-day appointments" : "Same-day bookings accepted") 
+            : ($isTagalog ? "Kailangan magpa-book bago ang araw ng appointment (Walang same-day booking)" : "Advance scheduling required (No same-day booking)")) . "\n";
+        $message .= "• " . ($isTagalog ? "Maaaring mag-book hanggang " . $advanceLimit . " in advance" : "Available up to " . $advanceLimit . " in advance") . "\n";
+
+        if (!empty($policyNotice)) {
+            $message .= "• ⚠️ " . trim($policyNotice) . "\n";
         }
 
-        $message = "━━━━━━━━━━━━━━\n";
-        $message .= $this->translator->trans('booking.categories_title') . "\n";
-        $message .= "━━━━━━━━━━━━━━\n\n";
-        $message .= $this->translator->trans('booking.select_category') . "\n\n";
+        $buttons = [
+            [
+                'title' => '🌐 ' . ($isTagalog ? 'Buksan Portal' : 'Open Portal'),
+                'url' => $bookingUrl,
+            ],
+            [
+                'title' => '📞 ' . ($isTagalog ? 'Tawagan Clinic' : 'Call Clinic Desk'),
+                'payload' => 'CONTACT_US',
+            ]
+        ];
 
-        foreach ($categories as $index => $category) {
-            $count = DentalService::where('clinic_id', $session->clinic_id)
-                ->where('category', $category)
-                ->active()
-                ->count();
-            $message .= ($index + 1) . ". {$category} (" . $this->translator->trans('booking.services_count', ['count' => $count]) . ")\n";
-        }
-
-        $message .= "\n" . $this->translator->trans('booking.reply_number');
-
-        $this->messenger->sendTextMessage(
+        $this->messenger->sendButtonMessage(
             $session->fb_messenger_id,
             $message,
+            $buttons,
             $integration
         );
 
-        // Store categories in session for reference
-        $session->setContext('booking.categories', $categories->toArray());
+        $quickReplies = [
+            ['title' => '📋 Clinic FAQs', 'payload' => 'VIEW_FAQS'],
+            ['title' => '🦷 My Records', 'payload' => 'VIEW_HISTORY'],
+            ['title' => '🏠 Main Menu', 'payload' => 'MAIN_MENU'],
+        ];
+
+        $this->messenger->sendQuickReplies(
+            $session->fb_messenger_id,
+            $isTagalog ? 'O pumili ng opsyon sa ibaba:' : 'Or choose another option below:',
+            $quickReplies,
+            $integration
+        );
+
+        $session->updateStep('welcome');
     }
 
     /**
@@ -1360,9 +1437,10 @@ class ChatbotService
             $date = Carbon::parse($appointment->appointment_date)->format('M d, Y');
             $time = Carbon::parse($appointment->appointment_time)->format('g:i A');
 
+            $serviceName = $appointment->service?->service_name ?? 'Dental Service';
             $message .= ($index + 1) . ". {$statusEmoji} " . strtoupper($appointment->status) . "\n";
             $message .= "   Ref: {$appointment->reference_number}\n";
-            $message .= "   Service: {$appointment->service->service_name}\n";
+            $message .= "   Service: {$serviceName}\n";
             $message .= "   Date: {$date}, {$time}\n";
 
             if ($appointment->queue_number) {
@@ -1415,11 +1493,11 @@ class ChatbotService
 
         // Send portal link as button message
         $message = "👋 " . $this->translator->trans('booking.welcome_back', ['name' => $patientName]) . "!\n\n"
-            . "To view your complete dental record timeline, active prescriptions, and interactive tooth chart, tap the button below to open your secure Patient Portal:\n";
+            . "To view your complete dental record timeline and active prescriptions, tap the button below to open your secure Patient Portal:\n";
 
         $buttons = [
             [
-                'title' => '🌐 Open Patient Portal',
+                'title' => '🌐 Patient Portal',
                 'url' => url('/webview/patient/portal/' . $session->session_id),
             ]
         ];
@@ -1568,14 +1646,26 @@ class ChatbotService
         if (!empty($notifSettings['chatbot_operating_hours'])) {
             $message .= "⏰ Operating Hours:\n   " . $notifSettings['chatbot_operating_hours'] . "\n";
         } else {
-            // ✅ Null-safe: operating_hours may be null or a plain string
+            // ✅ Format operating hours properly whether structured array or legacy string
             $hours = $clinic->operating_hours;
             if (!empty($hours)) {
                 $hoursArray = is_array($hours) ? $hours : json_decode($hours, true);
                 if (is_array($hoursArray)) {
                     $message .= "⏰ Operating Hours:\n";
                     foreach ($hoursArray as $day => $time) {
-                        $message .= "   {$day}: {$time}\n";
+                        $dayName = ucfirst($day);
+                        if (is_array($time)) {
+                            $isOpen = !empty($time['enabled']);
+                            if ($isOpen) {
+                                $openTime = $time['open'] ?? '09:00 AM';
+                                $closeTime = $time['close'] ?? '05:00 PM';
+                                $message .= "   {$dayName}: {$openTime} - {$closeTime}\n";
+                            } else {
+                                $message .= "   {$dayName}: Closed\n";
+                            }
+                        } else {
+                            $message .= "   {$dayName}: {$time}\n";
+                        }
                     }
                 }
             }

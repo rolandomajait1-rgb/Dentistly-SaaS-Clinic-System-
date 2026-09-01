@@ -52,22 +52,31 @@ class MessengerService
     public function sendQuickReplies(string $recipientId, string $text, array $quickReplies, FbPageIntegration $integration): bool
     {
         try {
+            // Messenger limits: max 13 quick replies, each title max 20 chars
             $formattedReplies = array_map(function ($reply) {
                 return [
                     'content_type' => 'text',
-                    'title' => $reply['title'],
-                    'payload' => $reply['payload'],
+                    'title' => mb_substr($reply['title'] ?? '', 0, 20),
+                    'payload' => $reply['payload'] ?? '',
                 ];
-            }, $quickReplies);
+            }, array_slice($quickReplies, 0, 13));
 
             $response = Http::post("{$this->baseUrl}/{$this->apiVersion}/me/messages", [
                 'recipient' => ['id' => $recipientId],
                 'message' => [
-                    'text' => $text,
+                    'text' => mb_substr($text, 0, 2000),
                     'quick_replies' => $formattedReplies,
                 ],
                 'access_token' => $integration->page_access_token,
             ]);
+
+            if (!$response->successful()) {
+                Log::error('Failed to send quick replies', [
+                    'recipient_id' => $recipientId,
+                    'status' => $response->status(),
+                    'response' => $response->json() ?? $response->body(),
+                ]);
+            }
 
             return $response->successful();
 
@@ -86,21 +95,30 @@ class MessengerService
     public function sendButtonMessage(string $recipientId, string $text, array $buttons, FbPageIntegration $integration): bool
     {
         try {
+            // Messenger limits: max 3 buttons, each title max 20 chars
             $formattedButtons = array_map(function ($button) {
+                $title = mb_substr($button['title'] ?? '', 0, 20);
                 if (isset($button['url'])) {
                     return [
                         'type' => 'web_url',
-                        'title' => $button['title'],
+                        'title' => $title,
                         'url' => $button['url'],
                     ];
                 }
                 
                 return [
                     'type' => 'postback',
-                    'title' => $button['title'],
-                    'payload' => $button['payload'],
+                    'title' => $title,
+                    'payload' => $button['payload'] ?? '',
                 ];
-            }, $buttons);
+            }, array_slice($buttons, 0, 3));
+
+            // Facebook button template limit: 'text' cannot exceed 640 characters.
+            // If text is longer, send the full body text first, then send buttons with a brief prompt.
+            if (mb_strlen($text) > 640) {
+                $this->sendTextMessage($recipientId, $text, $integration);
+                $text = 'Piliin ang opsyon sa ibaba / Please choose an option below:';
+            }
 
             $response = Http::post("{$this->baseUrl}/{$this->apiVersion}/me/messages", [
                 'recipient' => ['id' => $recipientId],
@@ -116,6 +134,14 @@ class MessengerService
                 ],
                 'access_token' => $integration->page_access_token,
             ]);
+
+            if (!$response->successful()) {
+                Log::error('Failed to send button message', [
+                    'recipient_id' => $recipientId,
+                    'status' => $response->status(),
+                    'response' => $response->json() ?? $response->body(),
+                ]);
+            }
 
             return $response->successful();
 

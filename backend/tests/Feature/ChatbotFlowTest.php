@@ -114,14 +114,23 @@ class ChatbotFlowTest extends TestCase
         $this->post(route('webhook.handle'), $payload)->assertStatus(200);
         
         $session->refresh();
-        $this->assertEquals('booking_category_selection', $session->current_step);
+        // The chatbot sends the public portal invitation card and cleanly returns to welcome step
+        $this->assertEquals('welcome', $session->current_step);
+    }
 
-        // 2.5. Choose Category (e.g. sending "General Dentistry")
-        $payload = $this->textMessagePayload('General Dentistry');
-        $this->post(route('webhook.handle'), $payload)->assertStatus(200);
-
-        $session->refresh();
-        $this->assertEquals('booking_service_selection', $session->current_step);
+    /**
+     * Test old multi-step conversational fallbacks if directly invoked
+     */
+    public function test_conversational_service_selection_if_invoked()
+    {
+        $clinic = \App\Models\Clinic::first();
+        $session = ChatSession::create([
+            'clinic_id' => $clinic->id,
+            'fb_messenger_id' => $this->senderId,
+            'session_id' => (string) \Illuminate\Support\Str::uuid(),
+            'current_step' => 'booking_category_selection',
+            'last_interaction_at' => now(),
+        ]);
 
         // 3. Choose service: Teeth Cleaning (Postback: SELECT_SERVICE:{id})
         $service = DentalService::where('service_name', 'Teeth Cleaning')->first();

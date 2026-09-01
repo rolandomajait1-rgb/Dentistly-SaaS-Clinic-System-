@@ -12,7 +12,7 @@ class WitAiService
 
     public function __construct()
     {
-        $this->token = env('WIT_AI_TOKEN', '');
+        $this->token = (string) (config('services.wit_ai.server_token') ?: env('WIT_AI_TOKEN', ''));
     }
 
     /**

@@ -61,7 +61,7 @@ class ProcessMessengerWebhook implements ShouldQueue
             // Process messaging events
             if (isset($entry['messaging'])) {
                 foreach ($entry['messaging'] as $event) {
-                    $this->processMessagingEvent($clinic, $event, $chatbot);
+                    $this->processMessagingEvent($clinic, $event, $chatbot, $integration);
                 }
             }
         }
@@ -70,7 +70,7 @@ class ProcessMessengerWebhook implements ShouldQueue
     /**
      * Process individual messaging event
      */
-    protected function processMessagingEvent(Clinic $clinic, array $event, ChatbotService $chatbot): void
+    protected function processMessagingEvent(Clinic $clinic, array $event, ChatbotService $chatbot, ?FbPageIntegration $integration = null): void
     {
         $senderId = $event['sender']['id'];
 
@@ -85,7 +85,7 @@ class ProcessMessengerWebhook implements ShouldQueue
                         'sender_id' => $senderId,
                         'payload' => $payload,
                     ]);
-                    $chatbot->handlePostback($clinic, $senderId, $payload);
+                    $chatbot->handlePostback($clinic, $senderId, $payload, $integration);
                 } else {
                     $text = $event['message']['text'];
                     Log::info('Processing message in job', [
@@ -93,7 +93,7 @@ class ProcessMessengerWebhook implements ShouldQueue
                         'sender_id' => $senderId,
                         'text' => $text,
                     ]);
-                    $chatbot->handleMessage($clinic, $senderId, $text);
+                    $chatbot->handleMessage($clinic, $senderId, $text, $integration);
                 }
             } elseif (isset($event['postback'])) {
                 $payload = $event['postback']['payload'];
@@ -104,7 +104,7 @@ class ProcessMessengerWebhook implements ShouldQueue
                     'payload' => $payload,
                 ]);
 
-                $chatbot->handlePostback($clinic, $senderId, $payload);
+                $chatbot->handlePostback($clinic, $senderId, $payload, $integration);
             }
         } catch (\Exception $e) {
             Log::error('Error processing messaging event in job', [

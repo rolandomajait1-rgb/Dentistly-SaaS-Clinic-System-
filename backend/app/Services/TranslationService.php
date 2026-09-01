@@ -30,19 +30,19 @@ class TranslationService
         ],
         'menu.book_appointment' => [
             'en' => "📅 Book Appointment",
-            'tl' => "📅 Mag-book ng Appointment",
+            'tl' => "📅 Mag-book",
         ],
         'menu.my_appointments' => [
             'en' => "📋 My Appointments",
-            'tl' => "📋 Aking mga Appointment",
+            'tl' => "📋 Aking Schedules",
         ],
         'menu.view_history' => [
             'en' => "📜 View History",
-            'tl' => "📜 Tingnan ang Kasaysayan",
+            'tl' => "📜 Aking Records",
         ],
         'menu.cancel_reschedule' => [
-            'en' => "🔄 Cancel/Reschedule",
-            'tl' => "🔄 Kanselahin/I-reschedule",
+            'en' => "🔄 Reschedule/Cancel",
+            'tl' => "🔄 Resched/Cancel",
         ],
         'menu.contact_us' => [
             'en' => "📞 Contact Us",
@@ -62,7 +62,7 @@ class TranslationService
         ],
         'menu.end_conversation' => [
             'en' => "👋 End Conversation",
-            'tl' => "👋 Tapusin ang Usapan",
+            'tl' => "👋 Tapusin Usapan",
         ],
         'menu.goodbye' => [
             'en' => "👋 Thank you for reaching out! Have a great day! 😊\n\nIf you need help again in the future, just type 'hi' or 'hello' to restart the conversation.",
@@ -108,12 +108,12 @@ class TranslationService
             'tl' => "Ayos! I-tap ang button sa ibaba para pumili ng iyong gustong petsa at oras mula sa aming interactive calendar.",
         ],
         'booking.select_date_time' => [
-            'en' => "📅 Select Date & Time",
-            'tl' => "📅 Pumili ng Petsa at Oras",
+            'en' => "📅 Pick Date & Time",
+            'tl' => "📅 Pumili Petsa/Oras",
         ],
         'booking.click_button' => [
-            'en' => "Please click the '📅 Select Date & Time' button above to choose your schedule, or type 'cancel' to exit.",
-            'tl' => "Paki-click ang '📅 Pumili ng Petsa at Oras' button sa itaas para pumili ng iyong schedule, o i-type ang 'cancel' para lumabas.",
+            'en' => "Please click the button above to choose your schedule, or type 'cancel' to exit.",
+            'tl' => "Paki-click ang button sa itaas para pumili ng iyong schedule, o i-type ang 'cancel' para lumabas.",
         ],
         'booking.selected_date' => [
             'en' => "✅ Selected date: {date}",
@@ -147,7 +147,7 @@ class TranslationService
         ],
         'dpa.decline' => [
             'en' => "👎 I Decline",
-            'tl' => "👎 Hindi Sumasang-ayon",
+            'tl' => "👎 Hindi Sang-ayon",
         ],
         'dpa.cannot_proceed' => [
             'en' => "❌ Booking cannot proceed without your consent. Returning to main menu...",
@@ -331,8 +331,8 @@ class TranslationService
             'tl' => 'Mangyaring pumili ng appointment na ikakansela:',
         ],
         'booking.cancel_button_label' => [
-            'en' => 'Cancel {date} {time}',
-            'tl' => 'Kanselahin ang {date} {time}',
+            'en' => '❌ {date} {time}',
+            'tl' => '❌ {date} {time}',
         ],
         'booking.cancel_success' => [
             'en' => '✅ Your appointment has been successfully cancelled. The time slot is now open.',
