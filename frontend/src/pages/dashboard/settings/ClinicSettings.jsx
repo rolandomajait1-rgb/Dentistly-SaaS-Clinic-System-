@@ -110,6 +110,8 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
   const [autoConfirm, setAutoConfirm] = useState(true);
   const [availableRooms, setAvailableRooms] = useState(2);
   const [operatingHours, setOperatingHours] = useState(DEFAULT_OPERATING_HOURS);
+  const [bookingPolicyNotice, setBookingPolicyNotice] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Tab 4: Cancellation & No-Show
   const [cancellationLockWindow, setCancellationLockWindow] = useState(1);
@@ -186,6 +188,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
       setAllowSameDay(notifSettings.allow_same_day_booking ?? true);
       setAutoConfirm(notifSettings.auto_confirm_appointments ?? true);
       setAvailableRooms(Number(notifSettings.available_rooms ?? 2));
+      setBookingPolicyNotice(notifSettings.booking_policy_notice ?? '');
 
       // Operating Hours
       if (data.operating_hours && typeof data.operating_hours === 'object') {
@@ -299,6 +302,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
           allow_same_day_booking: allowSameDay,
           auto_confirm_appointments: autoConfirm,
           available_rooms: availableRooms,
+          booking_policy_notice: bookingPolicyNotice,
 
           // Cancellation & No-Show
           cancellation_lock_window_hours: cancellationLockWindow,
@@ -890,6 +894,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
               {/* Channel 2: Email Notifications Integration */}
               <EmailIntegration
                 clinicData={clinicData || {}}
+                clinicLogo={clinicLogo}
                 emailEnabled={emailEnabled}
                 setEmailEnabled={setEmailEnabled}
                 emailFromName={emailFromName}
@@ -923,6 +928,57 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
           {/* ========================================================================= */}
           {activeSubTab === 'schedule' && (
             <div className="w-full flex flex-col gap-4 animate-fadeIn">
+
+              {/* Card 0: Your Public Booking Portal Link */}
+              <div
+                className="w-full bg-gradient-to-r from-[#0E3F39] to-[#1A8A7A] rounded-[12px] p-5 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-md"
+              >
+                <div className="flex flex-col gap-1 max-w-xl">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-2.5 py-0.5 rounded-full text-teal-200">
+                      Live Patient Portal
+                    </span>
+                    <span className="text-xs text-teal-100 font-medium">Auto-sent by Chatbot on Booking Request</span>
+                  </div>
+                  <h4 className="text-base font-bold tracking-tight text-white mt-1">
+                    Your Clinic's Public Booking Portal Link
+                  </h4>
+                  <p className="text-xs text-teal-100/80 leading-relaxed">
+                    Patients can browse services, review your clinic policies, and book directly here:
+                  </p>
+                  <div className="mt-1 font-mono text-xs font-bold text-teal-300 bg-black/25 px-3 py-1.5 rounded-lg border border-white/10 break-all select-all">
+                    {`${window.location.origin}/book/${clinicData?.slug || (clinicData?.clinic_name ? clinicData.clinic_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : 'happysmiles')}`}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-stretch md:self-auto shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const slug = clinicData?.slug || (clinicData?.clinic_name ? clinicData.clinic_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : 'happysmiles');
+                      const link = `${window.location.origin}/book/${slug}`;
+                      navigator.clipboard.writeText(link);
+                      setCopiedLink(true);
+                      showToast('Public Booking link copied to clipboard!', 'success');
+                      setTimeout(() => setCopiedLink(false), 2500);
+                    }}
+                    className="flex-1 md:flex-initial px-4 py-2.5 bg-white text-[#0E3F39] hover:bg-teal-50 font-bold rounded-lg text-xs uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    {copiedLink ? <Check size={16} /> : <PaperPlaneTilt size={16} />}
+                    <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
+                  </button>
+
+                  <a
+                    href={`/book/${clinicData?.slug || (clinicData?.clinic_name ? clinicData.clinic_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : 'happysmiles')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-4 py-2.5 bg-white/15 hover:bg-white/25 text-white border border-white/25 font-bold rounded-lg text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Preview</span>
+                    <span className="material-symbols-outlined text-sm">open_in_new</span>
+                  </a>
+                </div>
+              </div>
               
               {/* Card 1: Booking Rules */}
               <div
@@ -1232,6 +1288,42 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* 7. Clinic Booking Policy & Patient Reminders */}
+                <div className="w-full py-4 flex flex-col gap-2 border-t border-[rgba(0,0,0,0.10)] mt-2">
+                  <div className="flex flex-col">
+                    <span
+                      style={{
+                        color: '#1E2939',
+                        fontSize: 14,
+                        fontFamily: "'Work Sans', sans-serif",
+                        fontWeight: '500',
+                        lineHeight: '20px',
+                      }}
+                    >
+                      Clinic Booking Policy & Patient Reminders
+                    </span>
+                    <span
+                      style={{
+                        color: '#99A1AF',
+                        fontSize: 12,
+                        fontFamily: "'Work Sans', sans-serif",
+                        fontWeight: '400',
+                        lineHeight: '16.5px',
+                      }}
+                    >
+                      Custom guidelines, rules, or requirements shown to patients on the booking portal (e.g. arrival times, valid IDs, HMO rules, down payments).
+                    </span>
+                  </div>
+
+                  <textarea
+                    rows={3}
+                    value={bookingPolicyNotice}
+                    onChange={(e) => setBookingPolicyNotice(e.target.value)}
+                    placeholder="e.g. Strictly by appointment. Please arrive 15 minutes before your schedule. Valid government ID and HMO card required. Cancellations must be made at least 24 hours in advance."
+                    className="w-full p-3 rounded-[8px] bg-slate-50 border border-slate-200 text-xs text-[#1E2939] focus:outline-none focus:border-[#1A8A7A] focus:bg-white transition-all font-sans"
+                  />
                 </div>
 
               </div>

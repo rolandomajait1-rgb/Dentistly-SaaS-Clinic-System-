@@ -57,7 +57,59 @@ class PublicClinicController extends Controller
     }
 
     /**
-     * Get available calendar slots of the clinic over the next 30 days.
+     * Helper to compute allowable booking date range based on clinic policies.
+     */
+    protected function getPolicyDateRange(Clinic $clinic): array
+    {
+        $notifSettings = $clinic->notification_settings ?? [];
+        $allowSameDay = $notifSettings['allow_same_day_booking'] ?? true;
+        $advanceLimitStr = strtolower(trim($notifSettings['advance_booking_limit'] ?? '4 weeks'));
+
+        $startDate = $allowSameDay ? Carbon::today() : Carbon::tomorrow();
+
+        $days = 28; // default 4 weeks
+        if (str_contains($advanceLimitStr, '1 week')) {
+            $days = 7;
+        } elseif (str_contains($advanceLimitStr, '2 week')) {
+            $days = 14;
+        } elseif (str_contains($advanceLimitStr, '3 week')) {
+            $days = 21;
+        } elseif (str_contains($advanceLimitStr, '4 week') || str_contains($advanceLimitStr, '1 month')) {
+            $days = 28;
+        } elseif (str_contains($advanceLimitStr, '2 month')) {
+            $days = 60;
+        } elseif (str_contains($advanceLimitStr, '3 month')) {
+            $days = 90;
+        } elseif (preg_match('/(\d+)\s*day/', $advanceLimitStr, $m)) {
+            $days = (int)$m[1];
+        }
+
+        $endDate = Carbon::today()->addDays($days);
+
+        return [$startDate, $endDate, $allowSameDay, $days];
+    }
+
+    /**
+     * Check whether the clinic is open on the given day of the week according to its operating hours.
+     */
+    protected function isDayOpen(Clinic $clinic, Carbon $date): bool
+    {
+        $operatingHours = $clinic->operating_hours;
+        if (!is_array($operatingHours) || empty($operatingHours)) {
+            return true;
+        }
+
+        $dayName = strtolower($date->format('l'));
+        if (isset($operatingHours[$dayName])) {
+            $dayConfig = $operatingHours[$dayName];
+            return !empty($dayConfig['enabled']);
+        }
+
+        return true;
+    }
+
+    /**
+     * Get available calendar slots of the clinic based on its policy window and operating days.
      */
     public function slots($clinicSlug, Request $request)
     {
@@ -67,19 +119,28 @@ class PublicClinicController extends Controller
             return response()->json(['error' => 'Clinic not found'], 404);
         }
 
+        [$startDate, $endDate, $allowSameDay, $advanceDays] = $this->getPolicyDateRange($clinic);
+
         $slots = CalendarSlot::where('clinic_id', $clinic->id)
             ->where('status', 'available')
-            ->whereDate('slot_date', '>=', Carbon::today())
-            ->whereDate('slot_date', '<=', Carbon::today()->addDays(30))
+            ->whereDate('slot_date', '>=', $startDate)
+            ->whereDate('slot_date', '<=', $endDate)
             ->orderBy('slot_date')
             ->orderBy('slot_time')
             ->get();
 
         $grouped = [];
         foreach ($slots as $slot) {
-            $dateStr = $slot->slot_date instanceof Carbon
-                ? $slot->slot_date->toDateString()
-                : Carbon::parse($slot->slot_date)->toDateString();
+            $dateObj = $slot->slot_date instanceof Carbon
+                ? $slot->slot_date
+                : Carbon::parse($slot->slot_date);
+
+            // Respect clinic operating days
+            if (!$this->isDayOpen($clinic, $dateObj)) {
+                continue;
+            }
+
+            $dateStr = $dateObj->toDateString();
 
             if (!isset($grouped[$dateStr])) {
                 $grouped[$dateStr] = [];
@@ -115,6 +176,33 @@ class PublicClinicController extends Controller
         ]);
 
         $formattedTime = Carbon::parse($validated['time'])->format('H:i:s');
+        $requestedDate = Carbon::parse($validated['date'])->startOfDay();
+
+        [$startDate, $endDate, $allowSameDay, $advanceDays] = $this->getPolicyDateRange($clinic);
+
+        if (!$allowSameDay && $requestedDate->isToday()) {
+            return response()->json([
+                'error' => 'Clinic policy does not permit same-day bookings. Please select a date starting tomorrow.'
+            ], 400);
+        }
+
+        if ($requestedDate->lt($startDate)) {
+            return response()->json([
+                'error' => 'The selected date is no longer open for appointment bookings.'
+            ], 400);
+        }
+
+        if ($requestedDate->gt($endDate)) {
+            return response()->json([
+                'error' => "Clinic policy: Appointments can only be booked up to {$advanceDays} days in advance."
+            ], 400);
+        }
+
+        if (!$this->isDayOpen($clinic, $requestedDate)) {
+            return response()->json([
+                'error' => 'The clinic is closed on ' . $requestedDate->format('l') . 's.'
+            ], 400);
+        }
 
         // Check if the slot is still available
         $slot = CalendarSlot::where('clinic_id', $clinic->id)
@@ -213,6 +301,8 @@ class PublicClinicController extends Controller
             'contact_number' => $clinic->contact_number,
             'address' => $clinic->address,
             'logo_url' => $clinic->logo_url,
+            'slug' => $clinic->slug,
+            'public_booking_url' => $clinic->getPublicBookingUrl(),
             'timezone' => $clinic->timezone,
             'operating_hours' => $clinic->operating_hours,
             'notification_settings' => $clinic->notification_settings,
@@ -321,6 +411,25 @@ class PublicClinicController extends Controller
         if (in_array(strtolower($appointment->status), ['completed', 'cancelled'])) {
             return response()->json([
                 'error' => "Cannot cancel appointment because it is already {$appointment->status}."
+            ], 400);
+        }
+
+        $notifSettings = $clinic->notification_settings ?? [];
+        $lockHours = (int)($notifSettings['cancellation_lock_window_hours'] ?? 1);
+
+        $apptDateStr = $appointment->appointment_date instanceof Carbon
+            ? $appointment->appointment_date->toDateString()
+            : substr((string)$appointment->appointment_date, 0, 10);
+        $appointmentDateTime = Carbon::parse($apptDateStr . ' ' . $appointment->appointment_time);
+        if ($appointmentDateTime->isPast()) {
+            return response()->json([
+                'error' => 'Past appointments cannot be cancelled.'
+            ], 400);
+        }
+
+        if (now()->diffInHours($appointmentDateTime, false) < $lockHours) {
+            return response()->json([
+                'error' => "Cancellation policy: Appointments cannot be cancelled within {$lockHours} hour(s) of the scheduled time. Please contact the clinic directly."
             ], 400);
         }
 

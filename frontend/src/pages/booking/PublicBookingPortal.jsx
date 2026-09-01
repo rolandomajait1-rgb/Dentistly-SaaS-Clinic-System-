@@ -55,6 +55,7 @@ export default function PublicBookingPortal() {
   const [age, setAge] = useState('');
   const [medicalHistory, setMedicalHistory] = useState('');
   const [reason, setReason] = useState('');
+  const [policyAccepted, setPolicyAccepted] = useState(false);
 
   // Submission & Ticket States
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -105,6 +106,10 @@ export default function PublicBookingPortal() {
   // Submit Booking Handler
   const handleSubmitBooking = async (e) => {
     e.preventDefault();
+    if (!policyAccepted) {
+      setBookingError('Please review and agree to the clinic booking policies to confirm your appointment.');
+      return;
+    }
     setBookingError('');
     setIsSubmitting(true);
 
@@ -469,6 +474,20 @@ export default function PublicBookingPortal() {
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           Selected Treatment: <strong className="text-teal-600 dark:text-teal-400">{selectedService?.service_name}</strong> (₱{selectedService?.price?.toLocaleString()})
                         </p>
+
+                        {/* Clinic Policy Info Badges */}
+                        <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 text-[10px] font-bold border border-teal-200 dark:border-teal-900/40">
+                            <span className="material-symbols-outlined text-[12px]">verified</span>
+                            {clinicInfo?.notification_settings?.allow_same_day_booking === false 
+                              ? 'Advance booking required (No same-day)' 
+                              : 'Same-day booking available'}
+                          </span>
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold">
+                            <span className="material-symbols-outlined text-[12px]">calendar_today</span>
+                            {`Booking open up to ${clinicInfo?.notification_settings?.advance_booking_limit || '4 weeks'}`}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Available Dates Horizontal Selector */}
@@ -648,6 +667,45 @@ export default function PublicBookingPortal() {
                             placeholder="e.g. Hypertension, allergic to penicillin, diabetes"
                             className="w-full p-3 bg-slate-50 dark:bg-[#07100e] border border-slate-200 dark:border-teal-900/40 rounded-xl text-xs focus:outline-none focus:border-teal-500"
                           />
+                        </div>
+
+                        {/* Clinic Policy & Reminders Card */}
+                        <div className="p-4 rounded-2xl bg-teal-50/70 dark:bg-[#071614] border border-teal-200/70 dark:border-teal-900/50 space-y-2.5">
+                          <div className="flex items-center gap-2 text-teal-800 dark:text-teal-300 font-extrabold text-xs">
+                            <span className="material-symbols-outlined text-sm">policy</span>
+                            <span>Clinic Policies & Patient Reminders</span>
+                          </div>
+                          
+                          <div className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed space-y-1.5 pl-1">
+                            {clinicInfo?.notification_settings?.booking_policy_notice ? (
+                              <p className="font-semibold text-slate-800 dark:text-slate-200 whitespace-pre-line">
+                                📌 {clinicInfo.notification_settings.booking_policy_notice}
+                              </p>
+                            ) : null}
+                            <p className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                              <span>⏰</span>
+                              <span>Please arrive at least 15 minutes prior to your scheduled appointment.</span>
+                            </p>
+                            <p className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                              <span>🔒</span>
+                              <span>
+                                Cancellations must be made at least {clinicInfo?.notification_settings?.cancellation_lock_window_hours || 1} hour(s) before schedule.
+                              </span>
+                            </p>
+                          </div>
+
+                          <label className="flex items-start gap-2.5 pt-2 border-t border-teal-200/50 dark:border-teal-900/40 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              required
+                              checked={policyAccepted}
+                              onChange={(e) => setPolicyAccepted(e.target.checked)}
+                              className="mt-0.5 w-4 h-4 rounded text-teal-600 focus:ring-teal-500 border-slate-300 dark:border-teal-900 cursor-pointer"
+                            />
+                            <span className="text-xs text-slate-700 dark:text-slate-200 font-bold">
+                              I have read and agree to the clinic's booking policies and appointment rules.
+                            </span>
+                          </label>
                         </div>
 
                         {/* Action Bar */}
@@ -917,18 +975,37 @@ export default function PublicBookingPortal() {
                     </h3>
 
                     <div className="space-y-2 text-xs divide-y divide-slate-100 dark:divide-teal-900/30">
-                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day) => (
-                        <div key={day} className="flex justify-between py-2">
-                          <span className="font-bold text-slate-600 dark:text-slate-300">{day}</span>
-                          <span className="font-mono text-teal-600 dark:text-teal-400 font-bold">09:00 AM - 05:00 PM</span>
-                        </div>
-                      ))}
-                      <div className="flex justify-between py-2 text-rose-500 font-bold">
-                        <span>Sunday</span>
-                        <span>Closed / By Appointment</span>
-                      </div>
+                      {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((dayKey) => {
+                        const dayName = dayKey.charAt(0).toUpperCase() + dayKey.slice(1);
+                        const schedule = clinicInfo?.operating_hours?.[dayKey];
+                        const isOpen = schedule ? Boolean(schedule.enabled) : (dayKey !== 'sunday');
+                        const openTime = schedule?.open || '08:00 AM';
+                        const closeTime = schedule?.close || '05:00 PM';
+                        return (
+                          <div key={dayKey} className={`flex justify-between py-2 ${!isOpen ? 'text-rose-500 font-bold' : ''}`}>
+                            <span className="font-bold text-slate-600 dark:text-slate-300">{dayName}</span>
+                            {isOpen ? (
+                              <span className="font-mono text-teal-600 dark:text-teal-400 font-bold">{openTime} - {closeTime}</span>
+                            ) : (
+                              <span>Closed / Offline</span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
+
+                  {clinicInfo?.notification_settings?.booking_policy_notice && (
+                    <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/40 rounded-3xl p-5 shadow-sm space-y-2">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-sm">campaign</span>
+                        Clinic Policy Notice
+                      </h4>
+                      <p className="text-xs text-amber-900/80 dark:text-amber-200/90 leading-relaxed whitespace-pre-line font-medium">
+                        {clinicInfo.notification_settings.booking_policy_notice}
+                      </p>
+                    </div>
+                  )}
 
                   <div className="bg-gradient-to-br from-teal-900 to-slate-900 text-white rounded-3xl p-6 shadow-xl space-y-3">
                     <h3 className="text-sm font-bold uppercase tracking-widest text-teal-300">Accepted Payments</h3>

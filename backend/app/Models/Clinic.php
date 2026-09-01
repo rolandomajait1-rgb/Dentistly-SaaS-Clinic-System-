@@ -129,4 +129,21 @@ class Clinic extends Model
         // The system is currently free for all clinics during the beta release.
         return true;
     }
+
+    /**
+     * Get clinic slug for public booking portal.
+     */
+    public function getSlugAttribute(): string
+    {
+        return $this->tenant?->subdomain ?: \Illuminate\Support\Str::slug($this->clinic_name ?: 'clinic-' . $this->id);
+    }
+
+    /**
+     * Get the full public booking URL for this clinic.
+     */
+    public function getPublicBookingUrl(): string
+    {
+        $baseUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173'));
+        return rtrim($baseUrl, '/') . '/book/' . $this->slug;
+    }
 }
