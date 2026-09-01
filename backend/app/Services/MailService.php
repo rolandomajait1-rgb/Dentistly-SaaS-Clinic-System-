@@ -23,16 +23,28 @@ class MailService
         try {
             $mailer = Mail::mailer();
             $fromAddress = env('MAIL_FROM_ADDRESS', 'noreply@clinicsync.com');
-            $replyToAddress = null;
+            $clinicLogo = null;
+            $clinicAddress = null;
+            $clinicPhone = null;
 
             if ($clinic) {
+                $clinicLogo = $clinic->logo_url ?? null;
+                $clinicAddress = $clinic->address ?? null;
+                $clinicPhone = $clinic->contact_number ?? null;
                 $settings = $clinic->notification_settings ?? [];
+
                 if (!empty($settings['email_from_name'])) {
                     $clinicName = $settings['email_from_name'];
+                } elseif (!empty($clinic->clinic_name)) {
+                    $clinicName = $clinic->clinic_name;
                 }
+
                 if (!empty($settings['email_reply_to'])) {
                     $replyToAddress = $settings['email_reply_to'];
+                } elseif (!empty($clinic->email)) {
+                    $replyToAddress = $clinic->email;
                 }
+
                 if ($settings['smtp_enabled'] ?? false) {
                     $config = [
                         'transport' => 'smtp',
@@ -53,7 +65,11 @@ class MailService
             $mailer->send('emails.notification', [
                 'subject' => $subject,
                 'body' => $body,
-                'clinic_name' => $clinicName
+                'clinic_name' => $clinicName,
+                'clinic_logo' => $clinicLogo,
+                'clinic_address' => $clinicAddress,
+                'clinic_phone' => $clinicPhone,
+                'reply_to_email' => $replyToAddress,
             ], function ($message) use ($toEmail, $subject, $clinicName, $fromAddress, $replyToAddress) {
                 $message->to($toEmail)
                     ->subject($subject)

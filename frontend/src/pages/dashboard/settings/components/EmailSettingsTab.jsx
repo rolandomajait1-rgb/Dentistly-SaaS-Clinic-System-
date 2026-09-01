@@ -5,8 +5,6 @@ import {
   Globe,
   Bell,
   Sliders,
-  GearSix,
-  Lock,
   CheckCircle,
   Warning,
   PaperPlaneTilt,
@@ -106,13 +104,16 @@ export default function EmailSettingsTab({
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Banner */}
-      <div className="bg-linear-to-r from-blue-500/10 to-teal-500/5 dark:from-blue-500/10 dark:to-teal-500/5 border border-blue-500/15 dark:border-blue-500/20 rounded-3xl p-5 flex items-start gap-4 shadow-3xs">
-        <div className="w-10 h-10 rounded-2xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+      <div className="bg-linear-to-r from-teal-500/10 to-blue-500/5 dark:from-teal-500/10 dark:to-blue-500/5 border border-teal-500/15 dark:border-teal-500/20 rounded-3xl p-5 flex items-start gap-4 shadow-3xs">
+        <div className="w-10 h-10 rounded-2xl bg-teal-500/10 dark:bg-teal-500/20 flex items-center justify-center text-teal-600 dark:text-teal-400 shrink-0">
           <EnvelopeSimple size={20} weight="bold" />
         </div>
         <div>
-          <h4 className="font-extrabold text-sm text-on-surface dark:text-[#f2f0ed] font-sans">Email Workflow Automation &amp; SMTP Relay</h4>
-          <p className="text-xs text-on-surface-variant/70 dark:text-slate-400 mt-1 font-semibold font-sans">Automate rich HTML booking confirmations, approval letters, pre-visit reminders, and post-visit treatment summaries.</p>
+          <div className="flex items-center gap-2">
+            <h4 className="font-extrabold text-sm text-on-surface dark:text-[#f2f0ed] font-sans">Zero-IT Email Automation</h4>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-700 dark:text-teal-300">Plug &amp; Play</span>
+          </div>
+          <p className="text-xs text-on-surface-variant/70 dark:text-slate-400 mt-1 font-semibold font-sans">Automated booking confirmations, approval letters, and pre-visit reminders sent with your Clinic Name, Logo, and replies routed directly to your inbox.</p>
         </div>
       </div>
 
@@ -201,58 +202,17 @@ export default function EmailSettingsTab({
         </form>
       </SectionCard>
 
-      {/* Custom SMTP & Templates Details */}
+      {/* Email Notification Templates */}
       <details open className="group border border-outline-variant/60 dark:border-[#1b2b29] bg-white dark:bg-[#131f1e] rounded-3xl overflow-hidden shadow-3xs transition-all duration-300">
         <summary className="px-6 py-4.5 flex items-center justify-between text-sm font-extrabold text-on-surface dark:text-[#f2f0ed] bg-slate-50 dark:bg-[#182625] cursor-pointer list-none select-none hover:bg-slate-100/50 dark:hover:bg-[#213533] transition-all duration-300 border-b border-transparent group-open:border-outline-variant/40 dark:group-open:border-[#1b2b29]">
           <span className="flex items-center gap-2.5 font-sans">
             <Sliders size={18} className="text-on-surface-variant/60 dark:text-slate-400" />
-            Custom SMTP &amp; Email Templates
+            Email Notification Templates
           </span>
           <span className="material-symbols-outlined text-on-surface-variant/60 dark:text-slate-400 transition-transform group-open:rotate-180">expand_more</span>
         </summary>
 
         <div className="p-6 space-y-6 text-on-surface dark:text-[#f2f0ed]">
-          {/* SMTP Config */}
-          <div className="bg-slate-50/50 dark:bg-[#182625] p-5 rounded-2xl border border-outline-variant/50 dark:border-[#213533] space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-black text-on-surface dark:text-[#f2f0ed] uppercase tracking-wider font-sans">Use Custom SMTP Mail Server</h4>
-                <p className="text-[11px] font-bold text-on-surface-variant/70 dark:text-slate-400 mt-0.5 font-sans">Send transactional emails via your own server credentials.</p>
-              </div>
-              <Toggle checked={smtpEnabled} onChange={setSmtpEnabled} />
-            </div>
-            {smtpEnabled && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-outline-variant/40 dark:border-[#213533] animate-fadeIn">
-                <FormField label="SMTP Host">
-                  <Input Icon={Globe} type="text" value={smtpHost} onChange={e => setSmtpHost(e.target.value)} placeholder="smtp.mailtrap.io" />
-                </FormField>
-                <FormField label="SMTP Port">
-                  <Input Icon={GearSix} type="text" value={smtpPort} onChange={e => setSmtpPort(e.target.value)} placeholder="587" />
-                </FormField>
-                <FormField label="SMTP Username">
-                  <Input Icon={EnvelopeSimple} type="text" value={smtpUsername} onChange={e => setSmtpUsername(e.target.value)} placeholder="username" />
-                </FormField>
-                <FormField label="SMTP Password">
-                  <Input Icon={Lock} type="password" value={smtpPassword} onChange={e => setSmtpPassword(e.target.value)} placeholder="••••••••" />
-                </FormField>
-                <FormField label="SMTP Encryption">
-                  <select
-                    value={smtpEncryption}
-                    onChange={e => setSmtpEncryption(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border rounded-xl text-xs font-semibold bg-white dark:bg-[#182625] border-outline-variant/75 dark:border-[#213533] text-on-surface dark:text-[#f2f0ed] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all duration-205 cursor-pointer"
-                  >
-                    <option value="none">None</option>
-                    <option value="tls">TLS</option>
-                    <option value="ssl">SSL</option>
-                  </select>
-                </FormField>
-                <FormField label="From Email Address (Override)">
-                  <Input Icon={EnvelopeSimple} type="email" value={smtpFromAddress} onChange={e => setSmtpFromAddress(e.target.value)} placeholder="noreply@myclinic.com" />
-                </FormField>
-              </div>
-            )}
-          </div>
-
           {/* Quick Tag Pills */}
           <div className="space-y-2">
             <p className="text-[11px] font-extrabold uppercase tracking-wider text-on-surface-variant/70 dark:text-slate-400 font-sans">Click Tag to Quick Insert into Approved Body:</p>

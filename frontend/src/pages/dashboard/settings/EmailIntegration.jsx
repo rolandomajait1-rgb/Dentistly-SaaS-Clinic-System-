@@ -3,15 +3,13 @@ import {
   EnvelopeSimple,
   CheckCircle,
   PaperPlaneTilt,
-  CaretDown,
-  CaretUp,
-  Gear
 } from '@phosphor-icons/react';
 import { useNotifications } from '../../../context/NotificationContext';
 import { testEmailWorkflow } from '../../../api';
 
 const EmailIntegration = ({
   clinicData,
+  clinicLogo = '',
   emailEnabled = false,
   setEmailEnabled,
   emailFromName = '',
@@ -39,10 +37,10 @@ const EmailIntegration = ({
 }) => {
   const { showToast } = useNotifications();
 
-  const [showAdvancedSmtp, setShowAdvancedSmtp] = useState(false);
   const [testEmailAddress, setTestEmailAddress] = useState('');
   const [sendingTestEmail, setSendingTestEmail] = useState(false);
 
+  const activeClinicLogo = clinicLogo || clinicData?.logo_url || '';
   const clinicDisplayName = emailFromName || clinicData?.clinic_name || 'PIVODENT Dental Clinic';
   const replyEmailDisplay = emailReplyTo || emailFromAddress || clinicData?.email || 'clinic@pivodent.com';
 
@@ -87,12 +85,12 @@ const EmailIntegration = ({
               <span className="text-sm font-bold text-slate-800 dark:text-white">
                 Email Notifications
               </span>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300">
-                Automated
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800">
+                Zero-IT Setup (Auto Relay)
               </span>
             </div>
             <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-              Send automated appointment confirmations and reminder emails to patients
+              Automated patient emails with your Clinic Name, Logo, and replies routed directly to your inbox.
             </p>
           </div>
         </div>
@@ -202,69 +200,6 @@ const EmailIntegration = ({
                 </div>
               </div>
 
-              {/* 3. Optional Advanced SMTP (Collapsed by default so staff are never confused) */}
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAdvancedSmtp(!showAdvancedSmtp)}
-                  className="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Gear size={14} />
-                  <span>{showAdvancedSmtp ? 'Hide Advanced Server Settings' : 'Advanced: Custom SMTP Server (Optional)'}</span>
-                  {showAdvancedSmtp ? <CaretUp size={12} /> : <CaretDown size={12} />}
-                </button>
-
-                {showAdvancedSmtp && (
-                  <div className="mt-2.5 p-3.5 bg-white dark:bg-[#131f1e] rounded-xl border border-slate-200 dark:border-[#213533] space-y-3 animate-fadeIn">
-                    <p className="text-[11px] text-slate-400">
-                      Gagamitin lang ito kung nais ng clinic na magpadala gamit ang sariling private mail server.
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <div>
-                        <label className="block text-[10.5px] font-semibold text-slate-500 mb-0.5">SMTP Host</label>
-                        <input
-                          type="text"
-                          value={smtpHost}
-                          onChange={(e) => setSmtpHost(e.target.value)}
-                          placeholder="smtp.gmail.com"
-                          className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-[#0f1716] border border-slate-200 dark:border-[#213533] rounded text-xs text-slate-800 dark:text-slate-200"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10.5px] font-semibold text-slate-500 mb-0.5">SMTP Port</label>
-                        <input
-                          type="text"
-                          value={smtpPort}
-                          onChange={(e) => setSmtpPort(e.target.value)}
-                          placeholder="587"
-                          className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-[#0f1716] border border-slate-200 dark:border-[#213533] rounded text-xs text-slate-800 dark:text-slate-200"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10.5px] font-semibold text-slate-500 mb-0.5">Username / Email</label>
-                        <input
-                          type="text"
-                          value={smtpUsername}
-                          onChange={(e) => setSmtpUsername(e.target.value)}
-                          placeholder="clinic@gmail.com"
-                          className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-[#0f1716] border border-slate-200 dark:border-[#213533] rounded text-xs text-slate-800 dark:text-slate-200"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10.5px] font-semibold text-slate-500 mb-0.5">Password</label>
-                        <input
-                          type="password"
-                          value={smtpPassword}
-                          onChange={(e) => setSmtpPassword(e.target.value)}
-                          placeholder="••••••••••••"
-                          className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-[#0f1716] border border-slate-200 dark:border-[#213533] rounded text-xs text-slate-800 dark:text-slate-200"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
             </div>
 
             {/* Bottom Row: Master Switch */}
@@ -350,12 +285,19 @@ const EmailIntegration = ({
 
               {/* Email Content Card */}
               <div className="p-3.5 bg-white dark:bg-[#182625] rounded-lg border border-slate-200/70 dark:border-[#213533] space-y-3 shadow-3xs text-xs text-slate-700 dark:text-slate-300">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-[#213533]">
-                  <span className="font-bold text-xs text-[#1A8A7A]">
+                <div className="flex flex-col items-center justify-center text-center pb-2.5 border-b border-slate-100 dark:border-[#213533] gap-1">
+                  {activeClinicLogo && (
+                    <img
+                      src={activeClinicLogo}
+                      alt={clinicDisplayName}
+                      className="max-h-8 max-w-[130px] object-contain mb-0.5 rounded"
+                    />
+                  )}
+                  <span className="font-extrabold text-xs text-[#1A8A7A]">
                     {clinicDisplayName}
                   </span>
-                  <span className="text-[10px] text-slate-400">
-                    Ref: #BS-8472
+                  <span className="text-[9.5px] text-slate-400 font-medium">
+                    {clinicData?.address || 'Dental Clinic Auto-Notification'}
                   </span>
                 </div>
 
