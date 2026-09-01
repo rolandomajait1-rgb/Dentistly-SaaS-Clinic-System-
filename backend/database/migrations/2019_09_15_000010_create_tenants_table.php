@@ -15,14 +15,7 @@ class CreateTenantsTable extends Migration
      */
     public function up(): void
     {
-        Schema::create('tenants', function (Blueprint $table) {
-            $table->string('id')->primary();
-
-            // your custom columns may go here
-
-            $table->timestamps();
-            $table->json('data')->nullable();
-        });
+        // Custom application tenant schema is defined in 2026_05_18_000001_create_tenants_table.php
     }
 
     /**
