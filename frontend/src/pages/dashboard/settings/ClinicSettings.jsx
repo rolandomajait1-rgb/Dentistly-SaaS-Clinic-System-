@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getSettings, updateSettings, getServices, addService, deleteService, updateService, testEmailWorkflow } from '../../../api';
+import { getSettings, updateSettings, getServices, addService, deleteService, updateService } from '../../../api';
 import FacebookIntegration from './FacebookIntegration';
 import EmailIntegration from './EmailIntegration';
 import { useNotifications } from '../../../context/NotificationContext';
@@ -12,11 +12,14 @@ import {
   Check,
   X,
   Clock,
-  PaperPlaneTilt,
-  Camera,
-  ArrowsClockwise,
-  CaretDown,
-  CaretUp
+  Info,
+  ChatCircleText,
+  CalendarCheck,
+  CalendarBlank,
+  Tag,
+  SlidersHorizontal,
+  Sparkle,
+  UploadSimple
 } from '@phosphor-icons/react';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
 import assets from '../../../assets';
@@ -74,13 +77,13 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
   const [clinicAddress, setClinicAddress] = useState('123 Dental Avenue, Makati City, Metro Manila');
   const [clinicLogo, setClinicLogo] = useState('');
   const [clinicData, setClinicData] = useState(null);
+  const [operatingHoursText, setOperatingHoursText] = useState('Mon - Sat: 9:00 AM - 6:00 PM');
 
   // Tab 2: Communication Channels
   const [messengerEnabled, setMessengerEnabled] = useState(true);
   const [messengerHandle, setMessengerHandle] = useState('');
 
   const [emailEnabled, setEmailEnabled] = useState(false);
-  const [showEmailConfig, setShowEmailConfig] = useState(false);
   const [emailFromName, setEmailFromName] = useState('');
   const [emailFromAddress, setEmailFromAddress] = useState('');
   const [emailReplyTo, setEmailReplyTo] = useState('');
@@ -99,8 +102,6 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
   const [emailBodyApproved, setEmailBodyApproved] = useState('');
   const [emailSubjectCancelled, setEmailSubjectCancelled] = useState('');
   const [emailBodyCancelled, setEmailBodyCancelled] = useState('');
-  const [testEmailAddress, setTestEmailAddress] = useState('');
-  const [sendingTestEmail, setSendingTestEmail] = useState(false);
 
   // Tab 3: Schedule & Booking Rules
   const [bufferTime, setBufferTime] = useState('30 minutes');
@@ -111,7 +112,6 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
   const [availableRooms, setAvailableRooms] = useState(2);
   const [operatingHours, setOperatingHours] = useState(DEFAULT_OPERATING_HOURS);
   const [bookingPolicyNotice, setBookingPolicyNotice] = useState('');
-  const [copiedLink, setCopiedLink] = useState(false);
 
   // Tab 4: Cancellation & No-Show
   const [cancellationLockWindow, setCancellationLockWindow] = useState(1);
@@ -147,6 +147,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
       const branding = data.branding_settings || {};
       setClinicTagline(branding.tagline || 'Dental Clinic');
       setClinicWebsite(branding.website || 'www.pivodent.com');
+      setOperatingHoursText(branding.operating_hours_text || data.operating_hours_text || 'Mon - Sat: 9:00 AM - 6:00 PM');
       if (branding.logo_url && !data.logo_url) {
         setClinicLogo(branding.logo_url);
       }
@@ -265,6 +266,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
         branding_settings: {
           tagline: clinicTagline,
           website: clinicWebsite,
+          operating_hours_text: operatingHoursText,
           logo_url: clinicLogo,
         },
         operating_hours: operatingHours,
@@ -327,22 +329,23 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
     }
   };
 
-  // Test Email dispatcher
-  const handleTestEmail = async () => {
-    if (!testEmailAddress) {
-      showToast('Please enter an email address for testing.', 'warning');
-      return;
-    }
-    setSendingTestEmail(true);
-    try {
-      await testEmailWorkflow(testEmailAddress, emailSubjectApproved, emailBodyApproved);
-      showToast('Test email sent successfully!', 'success');
-    } catch (err) {
-      showToast('Failed to send test email: ' + err.message, 'error');
-    } finally {
-      setSendingTestEmail(false);
-    }
+  // Discard changes and revert to loaded clinicData
+  const handleDiscardChanges = () => {
+    if (!clinicData) return;
+    setClinicName(clinicData.clinic_name || 'PIVODENT');
+    setClinicPhone(clinicData.contact_number || '+63 92 8123 4567');
+    setClinicEmail(clinicData.email || 'info@pivodent.com');
+    setClinicAddress(clinicData.address || '123 Dental Avenue, Makati City, Metro Manila');
+    setClinicLogo(clinicData.logo_url || '');
+
+    const branding = clinicData.branding_settings || {};
+    setClinicTagline(branding.tagline || 'Dental Clinic');
+    setClinicWebsite(branding.website || 'www.pivodent.com');
+    setOperatingHoursText(branding.operating_hours_text || clinicData.operating_hours_text || 'Mon - Sat: 9:00 AM - 6:00 PM');
+    showToast('Changes discarded.', 'info');
   };
+
+
 
   // Services Catalog handlers
   const handleAddService = async (e) => {
@@ -398,475 +401,348 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
   }
 
   return (
-    <div className="w-full min-h-full bg-[#F0F4F3] p-4 md:p-6 flex flex-col font-['Work_Sans',sans-serif]">
+    <div className="w-full min-h-full bg-[#F0F4F3] px-4 md:px-6 pt-3 md:pt-4 pb-8 flex flex-col gap-3 font-['Work_Sans',sans-serif]">
       
-      {/* Hidden File Input for Logo */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleLogoUpload}
-        accept="image/*"
-        className="hidden"
-      />
-
-      {/* Main Settings Body Container */}
-      <div className="w-full flex-1 flex flex-col md:flex-row items-start gap-4">
-        
-        {/* Left Sub-Sidebar (220px) */}
-        <div
-          className="w-full md:w-[220px] shrink-0 bg-[#F0F4F3] rounded-[10px] p-2 flex flex-col gap-2.5"
-          style={{
-            boxShadow: '0px 0px 8.7px rgba(78, 78, 78, 0.21)',
-            outline: '1px white solid',
-            outlineOffset: '-1px',
-          }}
+      {/* BEGIN: HorizontalTabNavigation */}
+      <nav aria-label="Settings Categories" className="w-full bg-white rounded-xl p-1.5 border border-slate-200/90 shadow-xs grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5" data-purpose="sub-navigation-tabs">
+        {/* Active Tab: General Info */}
+        <button
+          type="button"
+          onClick={() => handleSubTabChange('general')}
+          className={`group w-full flex items-center justify-center gap-2 px-2.5 py-2.5 rounded-lg font-semibold text-[13px] sm:text-sm tracking-normal transition-all duration-150 cursor-pointer ${
+            activeSubTab === 'general'
+              ? 'bg-[#0E3F39] border border-[#0E3F39] text-white shadow-xs'
+              : 'text-slate-600 hover:text-white hover:bg-[#0E3F39] border border-transparent'
+          }`}
         >
-          {/* 1. General Info */}
-          <button
-            type="button"
-            onClick={() => handleSubTabChange('general')}
-            className="w-full px-4 py-2.5 rounded-[10px] flex items-center gap-2.5 transition-all text-left cursor-pointer"
-            style={{
-              background: activeSubTab === 'general' ? '#E2ECE9' : 'transparent',
-            }}
-          >
-            <div className="w-[15px] h-[15px] flex items-center justify-center shrink-0">
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                <rect x="1.86" y="1.25" width="11.27" height="12.50" rx="1.5" stroke="#6A7282" strokeWidth="1.25"/>
-                <circle cx="7.5" cy="7.5" r="2.5" stroke="#6A7282" strokeWidth="1.25"/>
-              </svg>
-            </div>
-            <span
-              style={{
-                color: activeSubTab === 'general' ? '#0E3F39' : '#6A7282',
-                fontSize: 12,
-                fontFamily: "'Work Sans', sans-serif",
-                fontWeight: activeSubTab === 'general' ? '600' : '500',
-                lineHeight: '16px',
-              }}
-            >
-              General Info
-            </span>
-          </button>
+          <Info size={17} weight={activeSubTab === 'general' ? 'bold' : 'regular'} className={activeSubTab === 'general' ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+          <span className="whitespace-nowrap">General Info</span>
+        </button>
 
-          {/* 2. Communication Channels */}
-          <button
-            type="button"
-            onClick={() => handleSubTabChange('commu')}
-            className="w-full px-4 py-2.5 rounded-[10px] flex items-center gap-2.5 transition-all text-left cursor-pointer"
-            style={{
-              background: activeSubTab === 'commu' ? '#E2ECE9' : 'transparent',
-            }}
-          >
-            <div className="w-[15px] h-[15px] flex items-center justify-center shrink-0">
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                <rect x="1.88" y="1.88" width="11.25" height="11.25" rx="2" stroke="#6A7282" strokeWidth="1.25"/>
-                <path d="M4 5.5H11M4 8.5H9" stroke="#6A7282" strokeWidth="1.25" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <span
-              style={{
-                color: activeSubTab === 'commu' ? '#0E3F39' : '#6A7282',
-                fontSize: 12,
-                fontFamily: "'Work Sans', sans-serif",
-                fontWeight: activeSubTab === 'commu' ? '600' : '500',
-                lineHeight: '16px',
-              }}
-            >
-              Communication Channels
-            </span>
-          </button>
+        {/* Communication Channels */}
+        <button
+          type="button"
+          onClick={() => handleSubTabChange('commu')}
+          className={`group w-full flex items-center justify-center gap-2 px-2.5 py-2.5 rounded-lg font-semibold text-[13px] sm:text-sm tracking-normal transition-all duration-150 cursor-pointer ${
+            activeSubTab === 'commu'
+              ? 'bg-[#0E3F39] border border-[#0E3F39] text-white shadow-xs'
+              : 'text-slate-600 hover:text-white hover:bg-[#0E3F39] border border-transparent'
+          }`}
+        >
+          <ChatCircleText size={17} weight={activeSubTab === 'commu' ? 'bold' : 'regular'} className={activeSubTab === 'commu' ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+          <span className="whitespace-nowrap">Communication Channels</span>
+        </button>
 
-          {/* 3. Schedule & Booking Rules */}
-          <button
-            type="button"
-            onClick={() => handleSubTabChange('schedule')}
-            className="w-full px-4 py-2.5 rounded-[10px] flex items-center gap-2.5 transition-all text-left cursor-pointer"
-            style={{
-              background: activeSubTab === 'schedule' ? '#E2ECE9' : 'transparent',
-            }}
-          >
-            <div className="w-[15px] h-[15px] flex items-center justify-center shrink-0">
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                <rect x="1.88" y="2.50" width="11.25" height="11.25" rx="2" stroke="#6A7282" strokeWidth="1.25"/>
-                <path d="M4.5 1.5V3.5M10.5 1.5V3.5M1.88 5.5H13.13" stroke="#6A7282" strokeWidth="1.25" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <span
-              style={{
-                color: activeSubTab === 'schedule' ? '#0E3F39' : '#6A7282',
-                fontSize: 12,
-                fontFamily: "'Work Sans', sans-serif",
-                fontWeight: activeSubTab === 'schedule' ? '600' : '500',
-                lineHeight: '16px',
-              }}
-            >
-              Schedule &amp; Booking Rules
-            </span>
-          </button>
+        {/* Schedule & Booking Rules */}
+        <button
+          type="button"
+          onClick={() => handleSubTabChange('schedule')}
+          className={`group w-full flex items-center justify-center gap-2 px-2.5 py-2.5 rounded-lg font-semibold text-[13px] sm:text-sm tracking-normal transition-all duration-150 cursor-pointer ${
+            activeSubTab === 'schedule'
+              ? 'bg-[#0E3F39] border border-[#0E3F39] text-white shadow-xs'
+              : 'text-slate-600 hover:text-white hover:bg-[#0E3F39] border border-transparent'
+          }`}
+        >
+          <CalendarCheck size={17} weight={activeSubTab === 'schedule' ? 'bold' : 'regular'} className={activeSubTab === 'schedule' ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+          <span className="whitespace-nowrap">Schedule &amp; Booking Rules</span>
+        </button>
 
-          {/* 4. Cancellation & No-show */}
-          <button
-            type="button"
-            onClick={() => handleSubTabChange('cancel')}
-            className="w-full px-4 py-2.5 rounded-[10px] flex items-center gap-2.5 transition-all text-left cursor-pointer"
-            style={{
-              background: activeSubTab === 'cancel' ? '#E2ECE9' : 'transparent',
-            }}
-          >
-            <div className="w-[15px] h-[15px] flex items-center justify-center shrink-0">
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                <rect x="1.24" y="1.87" width="12.51" height="11.26" rx="2" stroke="#6A7282" strokeWidth="1.25"/>
-                <path d="M5.5 5.5L9.5 9.5M9.5 5.5L5.5 9.5" stroke="#6A7282" strokeWidth="1.25" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <span
-              style={{
-                color: activeSubTab === 'cancel' ? '#0E3F39' : '#6A7282',
-                fontSize: 12,
-                fontFamily: "'Work Sans', sans-serif",
-                fontWeight: activeSubTab === 'cancel' ? '600' : '500',
-                lineHeight: '16px',
-              }}
-            >
-              Cancellation &amp; No-show
-            </span>
-          </button>
+        {/* Cancellation & No-show */}
+        <button
+          type="button"
+          onClick={() => handleSubTabChange('cancel')}
+          className={`group w-full flex items-center justify-center gap-2 px-2.5 py-2.5 rounded-lg font-semibold text-[13px] sm:text-sm tracking-normal transition-all duration-150 cursor-pointer ${
+            activeSubTab === 'cancel'
+              ? 'bg-[#0E3F39] border border-[#0E3F39] text-white shadow-xs'
+              : 'text-slate-600 hover:text-white hover:bg-[#0E3F39] border border-transparent'
+          }`}
+        >
+          <CalendarBlank size={17} weight={activeSubTab === 'cancel' ? 'bold' : 'regular'} className={activeSubTab === 'cancel' ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+          <span className="whitespace-nowrap">Cancellation &amp; No-show</span>
+        </button>
 
-          {/* 5. Services & Pricing */}
-          <button
-            type="button"
-            onClick={() => handleSubTabChange('services')}
-            className="w-full px-4 py-2.5 rounded-[10px] flex items-center gap-2.5 transition-all text-left cursor-pointer"
-            style={{
-              background: activeSubTab === 'services' ? '#E2ECE9' : 'transparent',
-            }}
-          >
-            <div className="w-[15px] h-[15px] flex items-center justify-center shrink-0">
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                <path d="M3.75 3.13H11.25V11.88L7.5 10L3.75 11.88V3.13Z" stroke="#6A7282" strokeWidth="1.25" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <span
-              style={{
-                color: activeSubTab === 'services' ? '#0E3F39' : '#6A7282',
-                fontSize: 12,
-                fontFamily: "'Work Sans', sans-serif",
-                fontWeight: activeSubTab === 'services' ? '600' : '500',
-                lineHeight: '16px',
-              }}
-            >
-              Services &amp; Pricing
-            </span>
-          </button>
+        {/* Services & Pricing */}
+        <button
+          type="button"
+          onClick={() => handleSubTabChange('services')}
+          className={`group w-full flex items-center justify-center gap-2 px-2.5 py-2.5 rounded-lg font-semibold text-[13px] sm:text-sm tracking-normal transition-all duration-150 cursor-pointer ${
+            activeSubTab === 'services'
+              ? 'bg-[#0E3F39] border border-[#0E3F39] text-white shadow-xs'
+              : 'text-slate-600 hover:text-white hover:bg-[#0E3F39] border border-transparent'
+          }`}
+        >
+          <Tag size={17} weight={activeSubTab === 'services' ? 'bold' : 'regular'} className={activeSubTab === 'services' ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+          <span className="whitespace-nowrap">Services &amp; Pricing</span>
+        </button>
+      </nav>
+      {/* END: HorizontalTabNavigation */}
+
+      {/* BEGIN: Action Bar / Settings Header (Compact) */}
+      <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white px-4 py-2 rounded-lg border border-slate-200/90 shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-md bg-[#0E3F39]/10 border border-[#0E3F39]/20 flex items-center justify-center text-[#0E3F39] shrink-0 shadow-2xs">
+            <SlidersHorizontal size={14} weight="bold" />
+          </div>
+          <div>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block leading-none">Settings Panel</span>
+            <h3 className="text-xs font-bold text-slate-800 leading-tight mt-0.5">
+              {activeSubTab === 'general' && 'General Information & Branding'}
+              {activeSubTab === 'commu' && 'Patient Communication Channels'}
+              {activeSubTab === 'schedule' && 'Schedule & Booking Rules'}
+              {activeSubTab === 'cancel' && 'Cancellation & No-show Policies'}
+              {activeSubTab === 'services' && 'Treatment Services & Pricing Catalog'}
+            </h3>
+          </div>
         </div>
+        <div className="flex items-center gap-2">
+          {onLaunchWizard && (
+            <button
+              type="button"
+              onClick={onLaunchWizard}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-md transition-all shadow-2xs cursor-pointer"
+            >
+              <Sparkle size={13} weight="fill" className="text-teal-600" />
+              Setup Wizard
+            </button>
+          )}
 
-        {/* Right Content Panel (flex-1) */}
-        <div className="flex-1 w-full flex flex-col gap-4 min-w-0">
-          
-          {/* Action / Save Bar */}
-          <div className="w-full flex items-center justify-between bg-white rounded-[10px] p-4 shadow-sm border border-slate-100">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-[#99A1AF] uppercase tracking-wider">Settings Panel:</span>
-              <span className="text-sm font-bold text-[#0E3F39]">
-                {activeSubTab === 'general' && 'General Information & Branding'}
-                {activeSubTab === 'commu' && 'Patient Communication Channels'}
-                {activeSubTab === 'schedule' && 'Schedule & Booking Rules'}
-                {activeSubTab === 'cancel' && 'Cancellation & No-show Policies'}
-                {activeSubTab === 'services' && 'Treatment Services & Pricing Catalog'}
+          {/* Save Button for other tabs */}
+          {activeSubTab !== 'general' && (
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold text-white transition-all shadow-2xs cursor-pointer ${
+                saveSuccess
+                  ? 'bg-emerald-600'
+                  : 'bg-[#0E3F39] hover:bg-[#14534B] active:scale-98'
+              } disabled:opacity-50`}
+            >
+              {saveSuccess ? (
+                <>
+                  <Check size={13} weight="bold" />
+                  Saved!
+                </>
+              ) : (
+                <>
+                  <FloppyDisk size={13} weight="bold" />
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+      {/* END: Action Bar / Settings Header */}
+
+      {/* ========================================================================= */}
+      {/* TAB 1: GENERAL INFO */}
+      {/* ========================================================================= */}
+      {activeSubTab === 'general' && (
+        <div className="w-full flex flex-col gap-3 animate-fadeIn">
+          {/* BEGIN: Logo Management Card */}
+          <div className="w-full bg-white rounded-xl p-5 border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04)] space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0E3F39]">Clinic Logo</h3>
+                <p className="text-xs text-[#6A7282] mt-0.5">Used in reports, PDFs, and patient communications.</p>
+              </div>
+              <span className="text-[11px] font-medium text-[#6A7282] bg-[#F8FAFC] border border-slate-200/80 px-2.5 py-1 rounded-md">
+                Recommended: 400×400px (PNG, SVG, JPG)
               </span>
             </div>
-
-            <div className="flex items-center gap-3">
-              {onLaunchWizard && (
-                <button
-                  type="button"
-                  onClick={onLaunchWizard}
-                  className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-lg text-xs font-semibold text-slate-700 transition-all cursor-pointer"
-                >
-                  <ArrowsClockwise size={14} />
-                  Setup Wizard
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={isSaving}
-                className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-bold text-white transition-all shadow-sm cursor-pointer ${
-                  saveSuccess
-                    ? 'bg-emerald-600'
-                    : 'bg-[#1A8A7A] hover:bg-[#147063] active:scale-98'
-                } disabled:opacity-50`}
-              >
-                {saveSuccess ? (
-                  <>
-                    <Check size={15} weight="bold" />
-                    Saved!
-                  </>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-0.5">
+              {/* Logo Preview Container */}
+              <div className="relative w-16 h-16 rounded-xl border border-slate-200/90 bg-[#F8FAFC] p-2 flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
+                {clinicLogo ? (
+                  <img src={clinicLogo} alt="Clinic Logo" className="w-full h-full object-contain" />
+                ) : assets.dashboardLogo || assets.pivodentLogo ? (
+                  <img src={assets.dashboardLogo || assets.pivodentLogo} alt="Pivodent" className="w-10 h-10 object-contain" />
                 ) : (
-                  <>
-                    <FloppyDisk size={15} weight="bold" />
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                  </>
+                  <svg className="w-10 h-10 text-[#0E3F39]" fill="currentColor" viewBox="0 0 100 100">
+                    <path d="M30.6,26 C22,26 15,33.5 15,42.8 C15,52.2 22,59.6 30.6,59.6 C37.8,59.6 44,54.7 49.3,47.8 C44.8,40.8 38.3,26 30.6,26 Z M69.4,26 C61.7,26 55.2,40.8 50.7,47.8 C56,54.7 62.2,59.6 69.4,59.6 C78,59.6 85,52.2 85,42.8 C85,33.5 78,26 69.4,26 Z M50,44.7 C44.1,33.4 36.3,21 26.5,21 C11.8,21 0,33.2 0,48.2 C0,63.2 11.8,75.4 26.5,75.4 C36.2,75.4 44.5,69 50,60 C55.5,69 63.8,75.4 73.5,75.4 C88.2,75.4 100,63.2 100,48.2 C100,33.2 88.2,21 73.5,21 C63.7,21 55.9,33.4 50,44.7 Z"></path>
+                  </svg>
                 )}
-              </button>
-            </div>
-          </div>
-
-          {/* ========================================================================= */}
-          {/* TAB 1: GENERAL INFO */}
-          {/* ========================================================================= */}
-          {activeSubTab === 'general' && (
-            <div className="w-full flex flex-col gap-4 animate-fadeIn">
-              {/* Clinic Logo Card */}
-              <div
-                className="w-full bg-white rounded-[10px] p-5 flex flex-col gap-3"
-                style={{
-                  boxShadow: '0px 0px 4px rgba(0, 0, 0, 0.10)',
-                  outline: '1.33px #F3F4F6 solid',
-                  outlineOffset: '-1.33px',
-                }}
-              >
-                <div
-                  style={{
-                    color: '#99A1AF',
-                    fontSize: 12,
-                    fontFamily: "'Work Sans', sans-serif",
-                    fontWeight: '700',
-                    lineHeight: '16px',
-                  }}
-                >
-                  Clinic Logo
+              </div>
+              {/* Upload Controls */}
+              <div className="space-y-1 flex-1">
+                <div>
+                  <h4 className="text-xs font-bold text-[#1E293B]">Current Logo</h4>
+                  <p className="text-xs text-[#6A7282]">Visible across online bookings, patient confirmations, and invoices.</p>
                 </div>
-
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-1">
-                  {/* Logo Image Preview */}
-                  <div className="w-[70px] h-[72px] rounded-[11px] overflow-hidden bg-white border border-slate-100 flex items-center justify-center shrink-0 shadow-[0px_1px_3px_rgba(0,0,0,0.30),0px_4px_8px_3px_rgba(0,0,0,0.15)]">
-                    {clinicLogo ? (
-                      <img src={clinicLogo} alt="Clinic Logo" className="w-full h-full object-cover" />
-                    ) : (
-                      <img src={assets.dashboardLogo || assets.pivodentLogo} alt="Pivodent" className="w-[50px] h-[55px] object-contain" />
-                    )}
-                  </div>
-
-                  <div className="flex flex-col items-start gap-1">
-                    <div
-                      style={{
-                        color: '#1E2939',
-                        fontSize: 14,
-                        fontFamily: "'Work Sans', sans-serif",
-                        fontWeight: '600',
-                        lineHeight: '20px',
-                      }}
-                    >
-                      Current Logo
-                    </div>
-                    <div
-                      style={{
-                        color: '#99A1AF',
-                        fontSize: 12,
-                        fontFamily: "'Work Sans', sans-serif",
-                        fontWeight: '400',
-                        lineHeight: '16px',
-                      }}
-                    >
-                      Used in reports, PDFs, and patient communications.
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="mt-2 px-3 py-1.5 rounded-[5px] flex items-center gap-1.5 transition-colors cursor-pointer hover:bg-slate-50"
-                      style={{
-                        outline: '1.33px #E5E7EB solid',
-                        outlineOffset: '-1.33px',
-                      }}
-                    >
-                      <Camera size={14} className="text-[#6B7280]" />
-                      <span
-                        style={{
-                          color: '#6B7280',
-                          fontSize: 12,
-                          fontFamily: "'Work Sans', sans-serif",
-                          fontWeight: '500',
-                          lineHeight: '16px',
-                        }}
-                      >
-                        Upload New Logo
-                      </span>
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#0E3F39] bg-white border border-[#CBD5E1] hover:border-[#0E3F39]/40 hover:bg-teal-50/50 rounded-lg transition-all shadow-xs cursor-pointer"
+                  >
+                    <UploadSimple size={16} weight="bold" className="text-teal-700" />
+                    Upload New Logo
+                  </button>
                 </div>
               </div>
+            </div>
+          </div>
+          {/* END: Logo Management Card */}
 
-              {/* Clinic General Form Card */}
-              <div
-                className="w-full bg-white rounded-[10px] p-5 flex flex-col gap-4"
-                style={{
-                  boxShadow: '0px 0px 4px rgba(0, 0, 0, 0.10)',
-                  outline: '1.33px #F9FAFB solid',
-                  outlineOffset: '-1.33px',
-                }}
-              >
-                {/* 1. Clinic Name */}
-                <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2">
-                  <span
-                    style={{
-                      color: '#6A7282',
-                      fontSize: 14,
-                      fontFamily: "'Work Sans', sans-serif",
-                      fontWeight: '600',
-                      lineHeight: '20px',
-                    }}
-                  >
-                    Clinic Name
-                  </span>
+          {/* BEGIN: Clinic Details Form Card */}
+          <div className="w-full bg-white rounded-xl p-5 border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+            <div className="border-b border-slate-100 pb-2.5 mb-3.5">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#0E3F39]">Clinic Information</h3>
+              <p className="text-xs text-[#6A7282] mt-0.5">Public-facing contact information and business profile details.</p>
+            </div>
+            <form className="space-y-3.5" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {/* Clinic Name */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-[#334155] block" htmlFor="clinic-name">
+                    Clinic Name <span className="text-rose-500">*</span>
+                  </label>
                   <input
+                    id="clinic-name"
+                    name="clinic_name"
                     type="text"
                     value={clinicName}
                     onChange={(e) => setClinicName(e.target.value)}
-                    placeholder="Clinic Name"
-                    className="w-full sm:w-[550px] h-[40px] px-3 text-xs font-medium text-[#6A7282] rounded-[10px] focus:outline-none focus:ring-1 focus:ring-[#1A8A7A]"
-                    style={{
-                      outline: '1.33px #E5E7EB solid',
-                      outlineOffset: '-1.33px',
-                    }}
+                    placeholder="Enter clinic name"
+                    required
+                    className="w-full h-9.5 px-3 rounded-lg border border-slate-200 bg-white text-[#1E293B] text-xs font-medium focus:border-[#1A8A7A] focus:ring-1 focus:ring-[#1A8A7A] focus:outline-none placeholder:text-slate-400 shadow-xs transition-all"
                   />
                 </div>
-
-                {/* 2. Tagline / Subtitle */}
-                <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2">
-                  <span
-                    style={{
-                      color: '#6A7282',
-                      fontSize: 14,
-                      fontFamily: "'Work Sans', sans-serif",
-                      fontWeight: '600',
-                      lineHeight: '20px',
-                    }}
-                  >
+                {/* Tagline / Subtitle */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-[#334155] block" htmlFor="tagline">
                     Tagline / Subtitle
-                  </span>
+                  </label>
                   <input
+                    id="tagline"
+                    name="tagline"
                     type="text"
                     value={clinicTagline}
                     onChange={(e) => setClinicTagline(e.target.value)}
-                    placeholder="Dental Clinic"
-                    className="w-full sm:w-[550px] h-[40px] px-3 text-xs font-medium text-[#6A7282] rounded-[10px] focus:outline-none focus:ring-1 focus:ring-[#1A8A7A]"
-                    style={{
-                      outline: '1.33px #E5E7EB solid',
-                      outlineOffset: '-1.33px',
-                    }}
+                    placeholder="e.g. Modern Dental Care"
+                    className="w-full h-9.5 px-3 rounded-lg border border-slate-200 bg-white text-[#1E293B] text-xs font-medium focus:border-[#1A8A7A] focus:ring-1 focus:ring-[#1A8A7A] focus:outline-none placeholder:text-slate-400 shadow-xs transition-all"
                   />
                 </div>
-
-                {/* 3. Phone */}
-                <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2">
-                  <span
-                    style={{
-                      color: '#6A7282',
-                      fontSize: 14,
-                      fontFamily: "'Work Sans', sans-serif",
-                      fontWeight: '600',
-                      lineHeight: '20px',
-                    }}
-                  >
-                    Phone
-                  </span>
+                {/* Phone Number */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-[#334155] block" htmlFor="phone">
+                    Phone Number <span className="text-rose-500">*</span>
+                  </label>
                   <input
-                    type="text"
+                    id="phone"
+                    name="phone"
+                    type="tel"
                     value={clinicPhone}
                     onChange={(e) => setClinicPhone(e.target.value)}
-                    placeholder="+63 92 8123 4567"
-                    className="w-full sm:w-[550px] h-[40px] px-3 text-xs font-medium text-[#6A7282] rounded-[10px] focus:outline-none focus:ring-1 focus:ring-[#1A8A7A]"
-                    style={{
-                      outline: '1.33px #E5E7EB solid',
-                      outlineOffset: '-1.33px',
-                    }}
+                    placeholder="Contact phone number"
+                    required
+                    className="w-full h-9.5 px-3 rounded-lg border border-slate-200 bg-white text-[#1E293B] text-xs font-medium focus:border-[#1A8A7A] focus:ring-1 focus:ring-[#1A8A7A] focus:outline-none placeholder:text-slate-400 shadow-xs transition-all"
                   />
                 </div>
-
-                {/* 4. Email */}
-                <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2">
-                  <span
-                    style={{
-                      color: '#6A7282',
-                      fontSize: 14,
-                      fontFamily: "'Work Sans', sans-serif",
-                      fontWeight: '600',
-                      lineHeight: '20px',
-                    }}
-                  >
-                    Email
-                  </span>
+                {/* Email Address */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-[#334155] block" htmlFor="email">
+                    Email Address <span className="text-rose-500">*</span>
+                  </label>
                   <input
+                    id="email"
+                    name="email"
                     type="email"
                     value={clinicEmail}
                     onChange={(e) => setClinicEmail(e.target.value)}
-                    placeholder="info@pivodent.com"
-                    className="w-full sm:w-[550px] h-[40px] px-3 text-xs font-medium text-[#6A7282] rounded-[10px] focus:outline-none focus:ring-1 focus:ring-[#1A8A7A]"
-                    style={{
-                      outline: '1.33px #E5E7EB solid',
-                      outlineOffset: '-1.33px',
-                    }}
+                    placeholder="Primary contact email"
+                    required
+                    className="w-full h-9.5 px-3 rounded-lg border border-slate-200 bg-white text-[#1E293B] text-xs font-medium focus:border-[#1A8A7A] focus:ring-1 focus:ring-[#1A8A7A] focus:outline-none placeholder:text-slate-400 shadow-xs transition-all"
                   />
                 </div>
-
-                {/* 5. Website */}
-                <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2">
-                  <span
-                    style={{
-                      color: '#6A7282',
-                      fontSize: 14,
-                      fontFamily: "'Work Sans', sans-serif",
-                      fontWeight: '600',
-                      lineHeight: '20px',
-                    }}
-                  >
+                {/* Website */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-[#334155] block" htmlFor="website">
                     Website
-                  </span>
+                  </label>
                   <input
+                    id="website"
+                    name="website"
                     type="text"
                     value={clinicWebsite}
                     onChange={(e) => setClinicWebsite(e.target.value)}
-                    placeholder="www.pivodent.com"
-                    className="w-full sm:w-[550px] h-[40px] px-3 text-xs font-medium text-[#6A7282] rounded-[10px] focus:outline-none focus:ring-1 focus:ring-[#1A8A7A]"
-                    style={{
-                      outline: '1.33px #E5E7EB solid',
-                      outlineOffset: '-1.33px',
-                    }}
+                    placeholder="https://example.com"
+                    className="w-full h-9.5 px-3 rounded-lg border border-slate-200 bg-white text-[#1E293B] text-xs font-medium focus:border-[#1A8A7A] focus:ring-1 focus:ring-[#1A8A7A] focus:outline-none placeholder:text-slate-400 shadow-xs transition-all"
                   />
                 </div>
-
-                {/* 6. Address */}
-                <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2">
-                  <span
-                    style={{
-                      color: '#6A7282',
-                      fontSize: 14,
-                      fontFamily: "'Work Sans', sans-serif",
-                      fontWeight: '600',
-                      lineHeight: '20px',
-                    }}
-                  >
-                    Address
-                  </span>
+                {/* Operating Hours */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-[#334155] block" htmlFor="operating-hours">
+                    Operating Hours
+                  </label>
                   <input
+                    id="operating-hours"
+                    name="operating_hours"
                     type="text"
+                    value={operatingHoursText}
+                    onChange={(e) => setOperatingHoursText(e.target.value)}
+                    placeholder="e.g. Mon - Fri: 8:00 AM - 5:00 PM"
+                    className="w-full h-9.5 px-3 rounded-lg border border-slate-200 bg-white text-[#1E293B] text-xs font-medium focus:border-[#1A8A7A] focus:ring-1 focus:ring-[#1A8A7A] focus:outline-none placeholder:text-slate-400 shadow-xs transition-all"
+                  />
+                </div>
+                {/* Clinic Address (Full Width) */}
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-xs font-semibold text-[#334155] block" htmlFor="address">
+                    Clinic Address <span className="text-rose-500">*</span>
+                  </label>
+                  <textarea
+                    id="address"
+                    name="address"
+                    rows={2}
                     value={clinicAddress}
                     onChange={(e) => setClinicAddress(e.target.value)}
-                    placeholder="123 Dental Avenue, Makati City, Metro Manila"
-                    className="w-full sm:w-[550px] h-[40px] px-3 text-xs font-medium text-[#6A7282] rounded-[10px] focus:outline-none focus:ring-1 focus:ring-[#1A8A7A]"
-                    style={{
-                      outline: '1.33px #E5E7EB solid',
-                      outlineOffset: '-1.33px',
-                    }}
+                    placeholder="Street address, Suite / Floor, City, Province, Postal Code"
+                    required
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-[#1E293B] text-xs font-medium focus:border-[#1A8A7A] focus:ring-1 focus:ring-[#1A8A7A] focus:outline-none placeholder:text-slate-400 shadow-xs transition-all resize-none"
                   />
                 </div>
               </div>
-            </div>
-          )}
+
+              {/* Form Bottom Actions */}
+              <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <span className="text-[11px] text-[#6A7282] font-medium">
+                  {clinicData?.updated_at
+                    ? `Last modified ${new Date(clinicData.updated_at).toLocaleDateString()} at ${new Date(clinicData.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                    : 'Ready to save changes'}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDiscardChanges}
+                    className="px-3.5 py-1.5 text-xs font-semibold text-[#475569] hover:text-[#0E3F39] bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 cursor-pointer"
+                  >
+                    Discard Changes
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="px-4 py-2 text-xs font-semibold text-white bg-[#0E3F39] hover:bg-[#14534B] active:scale-98 rounded-lg transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {saveSuccess ? (
+                      <>
+                        <CheckCircle size={16} weight="bold" />
+                        Saved!
+                      </>
+                    ) : (
+                      <>
+                        <FloppyDisk size={16} weight="bold" />
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+          {/* END: Clinic Details Form Card */}
+        </div>
+      )}
 
           {/* ========================================================================= */}
           {/* TAB 2: COMMUNICATION CHANNELS */}
@@ -929,57 +805,6 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
           {activeSubTab === 'schedule' && (
             <div className="w-full flex flex-col gap-4 animate-fadeIn">
 
-              {/* Card 0: Your Public Booking Portal Link */}
-              <div
-                className="w-full bg-gradient-to-r from-[#0E3F39] to-[#1A8A7A] rounded-[12px] p-5 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-md"
-              >
-                <div className="flex flex-col gap-1 max-w-xl">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-2.5 py-0.5 rounded-full text-teal-200">
-                      Live Patient Portal
-                    </span>
-                    <span className="text-xs text-teal-100 font-medium">Auto-sent by Chatbot on Booking Request</span>
-                  </div>
-                  <h4 className="text-base font-bold tracking-tight text-white mt-1">
-                    Your Clinic's Public Booking Portal Link
-                  </h4>
-                  <p className="text-xs text-teal-100/80 leading-relaxed">
-                    Patients can browse services, review your clinic policies, and book directly here:
-                  </p>
-                  <div className="mt-1 font-mono text-xs font-bold text-teal-300 bg-black/25 px-3 py-1.5 rounded-lg border border-white/10 break-all select-all">
-                    {`${window.location.origin}/book/${clinicData?.slug || (clinicData?.clinic_name ? clinicData.clinic_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : 'happysmiles')}`}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 self-stretch md:self-auto shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const slug = clinicData?.slug || (clinicData?.clinic_name ? clinicData.clinic_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : 'happysmiles');
-                      const link = `${window.location.origin}/book/${slug}`;
-                      navigator.clipboard.writeText(link);
-                      setCopiedLink(true);
-                      showToast('Public Booking link copied to clipboard!', 'success');
-                      setTimeout(() => setCopiedLink(false), 2500);
-                    }}
-                    className="flex-1 md:flex-initial px-4 py-2.5 bg-white text-[#0E3F39] hover:bg-teal-50 font-bold rounded-lg text-xs uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    {copiedLink ? <Check size={16} /> : <PaperPlaneTilt size={16} />}
-                    <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
-                  </button>
-
-                  <a
-                    href={`/book/${clinicData?.slug || (clinicData?.clinic_name ? clinicData.clinic_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : 'happysmiles')}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-4 py-2.5 bg-white/15 hover:bg-white/25 text-white border border-white/25 font-bold rounded-lg text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <span>Preview</span>
-                    <span className="material-symbols-outlined text-sm">open_in_new</span>
-                  </a>
-                </div>
-              </div>
-              
               {/* Card 1: Booking Rules */}
               <div
                 className="w-full bg-white rounded-[10px] p-5 flex flex-col"
@@ -1017,7 +842,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
                   </div>
 
                   <div
-                    className="w-[200px] h-[40px] px-3 rounded-[5px] flex items-center justify-between bg-white cursor-pointer"
+                    className="w-50 h-10 px-3 rounded-[5px] flex items-center justify-between bg-white cursor-pointer"
                     style={{
                       outline: '1.33px #E5E7EB solid',
                       outlineOffset: '-1.33px',
@@ -1063,9 +888,9 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
                     </span>
                   </div>
 
-                  <div className="w-[200px] flex items-center gap-2">
+                  <div className="w-50 flex items-center gap-2">
                     <div
-                      className="flex-1 h-[35px] px-3 rounded-[5px] flex items-center justify-between bg-white"
+                      className="flex-1 h-8.75 px-3 rounded-[5px] flex items-center justify-between bg-white"
                       style={{
                         outline: '1.33px #E5E7EB solid',
                         outlineOffset: '-1.33px',
@@ -1127,7 +952,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
                   </div>
 
                   <div
-                    className="w-[200px] h-[40px] px-3 rounded-[5px] flex items-center justify-between bg-white cursor-pointer"
+                    className="w-50 h-10 px-3 rounded-[5px] flex items-center justify-between bg-white cursor-pointer"
                     style={{
                       outline: '1.33px #E5E7EB solid',
                       outlineOffset: '-1.33px',
@@ -1140,9 +965,11 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
                     >
                       <option value="1 week">1 week</option>
                       <option value="2 weeks">2 weeks</option>
-                      <option value="4 weeks">4 weeks</option>
-                      <option value="8 weeks">8 weeks</option>
-                      <option value="12 weeks">12 weeks</option>
+                      <option value="4 weeks">4 weeks (1 month)</option>
+                      <option value="8 weeks">8 weeks (2 months)</option>
+                      <option value="12 weeks">12 weeks (3 months)</option>
+                      <option value="6 months">6 months</option>
+                      <option value="1 year">1 year (12 months)</option>
                     </select>
                   </div>
                 </div>
@@ -1177,13 +1004,13 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
                   <button
                     type="button"
                     onClick={() => setAllowSameDay(!allowSameDay)}
-                    className="w-[60px] p-[3px] rounded-full transition-colors flex items-center cursor-pointer"
+                    className="w-15 p-0.75 rounded-full transition-colors flex items-center cursor-pointer"
                     style={{
                       background: allowSameDay ? '#1A8A7A' : '#CECECE',
                       justifyContent: allowSameDay ? 'flex-end' : 'flex-start',
                     }}
                   >
-                    <div className="w-[18px] h-[18px] bg-white rounded-full shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_rgba(0,0,0,0.10)]" />
+                    <div className="w-4.5 h-4.5 bg-white rounded-full shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_rgba(0,0,0,0.10)]" />
                   </button>
                 </div>
 
@@ -1217,13 +1044,13 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
                   <button
                     type="button"
                     onClick={() => setAutoConfirm(!autoConfirm)}
-                    className="w-[60px] p-[3px] rounded-full transition-colors flex items-center cursor-pointer"
+                    className="w-15 p-0.75 rounded-full transition-colors flex items-center cursor-pointer"
                     style={{
                       background: autoConfirm ? '#1A8A7A' : '#CECECE',
                       justifyContent: autoConfirm ? 'flex-end' : 'flex-start',
                     }}
                   >
-                    <div className="w-[18px] h-[18px] bg-white rounded-full shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_rgba(0,0,0,0.10)]" />
+                    <div className="w-4.5 h-4.5 bg-white rounded-full shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_rgba(0,0,0,0.10)]" />
                   </button>
                 </div>
 
@@ -1254,9 +1081,9 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
                     </span>
                   </div>
 
-                  <div className="w-[200px] flex items-center gap-2">
+                  <div className="w-50 flex items-center gap-2">
                     <div
-                      className="flex-1 h-[35px] px-3 rounded-[5px] flex items-center justify-between bg-white"
+                      className="flex-1 h-8.75 px-3 rounded-[5px] flex items-center justify-between bg-white"
                       style={{
                         outline: '1.33px #E5E7EB solid',
                         outlineOffset: '-1.33px',
@@ -1322,7 +1149,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
                     value={bookingPolicyNotice}
                     onChange={(e) => setBookingPolicyNotice(e.target.value)}
                     placeholder="e.g. Strictly by appointment. Please arrive 15 minutes before your schedule. Valid government ID and HMO card required. Cancellations must be made at least 24 hours in advance."
-                    className="w-full p-3 rounded-[8px] bg-slate-50 border border-slate-200 text-xs text-[#1E2939] focus:outline-none focus:border-[#1A8A7A] focus:bg-white transition-all font-sans"
+                    className="w-full p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-[#1E2939] focus:outline-none focus:border-[#1A8A7A] focus:bg-white transition-all font-sans"
                   />
                 </div>
 
@@ -1362,13 +1189,13 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
                           <button
                             type="button"
                             onClick={() => updateDayHours(day.id, 'enabled', !schedule.enabled)}
-                            className="w-[44px] h-[24px] p-[2px] rounded-full transition-colors flex items-center cursor-pointer shrink-0"
+                            className="w-11 h-6 p-0.5 rounded-full transition-colors flex items-center cursor-pointer shrink-0"
                             style={{
                               background: schedule.enabled ? '#2A9D8F' : '#CECECE',
                               justifyContent: schedule.enabled ? 'flex-end' : 'flex-start',
                             }}
                           >
-                            <div className="w-[20px] h-[20px] bg-white rounded-full shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_rgba(0,0,0,0.10)]" />
+                            <div className="w-5 h-5 bg-white rounded-full shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_rgba(0,0,0,0.10)]" />
                           </button>
 
                           <span
@@ -1388,7 +1215,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
                         <div className="flex items-center gap-3">
                           {/* Start Time Card */}
                           <div
-                            className={`w-[160px] h-[40px] px-3 py-2 bg-white rounded-[5px] flex items-center justify-between ${
+                            className={`w-40 h-10 px-3 py-2 bg-white rounded-[5px] flex items-center justify-between ${
                               !schedule.enabled ? 'opacity-40 pointer-events-none' : ''
                             }`}
                             style={{
@@ -1424,7 +1251,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
 
                           {/* End Time Card */}
                           <div
-                            className={`w-[160px] h-[40px] px-3 py-2 bg-white rounded-[5px] flex items-center justify-between ${
+                            className={`w-40 h-10 px-3 py-2 bg-white rounded-[5px] flex items-center justify-between ${
                               !schedule.enabled ? 'opacity-40 pointer-events-none' : ''
                             }`}
                             style={{
@@ -1497,7 +1324,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
 
                   <div className="flex items-center gap-2 self-end sm:self-auto">
                     <div
-                      className="w-[180px] sm:w-[200px] h-[35px] px-3 rounded-[5px] flex items-center justify-between bg-white"
+                      className="w-45 sm:w-50 h-8.75 px-3 rounded-[5px] flex items-center justify-between bg-white"
                       style={{
                         outline: '1.33px #E5E7EB solid',
                         outlineOffset: '-1.33px',
@@ -1530,7 +1357,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
                     </div>
 
                     <div
-                      className="w-[115px] h-[35px] rounded-[5px] flex items-center justify-center bg-white"
+                      className="w-28.75 h-8.75 rounded-[5px] flex items-center justify-center bg-white"
                       style={{
                         outline: '1.33px #E5E7EB solid',
                         outlineOffset: '-1.33px',
@@ -1580,7 +1407,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
 
                   <div className="flex items-center gap-2 self-end sm:self-auto">
                     <div
-                      className="w-[180px] sm:w-[200px] h-[35px] px-3 rounded-[5px] flex items-center justify-between bg-white"
+                      className="w-45 sm:w-50 h-8.75 px-3 rounded-[5px] flex items-center justify-between bg-white"
                       style={{
                         outline: '1.33px #E5E7EB solid',
                         outlineOffset: '-1.33px',
@@ -1613,7 +1440,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
                     </div>
 
                     <div
-                      className="w-[115px] h-[35px] rounded-[5px] flex items-center justify-center bg-white"
+                      className="w-28.75 h-8.75 rounded-[5px] flex items-center justify-center bg-white"
                       style={{
                         outline: '1.33px #E5E7EB solid',
                         outlineOffset: '-1.33px',
@@ -1664,13 +1491,13 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
                   <button
                     type="button"
                     onClick={() => setAutoFlagNoShow(!autoFlagNoShow)}
-                    className="w-[60px] p-[3px] rounded-full transition-colors flex items-center cursor-pointer"
+                    className="w-15 p-0.75 rounded-full transition-colors flex items-center cursor-pointer"
                     style={{
                       background: autoFlagNoShow ? '#1A8A7A' : '#CECECE',
                       justifyContent: autoFlagNoShow ? 'flex-end' : 'flex-start',
                     }}
                   >
-                    <div className="w-[18px] h-[18px] bg-white rounded-full shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_rgba(0,0,0,0.10)]" />
+                    <div className="w-4.5 h-4.5 bg-white rounded-full shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_rgba(0,0,0,0.10)]" />
                   </button>
                 </div>
 
@@ -1703,7 +1530,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
 
                   <div className="flex items-center gap-2 self-end sm:self-auto">
                     <div
-                      className="w-[180px] sm:w-[200px] h-[35px] px-3 rounded-[5px] flex items-center justify-between bg-white"
+                      className="w-45 sm:w-50 h-8.75 px-3 rounded-[5px] flex items-center justify-between bg-white"
                       style={{
                         outline: '1.33px #E5E7EB solid',
                         outlineOffset: '-1.33px',
@@ -1736,7 +1563,7 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
                     </div>
 
                     <div
-                      className="w-[115px] h-[35px] rounded-[5px] flex items-center justify-center bg-white"
+                      className="w-28.75 h-8.75 rounded-[5px] flex items-center justify-center bg-white"
                       style={{
                         outline: '1.33px #E5E7EB solid',
                         outlineOffset: '-1.33px',
@@ -1929,9 +1756,14 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
             </div>
           )}
 
-        </div>
-
-      </div>
+      {/* Hidden File Input for Logo */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleLogoUpload}
+        accept="image/*"
+        className="hidden"
+      />
 
       {/* Delete Service Confirmation Modal */}
       <ConfirmModal

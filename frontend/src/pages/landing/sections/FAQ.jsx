@@ -40,7 +40,7 @@ export default function FAQ() {
                   className="w-full flex justify-between items-center px-6 py-5 text-left cursor-pointer group" 
                   onClick={() => setOpenFaq(isOpen ? null : i)}
                 >
-                  <span className="font-bold text-on-background text-[14px] leading-snug pr-8 group-hover:text-primary transition-colors">
+                  <span className="font-bold text-on-background text-[15.5px] leading-snug pr-8 group-hover:text-primary transition-colors">
                     {faq.q}
                   </span>
                   <span 
@@ -53,7 +53,7 @@ export default function FAQ() {
 
                 <div className={`faq-collapse ${isOpen ? 'open' : ''}`}>
                   <div className="faq-collapse-inner">
-                    <div className="px-6 pb-5 text-on-surface-variant text-[14px] leading-relaxed border-t border-outline-variant/20 pt-4">
+                    <div className="px-6 pb-5 text-on-surface-variant text-[15px] leading-relaxed border-t border-outline-variant/20 pt-4">
                       {faq.a}
                     </div>
                   </div>

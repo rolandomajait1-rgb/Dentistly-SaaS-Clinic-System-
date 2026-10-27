@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { getPatients, createPatient } from '../../api';
 import PatientModal from '../../components/patients/PatientModal';
+import PatientDetailView from '../../components/patients/PatientDetailView';
 import { useNotifications } from '../../context/NotificationContext';
 import {
   CaretRight,
@@ -9,9 +10,7 @@ import {
   X,
   User,
   Phone,
-  Stethoscope,
   MapPin,
-  CalendarBlank,
   CircleNotch,
   Check
 } from '@phosphor-icons/react';
@@ -36,7 +35,7 @@ const getInitials = (name) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
-export default function PatientRecords({ clinicId, user }) {
+export default function PatientRecords({ clinicId, selectedPatient: propSelectedPatient, setSelectedPatient: propSetSelectedPatient }) {
   const { showToast } = useNotifications();
 
   // Data states
@@ -47,8 +46,10 @@ export default function PatientRecords({ clinicId, user }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('All'); // 'All' | 'New' | 'Returning'
 
-  // Selected Patient for EHR modal
-  const [selectedPatient, setSelectedPatient] = useState(null);
+  // Selected Patient for EHR detail view
+  const [internalSelectedPatient, setInternalSelectedPatient] = useState(null);
+  const selectedPatient = propSelectedPatient !== undefined ? propSelectedPatient : internalSelectedPatient;
+  const setSelectedPatient = propSetSelectedPatient || setInternalSelectedPatient;
 
   // Add Patient Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -181,6 +182,15 @@ export default function PatientRecords({ clinicId, user }) {
     }
   };
 
+  if (selectedPatient) {
+    return (
+      <PatientDetailView
+        patient={selectedPatient}
+        onBack={() => setSelectedPatient(null)}
+      />
+    );
+  }
+
   return (
     <div
       className="flex flex-col w-full min-h-full overflow-x-hidden"
@@ -197,7 +207,7 @@ export default function PatientRecords({ clinicId, user }) {
         <div className="w-full flex flex-wrap justify-between items-center gap-3">
           {/* Search Name Input Box */}
           <div
-            className="flex items-center gap-2.5 px-3 py-1 flex-1 min-w-[260px] max-w-xl transition-all"
+            className="flex items-center gap-2.5 px-3 py-1 flex-1 min-w-65 max-w-xl transition-all"
             style={{
               height: 45,
               background: 'rgba(255, 255, 255, 0.66)',
@@ -306,9 +316,9 @@ export default function PatientRecords({ clinicId, user }) {
           </div>
         </div>
 
-        {/* ── Patients Table (Design Spec) ── */}
+        {/* ── Patients Table (Desktop / Tablet) ── */}
         <div
-          className="w-full flex flex-col justify-start items-start shrink-0 overflow-hidden"
+          className="hidden md:flex w-full flex-col justify-start items-start shrink-0 overflow-hidden"
           style={{
             minWidth: 900,
             background: 'white',
@@ -340,7 +350,7 @@ export default function PatientRecords({ clinicId, user }) {
             </div>
 
             {/* Column 2: Type (15% width) */}
-            <div className="w-[140px] px-2 flex items-center justify-center text-center">
+            <div className="w-35 px-2 flex items-center justify-center text-center">
               <span
                 style={{
                   color: '#6A7282',
@@ -382,7 +392,7 @@ export default function PatientRecords({ clinicId, user }) {
             </div>
 
             {/* Column 5: Visits (10% width) */}
-            <div className="w-[100px] px-2 flex items-center justify-center text-center">
+            <div className="w-25 px-2 flex items-center justify-center text-center">
               <span
                 style={{
                   color: '#6A7282',
@@ -396,7 +406,7 @@ export default function PatientRecords({ clinicId, user }) {
             </div>
 
             {/* Column 6: Action Column (width: 80px) */}
-            <div className="w-[80px] px-2" />
+            <div className="w-20 px-2" />
           </div>
 
           {/* Table Body Rows */}
@@ -476,7 +486,7 @@ export default function PatientRecords({ clinicId, user }) {
                   </div>
 
                   {/* Column 2: Type (Returning vs New Patient pill) */}
-                  <div className="w-[140px] px-2 flex items-center justify-center">
+                  <div className="w-35 px-2 flex items-center justify-center">
                     {isReturning ? (
                       <div
                         style={{
@@ -543,7 +553,7 @@ export default function PatientRecords({ clinicId, user }) {
                   </div>
 
                   {/* Column 5: Visits Count */}
-                  <div className="w-[100px] px-2 flex items-center justify-center text-center">
+                  <div className="w-25 px-2 flex items-center justify-center text-center">
                     <span
                       style={{
                         color: '#1E2939',
@@ -557,10 +567,83 @@ export default function PatientRecords({ clinicId, user }) {
                   </div>
 
                   {/* Column 6: Actions / Chevron Right Indicator */}
-                  <div className="w-[80px] px-4 flex items-center justify-end">
+                  <div className="w-20 px-4 flex items-center justify-end">
                     <div className="p-1 rounded-full text-[#6A7282] group-hover:text-[#0E3F39] group-hover:translate-x-1 transition-all flex items-center justify-center">
                       <CaretRight size={16} weight="bold" />
                     </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* ── Mobile Patient Cards View (< 768px) ── */}
+        <div className="block md:hidden w-full space-y-3">
+          {filteredPatients.length === 0 ? (
+            <div className="w-full py-12 px-4 bg-white rounded-xl text-center border border-slate-200">
+              <p className="text-sm font-semibold text-slate-800">No patients found</p>
+              <p className="text-xs text-slate-400 mt-1">Try adjusting your search or filters.</p>
+            </div>
+          ) : (
+            filteredPatients.map((patient) => {
+              const isReturning = patient.patientType === 'Returning';
+              return (
+                <div
+                  key={patient.id}
+                  onClick={() => setSelectedPatient(patient.raw || patient)}
+                  className="w-full bg-white rounded-xl p-4 border border-slate-200 shadow-2xs hover:shadow-sm active:scale-[0.99] transition-all cursor-pointer flex flex-col gap-3"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
+                        style={{
+                          background: patient.avatarBg || '#1A8A7A',
+                          color: patient.avatarColor || '#FFFFFF',
+                        }}
+                      >
+                        {patient.initials}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-bold text-slate-900 truncate">
+                          {patient.fullName}
+                        </h4>
+                        <p className="text-xs text-slate-500 truncate mt-0.5">
+                          {patient.contact}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase shrink-0 ${
+                        isReturning
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}
+                    >
+                      {patient.patientType}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold">Dentist</span>
+                      <span className="text-slate-800 font-medium truncate block">{patient.dentistAssigned || 'Dr. Park'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold">Last Visit</span>
+                      <span className="text-slate-800 font-medium truncate block">{patient.lastVisitDate}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                    <span className="text-slate-500 font-medium">
+                      {patient.visitCount} visit{patient.visitCount !== 1 ? 's' : ''}
+                    </span>
+                    <span className="text-[#0E3F39] font-bold flex items-center gap-1">
+                      Open EHR <CaretRight size={12} weight="bold" />
+                    </span>
                   </div>
                 </div>
               );

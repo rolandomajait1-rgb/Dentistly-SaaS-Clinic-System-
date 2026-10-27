@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { login as apiLogin, googleLogin as apiGoogleLogin } from '../../api';
+import { login as apiLogin, googleLogin as apiGoogleLogin, forgotPassword as apiForgotPassword } from '../../api';
 import { useNotifications } from '../../context/NotificationContext';
 import assets from '../../assets';
 
@@ -19,6 +19,13 @@ export default function LoginPage({ onLogin, onBack, onSwitchToRegister }) {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [authData, setAuthData]         = useState(null);
   const formRef = useRef(null);
+
+  /* Forgot Password Modal States */
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail]         = useState('');
+  const [forgotLoading, setForgotLoading]     = useState(false);
+  const [forgotSent, setForgotSent]           = useState(false);
+  const [forgotError, setForgotError]         = useState('');
 
   const [isGoogleLoaded, setIsGoogleLoaded] = useState(false);
 
@@ -49,27 +56,62 @@ export default function LoginPage({ onLogin, onBack, onSwitchToRegister }) {
     }
   }, [showToast]);
 
-  useEffect(() => {
-    const init = () => {
-      if (typeof window.google === 'undefined' || !window.google.accounts) return false;
-      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1093847291038-dummyclientid.apps.googleusercontent.com';
-      window.google.accounts.id.initialize({ client_id: clientId, callback: handleGoogleLoginResponse });
-      const btn = document.getElementById('googleSignInBtn');
-      if (btn) {
-        window.google.accounts.id.renderButton(btn, {
-          theme: 'outline', size: 'large', width: 340,
-          shape: 'pill', logo_alignment: 'center', text: 'signin_with'
-        });
-        setIsGoogleLoaded(true);
-      }
-      return true;
-    };
-    if (!init()) {
-      let attempts = 0;
-      const t = setInterval(() => { if (init() || ++attempts > 10) clearInterval(t); }, 500);
-      return () => clearInterval(t);
+  const initGoogle = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+
+    // Google prohibits raw IP addresses (e.g. 192.168.x.x) as OAuth origins
+    const isIpHost = /^(\d{1,3}\.){3}\d{1,3}$/.test(window.location.hostname);
+    if (isIpHost && window.location.hostname !== '127.0.0.1') {
+      console.warn('Google Sign-In requires localhost or an authorized domain, not a LAN IP address.');
     }
+
+    if (typeof window.google === 'undefined' || !window.google.accounts?.id) {
+      // If script is not yet present, inject it dynamically
+      if (!document.querySelector('script[src*="accounts.google.com/gsi/client"]')) {
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+      }
+      return false;
+    }
+
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1093847291038-dummyclientid.apps.googleusercontent.com';
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleGoogleLoginResponse,
+      auto_select: false,
+      cancel_on_tap_outside: true,
+    });
+
+    const btn = document.getElementById('googleSignInBtn');
+    if (btn) {
+      window.google.accounts.id.renderButton(btn, {
+        theme: 'outline',
+        size: 'large',
+        width: 340,
+        shape: 'pill',
+        logo_alignment: 'center',
+        text: 'signin_with',
+      });
+      setIsGoogleLoaded(true);
+    }
+    return true;
   }, [handleGoogleLoginResponse]);
+
+  useEffect(() => {
+    let attempts = 0;
+    let t;
+    const checkGoogle = () => {
+      if (initGoogle()) return;
+      if (++attempts <= 30) {
+        t = setTimeout(checkGoogle, 500);
+      }
+    };
+    t = setTimeout(checkGoogle, 0);
+    return () => clearTimeout(t);
+  }, [initGoogle]);
 
   /* Form submit */
   const handleSubmit = async (e) => {
@@ -109,7 +151,7 @@ export default function LoginPage({ onLogin, onBack, onSwitchToRegister }) {
       ════════════════════════════════════════════════ */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-[3px] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[32px] p-8 sm:p-9 max-w-[390px] w-full text-center shadow-[0_20px_50px_rgba(0,0,0,0.15)] relative border border-slate-100/80 flex flex-col items-center">
+          <div className="bg-white rounded-4xl p-8 sm:p-9 max-w-97.5 w-full text-center shadow-[0_20px_50px_rgba(0,0,0,0.15)] relative border border-slate-100/80 flex flex-col items-center">
             {/* Close button */}
             <button
               onClick={handleProceed}
@@ -159,7 +201,7 @@ export default function LoginPage({ onLogin, onBack, onSwitchToRegister }) {
           className="absolute inset-0 bg-cover bg-center pointer-events-none"
           style={{ backgroundImage: `url(${assets.authContainerGradient})` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-tr from-[#001e1b]/80 via-[#004e47]/65 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-linear-to-tr from-[#001e1b]/80 via-primary/65 to-transparent pointer-events-none" />
 
         {/* Top: White Pill Badge with Logo */}
         <div className="relative z-10">
@@ -226,7 +268,7 @@ export default function LoginPage({ onLogin, onBack, onSwitchToRegister }) {
         <div className="flex-1 flex items-center justify-center py-10">
           <div
             ref={formRef}
-            className="w-full max-w-[420px]"
+            className="w-full max-w-105"
             style={{ opacity: 0, transform: 'translateY(16px)', transition: 'opacity 0.4s ease-out, transform 0.4s ease-out' }}
           >
             {/* Header */}
@@ -283,6 +325,12 @@ export default function LoginPage({ onLogin, onBack, onSwitchToRegister }) {
                   </label>
                   <button 
                     type="button" 
+                    onClick={() => {
+                      setShowForgotModal(true);
+                      setForgotEmail(email || '');
+                      setForgotSent(false);
+                      setForgotError('');
+                    }}
                     className="text-[11.5px] font-medium text-slate-400 hover:text-slate-600 cursor-pointer transition-colors"
                   >
                     Forgot password?
@@ -351,10 +399,16 @@ export default function LoginPage({ onLogin, onBack, onSwitchToRegister }) {
                 <button
                   type="button"
                   onClick={() => {
-                    if (window.google?.accounts?.id) {
-                      window.google.accounts.id.prompt();
+                    const isIpHost = /^(\d{1,3}\.){3}\d{1,3}$/.test(window.location.hostname);
+                    if (isIpHost && window.location.hostname !== '127.0.0.1') {
+                      showToast('Google OAuth does not support IP addresses. Please open http://localhost:5173 to sign in with Google.', 'warning');
+                      return;
+                    }
+
+                    if (initGoogle()) {
+                      window.google?.accounts?.id?.prompt();
                     } else {
-                      showToast('Google Sign-In is initializing...', 'info');
+                      showToast('Connecting to Google services... Please click again in a moment.', 'info');
                     }
                   }}
                   className="w-full h-12 rounded-xl border border-slate-200 hover:bg-slate-50 active:bg-slate-100 text-slate-700 font-semibold text-[14px] flex items-center justify-center gap-3 transition-colors cursor-pointer shadow-2xs"
@@ -389,6 +443,102 @@ export default function LoginPage({ onLogin, onBack, onSwitchToRegister }) {
           © 2026 Pivodent SaaS. All rights reserved.
         </div>
       </div>
+
+      {/* ── Forgot Password Modal ── */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative">
+            <button
+              onClick={() => setShowForgotModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-lg hover:bg-slate-100"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-[#004E47]/10 flex items-center justify-center text-[#004E47]">
+                <span className="material-symbols-outlined text-[22px]">lock_reset</span>
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Reset Your Password</h3>
+                <p className="text-xs text-slate-500">We will email you a secure link to reset it.</p>
+              </div>
+            </div>
+
+            {forgotSent ? (
+              <div className="py-4 text-center">
+                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="material-symbols-outlined text-[28px]">mark_email_read</span>
+                </div>
+                <h4 className="text-sm font-bold text-slate-900 mb-1">Check Your Inbox</h4>
+                <p className="text-xs text-slate-600 leading-relaxed mb-5">
+                  If an account exists for <strong className="text-slate-900">{forgotEmail}</strong>, we have sent a password reset link. Please check your spam folder if it doesn't arrive within a few minutes.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(false)}
+                  className="w-full h-11 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!forgotEmail) return;
+                  setForgotLoading(true);
+                  setForgotError('');
+                  try {
+                    await apiForgotPassword(forgotEmail);
+                    setForgotSent(true);
+                  } catch (err) {
+                    setForgotError(err.message || 'Failed to dispatch password reset email.');
+                  } finally {
+                    setForgotLoading(false);
+                  }
+                }}
+                className="space-y-4"
+              >
+                {forgotError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 font-medium">
+                    {forgotError}
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Account Email Address
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="doctor@clinic.com"
+                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#004E47] focus:ring-2 focus:ring-[#004E47]/10"
+                  />
+                </div>
+                <div className="flex gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(false)}
+                    className="w-1/2 h-11 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="w-1/2 h-11 bg-[#004E47] text-white rounded-xl text-xs font-bold hover:bg-[#003833] disabled:opacity-50 transition-colors cursor-pointer"
+                  >
+                    {forgotLoading ? 'Sending...' : 'Send Reset Link'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

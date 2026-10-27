@@ -201,7 +201,7 @@ export default function StaffUsers({ clinicId, user }) {
       {/* ── Toolbar: Search, Role Filter, and + Add Staff Button ── */}
       <div className="w-full flex flex-wrap justify-between items-center gap-3">
         {/* Left: Search input */}
-        <div className="flex items-center gap-3 flex-1 min-w-[260px] max-w-md">
+        <div className="flex items-center gap-3 flex-1 min-w-65 max-w-md">
           <div
             className="flex items-center gap-2.5 px-3 py-1 w-full transition-all"
             style={{
@@ -283,9 +283,9 @@ export default function StaffUsers({ clinicId, user }) {
         </div>
       </div>
 
-      {/* ── Users Table Card (Exact Figma Spec) ── */}
+      {/* ── Users Table Card (Desktop / Tablet) ── */}
       <div
-        className="w-full flex flex-col justify-start items-start shrink-0 overflow-hidden"
+        className="hidden md:flex w-full flex-col justify-start items-start shrink-0 overflow-hidden"
         style={{
           minWidth: 720,
           background: 'white',
@@ -500,7 +500,7 @@ export default function StaffUsers({ clinicId, user }) {
                   <div className="col-span-1 px-4 flex items-center justify-center relative">
                     <button
                       onClick={() => setActiveMenuId(isMenuOpen ? null : member.id)}
-                      className="w-[25px] h-[25px] flex items-center justify-center rounded-[10px] hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                      className="w-6.25 h-6.25 flex items-center justify-center rounded-[10px] hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                       title="Manage user options"
                     >
                       <DotsThreeVertical size={16} weight="bold" />
@@ -534,6 +534,76 @@ export default function StaffUsers({ clinicId, user }) {
             })
           )}
         </div>
+      </div>
+
+      {/* ── Mobile Staff Cards View (< 768px) ── */}
+      <div className="block md:hidden w-full space-y-3">
+        {filteredStaff.length === 0 ? (
+          <div className="w-full py-12 px-4 bg-white rounded-xl text-center border border-slate-200">
+            <p className="text-sm font-semibold text-slate-800">No staff members found</p>
+            <p className="text-xs text-slate-400 mt-1">Try adjusting your search or role filters.</p>
+          </div>
+        ) : (
+          filteredStaff.map((member) => {
+            const roleStyle = getRoleBadgeStyle(member.role);
+            return (
+              <div
+                key={member.id}
+                className="w-full bg-white rounded-xl p-4 border border-slate-200 shadow-2xs flex flex-col gap-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
+                      style={{
+                        background: '#0E3F39',
+                        color: '#FFFFFF',
+                      }}
+                    >
+                      {getInitials(member.name)}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-bold text-slate-900 truncate">
+                        {member.name}
+                      </h4>
+                      <p className="text-xs text-slate-500 truncate mt-0.5">
+                        {member.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span
+                    className="px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase shrink-0"
+                    style={{ background: roleStyle.bg, color: roleStyle.color }}
+                  >
+                    {roleStyle.label}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Started</span>
+                    <span className="text-slate-800 font-medium truncate block">{member.started || 'Jan 10, 2023'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Last Login</span>
+                    <span className="text-slate-800 font-medium truncate block">{member.last_login || 'Jul 19, 2026'}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    onClick={() => handleDeleteStaff(member.id, member.name)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash size={14} />
+                    <span>Remove</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* ── ADD STAFF MODAL ── */}

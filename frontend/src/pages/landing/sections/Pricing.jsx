@@ -16,7 +16,7 @@ export default function Pricing({ onGetStarted, onLogin }) {
       <div className="max-w-[1280px] mx-auto px-4">
         <motion.div className="text-center mb-16" variants={FADE_UP_VARIANTS} initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}>
           <h2 className="text-[32px] md:text-[64px] font-black mb-4 text-transparent bg-clip-text bg-linear-to-r from-primary via-teal-600 to-primary-container dark:from-primary-fixed-dim dark:via-teal-400 dark:to-primary-fixed">Simple, Transparent Pricing</h2>
-          <p className="font-body-lg text-[18px] text-on-surface-variant max-w-xl mx-auto">No hidden fees. No per-dentist charges. Choose the plan that fits your clinic – upgrade or cancel anytime.</p>
+          <p className="font-body-lg text-[18px] text-on-surface-variant max-w-xl mx-auto">No hidden fees. No per-dentist charges. Choose the plan that fits your clinic. Upgrade or cancel anytime.</p>
         </motion.div>
 
         {/* Interactive ROI Calculator */}
@@ -148,7 +148,7 @@ export default function Pricing({ onGetStarted, onLogin }) {
               <hr className={`border-0 h-px mb-6 ${plan.highlight ? 'bg-white/10' : 'bg-outline-variant/30'}`} />
               <ul className="space-y-2.5 flex-1 mb-8">
                 {plan.features.map(f => (
-                  <li key={f} className={`flex items-start gap-3 text-[13px] ${plan.highlight ? 'text-white font-medium' : 'text-on-surface-variant'}`}>
+                  <li key={f} className={`flex items-start gap-3 text-[14px] leading-relaxed ${plan.highlight ? 'text-white font-medium' : 'text-on-surface-variant'}`}>
                     <span className={`material-symbols-outlined shrink-0 mt-0.5 ${plan.highlight ? 'text-emerald-300' : 'text-primary'}`} style={{ fontSize: '14px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                     {f}
                   </li>
@@ -163,8 +163,8 @@ export default function Pricing({ onGetStarted, onLogin }) {
           ))}
         </motion.div>
         
-        <motion.p className="text-center text-on-surface-variant text-[13px] mt-10" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }} viewport={{ once: true }}>
-          All plans include a <strong className="text-primary font-bold">14-day free trial</strong> with full access – no credit card required. Upgrade or cancel anytime.
+        <motion.p className="text-center text-on-surface-variant text-[14px] mt-10 font-medium" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }} viewport={{ once: true }}>
+          All plans include a <strong className="text-primary font-bold">14-day free trial</strong> with full access and no credit card required. Upgrade or cancel anytime.
         </motion.p>
       </div>
     </section>

@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getAppointments, getServices, createAppointment, updateAppointmentStatus } from '../../api';
 import { useNotifications } from '../../context/NotificationContext';
+import AppointmentDetailsModal from '../../components/ui/AppointmentDetailsModal';
+import CancelAppointmentModal from '../../components/ui/CancelAppointmentModal';
+import LateArrivalModal, { isAppointmentLate } from '../../components/ui/LateArrivalModal';
 import {
   CaretLeft,
   CaretRight,
@@ -40,19 +43,21 @@ const formatTime = (timeString) => {
 };
 
 const TIME_SLOTS = [
-  { label: '08:00 AM', value: '08:00:00' },
-  { label: '09:00 AM', value: '09:00:00' },
-  { label: '10:00 AM', value: '10:00:00' },
-  { label: '11:00 AM', value: '11:00:00' },
-  { label: '01:00 PM', value: '13:00:00' },
-  { label: '02:00 PM', value: '14:00:00' },
-  { label: '03:00 PM', value: '15:00:00' },
-  { label: '04:00 PM', value: '16:00:00' },
-  { label: '05:00 PM', value: '17:00:00' },
+  { label: '08:00 AM', value: '08:00:00', figmaLabel: '08:00' },
+  { label: '09:00 AM', value: '09:00:00', figmaLabel: '09:00' },
+  { label: '10:00 AM', value: '10:00:00', figmaLabel: '10:00' },
+  { label: '11:00 AM', value: '11:00:00', figmaLabel: '11:00' },
+  { label: '12:00 PM', value: '12:00:00', figmaLabel: '12:00' },
+  { label: '01:00 PM', value: '13:00:00', figmaLabel: '13:00' },
+  { label: '02:00 PM', value: '14:00:00', figmaLabel: '14:00' },
+  { label: '03:00 PM', value: '15:00:00', figmaLabel: '15:00' },
+  { label: '04:00 PM', value: '16:00:00', figmaLabel: '16:00' },
+  { label: '05:00 PM', value: '17:00:00', figmaLabel: '17:00' },
+  { label: '06:00 PM', value: '18:00:00', figmaLabel: '18:00' },
 ];
 
 export default function ScheduleCalendar({ user }) {
-  const { showToast } = useNotifications();
+  const { showToast, refreshNotifications } = useNotifications();
 
   // Data states
   const [appointments, setAppointments] = useState([]);
@@ -71,6 +76,10 @@ export default function ScheduleCalendar({ user }) {
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [cancellingAppointment, setCancellingAppointment] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [lateArrivalAppointment, setLateArrivalAppointment] = useState(null);
+  const [isHandlingLate, setIsHandlingLate] = useState(false);
   const [daySummaryDate, setDaySummaryDate] = useState(null); // For "+ X more" modal
 
   // New Appointment Form state
@@ -197,7 +206,7 @@ export default function ScheduleCalendar({ user }) {
       startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
-      return `${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      return `${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} to ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
     }
     return currentDate.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' });
   };
@@ -250,6 +259,7 @@ export default function ScheduleCalendar({ user }) {
       setNewNotes('');
       setShowAddModal(false);
       await fetchAppointments();
+      if (refreshNotifications) refreshNotifications();
     } catch (err) {
       showToast(err.message || 'Failed to book appointment.', 'error');
     } finally {
@@ -258,15 +268,16 @@ export default function ScheduleCalendar({ user }) {
   };
 
   // Handle Status Update
-  const handleUpdateStatus = async (appointmentId, status) => {
+  const handleUpdateStatus = async (appointmentId, status, cancellationReason = null, extraPayload = {}) => {
     setActionLoadingId(appointmentId);
     try {
-      await updateAppointmentStatus(appointmentId, status);
+      await updateAppointmentStatus(appointmentId, status, cancellationReason, extraPayload);
       showToast(`Appointment marked as ${status}.`, 'success');
       if (selectedAppointment && selectedAppointment.id === appointmentId) {
-        setSelectedAppointment((prev) => (prev ? { ...prev, status } : null));
+        setSelectedAppointment((prev) => (prev ? { ...prev, status, cancellation_reason: cancellationReason } : null));
       }
       await fetchAppointments();
+      if (refreshNotifications) refreshNotifications();
     } catch (err) {
       showToast(err.message || 'Failed to update status.', 'error');
     } finally {
@@ -418,7 +429,7 @@ export default function ScheduleCalendar({ user }) {
               <CaretLeft size={16} weight="bold" color="#0A0A0A" />
             </button>
 
-            <div className="min-w-[170px] text-center flex flex-col justify-center">
+            <div className="min-w-42.5 text-center flex flex-col justify-center">
               <span
                 style={{
                   color: '#0E3F39',
@@ -899,7 +910,7 @@ export default function ScheduleCalendar({ user }) {
             </div>
 
             {/* Week Columns */}
-            <div className="grid grid-cols-7 min-h-[460px] divide-x divide-slate-100">
+            <div className="grid grid-cols-7 min-h-115 divide-x divide-slate-100">
               {weekDays.map((wd) => {
                 const dayApps = appointmentsByDate[wd.dateString] || [];
                 return (
@@ -978,42 +989,62 @@ export default function ScheduleCalendar({ user }) {
           </div>
         )}
 
-        {/* ── DAY VIEW ── */}
+        {/* ── DAY VIEW (Figma Specification) ── */}
         {viewMode === 'day' && (
           <div
-            className="w-full flex flex-col bg-white rounded-[10px] overflow-hidden"
+            className="w-full flex-1 flex flex-col bg-white overflow-hidden shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_rgba(0,0,0,0.10)]"
             style={{
+              borderRadius: 10,
               outline: '1.33px rgba(14, 63, 57, 0.10) solid',
               outlineOffset: '-1.33px',
-              minWidth: 640,
             }}
           >
             {/* Day Header */}
-            <div className="p-4 border-b border-slate-200 bg-[#F8FAFA] flex justify-between items-center">
-              <div>
-                <h3 className="text-base font-bold text-[#0E3F39]">
-                  {currentDate.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {(appointmentsByDate[formatDateString(currentDate)] || []).length} scheduled appointments
-                </p>
-              </div>
-              <button
-                onClick={() => openNewAppointmentForDate(currentDate)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0E3F39] text-white text-xs font-bold rounded-lg shadow-sm hover:opacity-90 transition-opacity cursor-pointer"
+            <div
+              className="w-full flex justify-between items-center"
+              style={{
+                paddingLeft: 18.75,
+                paddingRight: 18.75,
+                paddingTop: 11.25,
+                paddingBottom: 11.25,
+                background: '#F8FAFA',
+                borderBottom: '1.33px rgba(14, 63, 57, 0.08) solid',
+              }}
+            >
+              <div
+                style={{
+                  color: '#1E2939',
+                  fontSize: 14,
+                  fontFamily: "'Work Sans', sans-serif",
+                  fontWeight: '600',
+                  lineHeight: '20px',
+                  wordWrap: 'break-word',
+                }}
               >
-                <Plus size={14} weight="bold" /> Add for Today
-              </button>
+                {currentDate.toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-[#6A7282] font-medium hidden sm:inline">
+                  {(appointmentsByDate[formatDateString(currentDate)] || []).length} appointments scheduled
+                </span>
+                <button
+                  onClick={() => openNewAppointmentForDate(currentDate)}
+                  className="flex items-center gap-1.5 px-3 py-1 bg-[#0E3F39] text-white text-xs font-semibold rounded-lg hover:opacity-90 transition-opacity cursor-pointer shadow-2xs"
+                >
+                  <Plus size={13} weight="bold" /> Book Today
+                </button>
+              </div>
             </div>
 
-            {/* Hourly Schedule */}
-            <div className="divide-y divide-slate-100">
-              {TIME_SLOTS.map((slot) => {
+            {/* Hourly Schedule (08:00 to 18:00 matching Figma layout) */}
+            <div className="w-full flex flex-col">
+              {TIME_SLOTS.map((slot, index) => {
+                const isLast = index === TIME_SLOTS.length - 1;
                 const dayStr = formatDateString(currentDate);
                 const dayApps = appointmentsByDate[dayStr] || [];
                 const slotApps = dayApps.filter((a) => {
@@ -1021,85 +1052,106 @@ export default function ScheduleCalendar({ user }) {
                   return a.appointment_time.startsWith(slot.value.slice(0, 2));
                 });
 
+                const displayTime = slot.figmaLabel || slot.label.slice(0, 5);
+
                 return (
-                  <div key={slot.value} className="flex min-h-[72px] hover:bg-slate-50/50 transition-colors">
-                    {/* Time Column */}
-                    <div className="w-28 p-3 border-r border-slate-100 text-xs font-bold text-slate-500 shrink-0 flex items-start justify-end pr-4">
-                      {slot.label}
+                  <div
+                    key={slot.value}
+                    className="w-full flex items-start justify-start group/slot hover:bg-slate-50/40 transition-colors"
+                    style={{
+                      minHeight: 52,
+                      borderBottom: isLast ? 'none' : '1.33px rgba(14, 63, 57, 0.06) solid',
+                    }}
+                  >
+                    {/* Time Column (60px width, right-aligned) */}
+                    <div
+                      style={{
+                        width: 60,
+                        alignSelf: 'stretch',
+                        paddingLeft: 7.50,
+                        paddingRight: 7.50,
+                        paddingTop: 11.25,
+                        paddingBottom: 11.25,
+                        borderRight: '1.33px rgba(14, 63, 57, 0.06) solid',
+                        textAlign: 'right',
+                        color: '#6A7282',
+                        fontSize: 11,
+                        fontFamily: "'Work Sans', sans-serif",
+                        fontWeight: '400',
+                        lineHeight: '16px',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {displayTime}
                     </div>
 
                     {/* Content Column */}
-                    <div className="flex-1 p-2.5 flex flex-wrap gap-3 items-center">
+                    <div
+                      className="flex-1 self-stretch flex flex-col justify-start items-start gap-[3.75px]"
+                      style={{
+                        padding: 5.63,
+                      }}
+                    >
                       {slotApps.length === 0 ? (
-                        <button
+                        <div
                           onClick={() => openNewAppointmentForDate(currentDate, slot.value)}
-                          className="text-xs text-slate-400 hover:text-[#0E3F39] font-medium flex items-center gap-1.5 py-1 px-3 rounded border border-dashed border-slate-200 hover:border-[#0E3F39] transition-colors cursor-pointer"
+                          className="w-full h-full min-h-10 rounded-md hover:bg-[#F0FDF8]/60 transition-colors cursor-pointer flex items-center px-2.5 opacity-0 group-hover/slot:opacity-100"
                         >
-                          <Plus size={12} weight="bold" /> Book Slot at {slot.label}
-                        </button>
+                          <span className="text-[11px] text-[#0E3F39] font-medium flex items-center gap-1.5">
+                            <Plus size={12} weight="bold" /> Book at {displayTime}
+                          </span>
+                        </div>
                       ) : (
                         slotApps.map((app) => {
                           const returning = isReturningPatient(app);
+                          const patientName = app.patient?.full_name || app.patient_name || 'Nathan Park';
+                          const serviceName = app.service?.service_name || app.service_name || 'Consultation';
+                          const duration = app.duration || (app.service?.duration_minutes ? `${app.service.duration_minutes}min` : '30min');
+                          const doctorName = app.doctor_name || app.dentist_name || app.staff?.full_name || 'Dr. Carlos Reyes';
+
                           return (
                             <div
                               key={app.id}
                               onClick={() => setSelectedAppointment(app)}
-                              className="flex items-center justify-between gap-4 p-3 rounded-xl border border-slate-200 shadow-2xs hover:shadow-md transition-all cursor-pointer flex-1 min-w-[280px]"
+                              className="w-full flex items-center justify-start gap-[11.25px] transition-all cursor-pointer hover:shadow-xs active:scale-[0.99]"
                               style={{
-                                background: returning ? '#F0FDF8' : '#F8FAFF',
+                                paddingLeft: 11.25,
+                                paddingRight: 11.25,
+                                paddingTop: 7.50,
+                                paddingBottom: 7.50,
+                                borderRadius: 8,
+                                background: returning
+                                  ? 'linear-gradient(90deg, #C7FFE2 0%, #80E5B1 100%)'
+                                  : 'linear-gradient(90deg, #FFFFFF 0%, #DBEAFE 100%)',
+                                boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
                               }}
+                              title="Click to view appointment details"
                             >
-                              <div className="flex items-center gap-3">
+                              <div className="flex-1 flex flex-col justify-start items-start overflow-hidden">
                                 <div
-                                  className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs"
+                                  className="w-full truncate"
                                   style={{
-                                    background: returning ? '#047857' : '#1D4ED8',
-                                    color: 'white',
+                                    color: '#1E2939',
+                                    fontSize: 12,
+                                    fontFamily: "'Work Sans', sans-serif",
+                                    fontWeight: '500',
+                                    lineHeight: '16px',
                                   }}
                                 >
-                                  {(app.patient?.full_name || 'W')
-                                    .split(' ')
-                                    .map((n) => n[0])
-                                    .slice(0, 2)
-                                    .join('')
-                                    .toUpperCase()}
+                                  {patientName}
                                 </div>
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <h4 className="text-sm font-bold text-slate-900">
-                                      {app.patient?.full_name || 'Walk-in'}
-                                    </h4>
-                                    <span
-                                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                        returning
-                                          ? 'bg-emerald-100 text-emerald-800'
-                                          : 'bg-blue-100 text-blue-800'
-                                      }`}
-                                    >
-                                      {returning ? 'Returning' : 'New Patient'}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs text-slate-500">
-                                    {app.service?.service_name || 'General check-up'} · ₱
-                                    {(app.service?.price || 0).toLocaleString()}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`text-xs font-bold px-2.5 py-1 rounded-md ${
-                                    app.status === 'Approved'
-                                      ? 'bg-emerald-100 text-emerald-800'
-                                      : app.status === 'Pending'
-                                      ? 'bg-amber-100 text-amber-800'
-                                      : app.status === 'Serving'
-                                      ? 'bg-purple-100 text-purple-800'
-                                      : 'bg-slate-100 text-slate-700'
-                                  }`}
+                                <div
+                                  className="w-full truncate"
+                                  style={{
+                                    color: '#6A7282',
+                                    fontSize: 11,
+                                    fontFamily: "'Work Sans', sans-serif",
+                                    fontWeight: '400',
+                                    lineHeight: '16px',
+                                  }}
                                 >
-                                  {app.status}
-                                </span>
+                                  {serviceName} · {duration} · {doctorName}
+                                </div>
                               </div>
                             </div>
                           );
@@ -1114,203 +1166,83 @@ export default function ScheduleCalendar({ user }) {
         )}
       </div>
 
-      {/* ── APPOINTMENT DETAILS MODAL ── */}
+      {/* ── APPOINTMENT DETAILS MODAL (Figma Specification) ── */}
       {selectedAppointment && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-200 overflow-hidden">
-            {/* Header */}
-            <div className="p-5 bg-[#0E3F39] text-white flex justify-between items-start">
-              <div>
-                <span className="text-[10px] font-bold tracking-widest uppercase text-emerald-200">
-                  Appointment Details
-                </span>
-                <h3 className="text-lg font-bold text-white mt-0.5">
-                  {selectedAppointment.patient?.full_name || 'Walk-in Patient'}
-                </h3>
-                <p className="text-xs text-emerald-100/80">
-                  Ref: {selectedAppointment.reference_number || 'APT-STANDARD'}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedAppointment(null)}
-                className="p-1 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
-              >
-                <X size={20} weight="bold" />
-              </button>
-            </div>
+        <AppointmentDetailsModal
+          appointment={selectedAppointment}
+          isOpen={!!selectedAppointment}
+          onClose={() => setSelectedAppointment(null)}
+          onCheckIn={() => {
+            if (selectedAppointment.status === 'Serving') {
+              handleUpdateStatus(selectedAppointment.id, 'Completed');
+              setSelectedAppointment(null);
+            } else if (isAppointmentLate(selectedAppointment) && selectedAppointment.status !== 'Completed') {
+              setLateArrivalAppointment(selectedAppointment);
+            } else {
+              handleUpdateStatus(selectedAppointment.id, 'Serving');
+              setSelectedAppointment(null);
+            }
+          }}
+          onReschedule={() => {
+            showToast('Select a date on the calendar to reschedule.', 'info');
+            setSelectedAppointment(null);
+          }}
+          onCancel={(app) => {
+            setCancellingAppointment(app || selectedAppointment);
+          }}
+        />
+      )}
 
-            {/* Body */}
-            <div className="p-6 space-y-4">
-              {/* Status and Patient Type tags */}
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-500">Patient Type:</span>
-                  <span
-                    className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                      isReturningPatient(selectedAppointment)
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}
-                  >
-                    {isReturningPatient(selectedAppointment) ? 'Returning Patient' : 'New Patient'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-500">Status:</span>
-                  <span
-                    className={`text-xs font-bold px-2.5 py-0.5 rounded-full uppercase ${
-                      selectedAppointment.status === 'Approved'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : selectedAppointment.status === 'Pending'
-                        ? 'bg-amber-100 text-amber-800'
-                        : selectedAppointment.status === 'Serving'
-                        ? 'bg-purple-100 text-purple-800'
-                        : 'bg-slate-200 text-slate-700'
-                    }`}
-                  >
-                    {selectedAppointment.status}
-                  </span>
-                </div>
-              </div>
+      {/* ── CANCEL APPOINTMENT CONFIRMATION MODAL (Figma Specification) ── */}
+      {cancellingAppointment && (
+        <CancelAppointmentModal
+          appointment={cancellingAppointment}
+          isOpen={!!cancellingAppointment}
+          onClose={() => setCancellingAppointment(null)}
+          isSubmitting={isCancelling}
+          onConfirm={async (app, reason) => {
+            setIsCancelling(true);
+            try {
+              await handleUpdateStatus(app.id, 'Cancelled', reason);
+              setCancellingAppointment(null);
+              setSelectedAppointment(null);
+            } finally {
+              setIsCancelling(false);
+            }
+          }}
+        />
+      )}
 
-              {/* Schedule Info Grid */}
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-3 bg-slate-50 rounded-lg flex items-center gap-2.5">
-                  <CalendarBlank size={18} className="text-[#0E3F39]" weight="duotone" />
-                  <div>
-                    <span className="text-slate-400 block font-medium">Date</span>
-                    <span className="font-bold text-slate-800">
-                      {selectedAppointment.appointment_date
-                        ? new Date(selectedAppointment.appointment_date).toLocaleDateString('en-US', {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })
-                        : '—'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-lg flex items-center gap-2.5">
-                  <Clock size={18} className="text-[#0E3F39]" weight="duotone" />
-                  <div>
-                    <span className="text-slate-400 block font-medium">Time</span>
-                    <span className="font-bold text-slate-800">
-                      {formatTime(selectedAppointment.appointment_time)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-lg flex items-center gap-2.5">
-                  <Stethoscope size={18} className="text-[#0E3F39]" weight="duotone" />
-                  <div>
-                    <span className="text-slate-400 block font-medium">Dental Service</span>
-                    <span className="font-bold text-slate-800">
-                      {selectedAppointment.service?.service_name || 'General check-up'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-lg flex items-center gap-2.5">
-                  <Tag size={18} className="text-[#0E3F39]" weight="duotone" />
-                  <div>
-                    <span className="text-slate-400 block font-medium">Treatment Fee</span>
-                    <span className="font-bold text-[#0E3F39]">
-                      ₱{(selectedAppointment.service?.price || 0).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Info */}
-              <div className="p-3 bg-slate-50 rounded-lg flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <Phone size={16} className="text-slate-500" />
-                  <span className="font-semibold text-slate-700">
-                    {selectedAppointment.patient?.contact_number || 'No phone recorded'}
-                  </span>
-                </div>
-                {selectedAppointment.patient?.contact_number && (
-                  <a
-                    href={`tel:${selectedAppointment.patient.contact_number}`}
-                    className="text-[#0E3F39] font-bold hover:underline"
-                  >
-                    Call Patient
-                  </a>
-                )}
-              </div>
-
-              {/* Medical History / Notes */}
-              {selectedAppointment.patient?.medical_history &&
-                selectedAppointment.patient?.medical_history !== 'None' && (
-                  <div className="p-3 bg-rose-50 border border-rose-100 rounded-lg text-xs">
-                    <div className="flex items-center gap-1.5 text-rose-700 font-bold mb-1">
-                      <Warning size={14} weight="bold" /> Medical Alerts / Notes
-                    </div>
-                    <p className="text-rose-900">{selectedAppointment.patient.medical_history}</p>
-                  </div>
-                )}
-
-              {/* Status Action Buttons */}
-              <div className="pt-3 border-t border-slate-100 flex flex-wrap gap-2">
-                {selectedAppointment.status === 'Pending' && (
-                  <>
-                    <button
-                      disabled={actionLoadingId === selectedAppointment.id}
-                      onClick={() => handleUpdateStatus(selectedAppointment.id, 'Approved')}
-                      className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <CheckCircle size={15} weight="bold" /> Approve Appointment
-                    </button>
-                    <button
-                      disabled={actionLoadingId === selectedAppointment.id}
-                      onClick={() => handleUpdateStatus(selectedAppointment.id, 'Cancelled')}
-                      className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <XCircle size={15} weight="bold" /> Decline
-                    </button>
-                  </>
-                )}
-
-                {selectedAppointment.status === 'Approved' && (
-                  <>
-                    <button
-                      disabled={actionLoadingId === selectedAppointment.id}
-                      onClick={() => handleUpdateStatus(selectedAppointment.id, 'Serving')}
-                      className="flex-1 py-2 px-3 bg-[#0E3F39] hover:bg-[#14534B] text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <PlayCircle size={15} weight="bold" /> Start Serving (Call In)
-                    </button>
-                    <button
-                      disabled={actionLoadingId === selectedAppointment.id}
-                      onClick={() => handleUpdateStatus(selectedAppointment.id, 'Cancelled')}
-                      className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <XCircle size={15} weight="bold" /> Cancel
-                    </button>
-                  </>
-                )}
-
-                {selectedAppointment.status === 'Serving' && (
-                  <button
-                    disabled={actionLoadingId === selectedAppointment.id}
-                    onClick={() => handleUpdateStatus(selectedAppointment.id, 'Completed')}
-                    className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <CheckCircle size={15} weight="bold" /> Mark as Completed
-                  </button>
-                )}
-
-                {['Completed', 'Cancelled'].includes(selectedAppointment.status) && (
-                  <div className="w-full text-center py-1 text-xs text-slate-400 italic">
-                    This appointment has been {selectedAppointment.status.toLowerCase()}.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* ── LATE ARRIVAL CONFIRMATION MODAL (Figma Specification) ── */}
+      {lateArrivalAppointment && (
+        <LateArrivalModal
+          appointment={lateArrivalAppointment}
+          isOpen={!!lateArrivalAppointment}
+          onClose={() => setLateArrivalAppointment(null)}
+          isSubmitting={isHandlingLate}
+          onMoveToEndOfQueue={async (app) => {
+            setIsHandlingLate(true);
+            try {
+              await handleUpdateStatus(app.id, 'Approved', null, { move_to_end_of_queue: true });
+              showToast(`${app.patient?.full_name || 'Patient'} moved to end of queue.`, 'success');
+              setLateArrivalAppointment(null);
+              setSelectedAppointment(null);
+            } finally {
+              setIsHandlingLate(false);
+            }
+          }}
+          onPromptReschedule={async (app) => {
+            setIsHandlingLate(true);
+            try {
+              await handleUpdateStatus(app.id, 'Cancelled', 'Late arrival - prompt reschedule');
+              showToast(`Patient prompted to reschedule and notified.`, 'info');
+              setLateArrivalAppointment(null);
+              setSelectedAppointment(null);
+            } finally {
+              setIsHandlingLate(false);
+            }
+          }}
+        />
       )}
 
       {/* ── DAY APPOINTMENTS SUMMARY MODAL (Triggered via "+ X more") ── */}
@@ -1339,7 +1271,7 @@ export default function ScheduleCalendar({ user }) {
               </button>
             </div>
 
-            <div className="p-4 max-h-[400px] overflow-y-auto space-y-2">
+            <div className="p-4 max-h-100 overflow-y-auto space-y-2">
               {(appointmentsByDate[formatDateString(daySummaryDate)] || []).map((app) => {
                 const returning = isReturningPatient(app);
                 return (
@@ -1547,7 +1479,7 @@ export default function ScheduleCalendar({ user }) {
                     ) : (
                       services.map((svc) => (
                         <option key={svc.id} value={svc.id}>
-                          {svc.service_name} — ₱{(svc.price || 0).toLocaleString()}
+                          {svc.service_name} (₱{(svc.price || 0).toLocaleString()})
                         </option>
                       ))
                     )}

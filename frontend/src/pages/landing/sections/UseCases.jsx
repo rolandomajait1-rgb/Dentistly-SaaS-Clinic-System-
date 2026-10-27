@@ -337,7 +337,7 @@ export default function UseCases() {
                     {/* Text details */}
                     <div className="space-y-1.5 flex-1">
                       <h4 className="text-[16px] font-black text-slate-800 tracking-tight leading-none font-display">{data.type}</h4>
-                      <p className="text-[12.5px] text-slate-650 leading-relaxed font-medium">{data.description}</p>
+                      <p className="text-[14px] text-slate-600 leading-relaxed font-medium">{data.description}</p>
                       
                       {/* Accordion checklist details */}
                       <AnimatePresence initial={false}>
@@ -352,7 +352,7 @@ export default function UseCases() {
                             <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Key Capabilities:</span>
                             <div className="flex flex-col gap-2">
                               {data.features.map(feat => (
-                                <div key={feat} className="flex items-center gap-2 text-[12px] font-bold text-slate-700">
+                                <div key={feat} className="flex items-center gap-2 text-[13px] font-bold text-slate-800">
                                   <span className="material-symbols-outlined text-[14px] text-teal-600 font-extrabold" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
                                   {feat}
                                 </div>

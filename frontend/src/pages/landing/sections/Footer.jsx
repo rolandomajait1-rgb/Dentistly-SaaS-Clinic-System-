@@ -65,11 +65,11 @@ export default function Footer({ onLogin }) {
   return (
     <footer className="relative bg-[#041411] text-slate-300 select-none overflow-hidden pt-16 md:pt-20 pb-10">
       {/* Subtle glowing orbs for premium visual depth */}
-      <div className="absolute bottom-0 right-0 w-[380px] h-[380px] bg-[#14b8a6]/4 blur-[140px] rounded-full pointer-events-none" />
-      <div className="absolute top-0 left-10 w-[280px] h-[280px] bg-[#14b8a6]/3 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-95 h-95 bg-[#14b8a6]/4 blur-[140px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 left-10 w-70 h-70 bg-[#14b8a6]/3 blur-[120px] rounded-full pointer-events-none" />
 
       {/* Main footer content */}
-      <div className="max-w-[1280px] mx-auto px-6 relative z-10">
+      <div className="max-w-7xl mx-auto px-6 relative z-10">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-12 gap-10 lg:gap-8 pb-14">
           {/* Brand Identity Block (4 cols on desktop) */}
           <div className="col-span-2 sm:col-span-3 lg:col-span-4 pr-0 lg:pr-10">
@@ -86,7 +86,7 @@ export default function Footer({ onLogin }) {
             <p className="text-[#00D28A] text-[10.5px] uppercase tracking-widest font-black mb-3">
               Dental Practice Management SaaS
             </p>
-            <p className="text-slate-400 text-[13px] leading-relaxed max-w-[290px]">
+            <p className="text-slate-400 text-[13px] leading-relaxed max-w-72.5">
               The all-in-one platform for modern dental clinics in the Philippines
             </p>
             

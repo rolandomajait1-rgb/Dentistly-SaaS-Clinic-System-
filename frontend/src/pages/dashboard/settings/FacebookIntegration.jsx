@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShieldCheck,
   CheckCircle,
@@ -74,7 +73,7 @@ const FacebookIntegration = ({
   const { showToast } = useNotifications();
   const oauthProcessed = useRef(false);
 
-  // Derived connection state (strict two-state pattern)
+  // Derived connection state
   const isConnected = Boolean(
     clinicData?.fb_page_integration?.is_active &&
     clinicData?.fb_page_integration?.fb_page_id
@@ -115,14 +114,14 @@ const FacebookIntegration = ({
   const [pageDetails, setPageDetails] = useState(null);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
 
-  // Interactive Live Messenger Test Sandbox States
+  // Preview / Live Test States
   const clinicDisplayName = clinicData?.clinic_name || 'our dental clinic';
   const [testInput, setTestInput] = useState('');
   const [simMessages, setSimMessages] = useState([
-    { sender: 'user', text: 'Hi! May available slot po ba for Teeth Cleaning bukas?' },
+    { sender: 'user', text: 'Hi! Can I book teeth cleaning for tomorrow?' },
     {
       sender: 'bot',
-      text: `Hello! Yes, we have open slots for Teeth Cleaning tomorrow at 10:00 AM and 2:00 PM at ${clinicDisplayName}. Would you like to reserve a time?`
+      text: `Hello! Yes, slots are open tomorrow at 10:00 AM and 2:00 PM at ${clinicDisplayName}. Would you like to reserve?`
     }
   ]);
   const [simIsTyping, setSimIsTyping] = useState(false);
@@ -289,33 +288,31 @@ const FacebookIntegration = ({
     handleOAuthCallback();
   }, [handleOAuthCallback]);
 
-  // Interactive Live Chat Simulator Test Action
+  // Live preview message sender
   const handleSendTestMessage = (e) => {
     e?.preventDefault();
     if (!testInput.trim() || simIsTyping) return;
 
     const userText = testInput.trim();
     setTestInput('');
-
     setSimMessages((prev) => [...prev, { sender: 'user', text: userText }]);
     setSimIsTyping(true);
 
     setTimeout(() => {
       setSimIsTyping(false);
-
       const lower = userText.toLowerCase();
-      let reply = `Thank you for contacting ${clinicDisplayName}! We are pleased to assist you with your dental needs.`;
+      let reply = `Thank you for contacting ${clinicDisplayName}! How may we help you today?`;
 
-      if (lower.includes('cleaning') || lower.includes('linis') || lower.includes('rate') || lower.includes('price') || lower.includes('magkano') || lower.includes('cost')) {
-        reply = `Our Teeth Cleaning (Oral Prophylaxis) starts at ₱800. We also provide tooth extractions, pasta (fillings), and orthodontic braces. Would you like to schedule an appointment?`;
-      } else if (lower.includes('sched') || lower.includes('book') || lower.includes('appointment') || lower.includes('bukas') || lower.includes('tomorrow') || lower.includes('oras') || lower.includes('open') || lower.includes('hours') || lower.includes('time')) {
-        reply = `We are open Monday to Saturday from 8:00 AM to 5:00 PM. Please reply with your Full Name and Contact Number so we can reserve your schedule! 😊`;
-      } else if (lower.includes('location') || lower.includes('saan') || lower.includes('address') || lower.includes('where')) {
-        reply = `We are located at ${clinicData?.address || 'our clinic address'}. You are welcome to visit during our operating hours!`;
+      if (lower.includes('clean') || lower.includes('rate') || lower.includes('price') || lower.includes('cost')) {
+        reply = `Teeth Cleaning starts at ₱800. We also offer extractions, fillings, and braces. Would you like to book?`;
+      } else if (lower.includes('sched') || lower.includes('book') || lower.includes('appoint') || lower.includes('hour') || lower.includes('time')) {
+        reply = `We are open Monday to Saturday, 8:00 AM - 5:00 PM. Please send your name and contact number to reserve.`;
+      } else if (lower.includes('location') || lower.includes('address') || lower.includes('where')) {
+        reply = `We are located at ${clinicData?.address || 'our clinic'}. You are always welcome to visit!`;
       }
 
       setSimMessages((prev) => [...prev, { sender: 'bot', text: reply }]);
-    }, 1000);
+    }, 800);
   };
 
   const activePageName =
@@ -330,133 +327,113 @@ const FacebookIntegration = ({
     '';
 
   return (
-    <div
-      className="w-full bg-white dark:bg-[#131f1e] rounded-[12px] p-5 flex flex-col gap-4 transition-all shadow-xs border border-slate-200/80 dark:border-[#213533] font-sans"
-      style={{
-        outline: '1.33px rgba(14, 63, 57, 0.15) solid',
-        outlineOffset: '-1.33px',
-      }}
-    >
-      {/* Header Bar */}
-      <div className="w-full flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-[#1b2b29]">
-        <div className="flex items-center gap-3">
-          <FacebookIcon size={26} />
+    <div className="w-full bg-white dark:bg-[#131f1e] rounded-xl p-5 border border-[#E2E8F0] dark:border-[#223331] shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col gap-4 transition-all font-['Work_Sans',sans-serif]">
+      {/* Header */}
+      <div className="w-full flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-[#1b2b29]">
+        <div className="flex items-center gap-2.5">
+          <FacebookIcon size={24} />
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-slate-800 dark:text-white">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#0E3F39] dark:text-[#85d5c9]">
                 Facebook Messenger
-              </span>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-[#0866FF] dark:bg-blue-950/50 dark:text-blue-300">
+              </h3>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-[#0866FF]">
                 Official API
               </span>
             </div>
-            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-              Automated patient appointment bookings and 24/7 AI inquiry handling
+            <p className="text-xs text-[#6A7282] dark:text-slate-400 mt-0.5">
+              Automated patient appointment bookings and 24/7 AI inquiries.
             </p>
           </div>
         </div>
 
-        {/* Single Authoritative Status Badge */}
         {isConnected ? (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             Connected
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-            <span className="w-2 h-2 rounded-full bg-slate-400" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
             Not Connected
           </span>
         )}
       </div>
 
-      {/* Main Two-Pane Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+      {/* Main Two-Column: Settings (Left) & Preview (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         
-        {/* Left Column: Connection & Rules */}
-        <div className="lg:col-span-7 flex flex-col h-full">
+        {/* Left: Connection Controls */}
+        <div className="lg:col-span-7 flex flex-col justify-between h-full gap-3">
           
-          {/* State A: Disconnected */}
+          {/* Disconnected State */}
           {!isConnected && step === 'initial' && (
-            <div className="p-5 sm:p-6 rounded-xl bg-[#F8FAFC] dark:bg-[#182625] border border-slate-200/80 dark:border-[#213533] flex flex-col justify-between h-full gap-5">
+            <div className="p-4 rounded-lg bg-[#F8FAFC] dark:bg-[#182625] border border-slate-200 flex flex-col justify-between h-full gap-4">
               <div className="space-y-2">
-                <h4 className="font-bold text-sm text-slate-900 dark:text-white">
-                  Connect Facebook Page
+                <h4 className="text-xs font-bold text-[#1E293B] dark:text-white">
+                  Connect Clinic Page
                 </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Connect your clinic's Facebook business page to activate SmileBot for 24/7 automated appointment booking, treatment rates, and operating hours inquiries.
+                <p className="text-xs text-[#6A7282] dark:text-slate-400 leading-relaxed">
+                  Link your Facebook business page to let SmileBot handle patient inquiries and appointments.
                 </p>
-                <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-300">
-                  <div className="flex items-center gap-1.5 bg-white dark:bg-[#131f1e] p-2.5 rounded-lg border border-slate-200/60 dark:border-[#213533]">
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shrink-0" />
-                    <span>24/7 Automated Replies</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-white dark:bg-[#131f1e] p-2.5 rounded-lg border border-slate-200/60 dark:border-[#213533]">
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shrink-0" />
-                    <span>Live Booking Scheduling</span>
-                  </div>
+                <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-600">
+                  <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                    24/7 Auto-Replies
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                    Live Booking
+                  </span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-200/60 dark:border-[#213533] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={handleStartConnection}
                   disabled={loading}
-                  className="px-6 py-2.5 bg-[#0866FF] hover:bg-[#075CE5] active:bg-[#0650C9] text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="px-4 py-2 bg-[#0866FF] hover:bg-[#075CE5] text-white text-xs font-semibold rounded-lg transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  <FacebookIcon size={18} />
-                  <span>{loading ? 'Connecting...' : 'Connect with Facebook'}</span>
+                  <FacebookIcon size={16} />
+                  <span>{loading ? 'Connecting...' : 'Connect Facebook'}</span>
                 </button>
-                <span className="text-[11px] text-slate-400 font-medium">
-                  Official Meta Business API
-                </span>
+                <span className="text-[11px] text-slate-400">Meta Business API</span>
               </div>
             </div>
           )}
 
-          {/* State A2: Page Selection Screen */}
+          {/* Page Selection State */}
           {step === 'selecting' && pages.length > 0 && (
-            <div className="p-5 rounded-xl bg-[#F8FAFC] dark:bg-[#182625] border border-slate-200/80 dark:border-[#213533] flex flex-col justify-between h-full gap-4">
-              <div className="space-y-3">
-                <div>
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">Select a Facebook Page</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Choose which Facebook page represents your dental practice:</p>
-                </div>
-
-                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+            <div className="p-4 rounded-lg bg-[#F8FAFC] dark:bg-[#182625] border border-slate-200 flex flex-col justify-between h-full gap-3">
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-[#1E293B] dark:text-white">Select Facebook Page</h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                   {pages.map((page) => (
                     <div
                       key={page.id}
-                      className="p-3 bg-white dark:bg-[#131f1e] border border-slate-200 dark:border-[#213533] rounded-xl flex items-center justify-between gap-3 shadow-3xs"
+                      className="p-2.5 bg-white dark:bg-[#131f1e] border border-slate-200 rounded-lg flex items-center justify-between gap-2"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
                         {page.picture?.data?.url ? (
                           <img
                             src={page.picture.data.url}
                             alt={page.name}
-                            className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                            className="w-7 h-7 rounded-full object-cover shrink-0"
                           />
                         ) : (
-                          <div className="w-9 h-9 rounded-full bg-[#0866FF]/10 text-[#0866FF] flex items-center justify-center font-bold text-xs shrink-0">
+                          <div className="w-7 h-7 rounded-full bg-[#0866FF]/10 text-[#0866FF] flex items-center justify-center font-bold text-xs shrink-0">
                             {page.name.charAt(0)}
                           </div>
                         )}
-                        <div className="min-w-0">
-                          <p className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                            {page.name}
-                          </p>
-                          <p className="text-[11px] text-slate-400 truncate">
-                            {page.category || 'Dental Clinic'}
-                          </p>
-                        </div>
+                        <span className="font-semibold text-xs text-slate-800 truncate">{page.name}</span>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => handlePageSelect(page)}
                         disabled={loading}
-                        className="px-3.5 py-1.5 bg-[#0866FF] hover:bg-[#075CE5] text-white text-xs font-semibold rounded-lg transition-all shrink-0 cursor-pointer disabled:opacity-50"
+                        className="px-3 py-1 bg-[#0866FF] hover:bg-[#075CE5] text-white text-xs font-semibold rounded-md shrink-0 cursor-pointer disabled:opacity-50"
                       >
                         Connect
                       </button>
@@ -465,52 +442,40 @@ const FacebookIntegration = ({
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-200/60 dark:border-[#213533]">
-                <button
-                  type="button"
-                  onClick={() => setStep('initial')}
-                  className="text-xs text-slate-500 hover:text-slate-700 underline cursor-pointer"
-                >
-                  Cancel selection
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setStep('initial')}
+                className="text-xs text-slate-500 hover:text-slate-700 underline self-start cursor-pointer"
+              >
+                Cancel
+              </button>
             </div>
           )}
 
-          {/* State B: Connected - Manage Integration Card */}
+          {/* Connected State */}
           {isConnected && (
-            <div className="p-5 rounded-xl bg-[#F8FAFC] dark:bg-[#182625] border border-slate-200/80 dark:border-[#213533] flex flex-col justify-between h-full gap-4">
-              <div className="space-y-4">
-                {/* Connected Page Identity */}
-                <div className="flex items-center justify-between gap-3 pb-3.5 border-b border-slate-200/70 dark:border-[#213533]">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative shrink-0">
-                      {pageDetails?.picture?.data?.url ? (
-                        <img
-                          src={pageDetails.picture.data.url}
-                          alt={activePageName}
-                          className="w-11 h-11 rounded-full object-cover border border-slate-200"
-                        />
-                      ) : (
-                        <div className="w-11 h-11 rounded-full bg-[#0866FF] text-white flex items-center justify-center font-bold text-sm">
-                          {activePageName.charAt(0)}
-                        </div>
-                      )}
-                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-[#182625] rounded-full" />
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">
-                          {activePageName}
-                        </h4>
-                        <span className="text-[#0866FF]" title="Verified Facebook Page">
-                          <ShieldCheck size={16} weight="fill" />
-                        </span>
+            <div className="p-4 rounded-lg bg-[#F8FAFC] dark:bg-[#182625] border border-slate-200 flex flex-col justify-between h-full gap-3">
+              <div className="space-y-3">
+                {/* Connected Page Info */}
+                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-200">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {pageDetails?.picture?.data?.url ? (
+                      <img
+                        src={pageDetails.picture.data.url}
+                        alt={activePageName}
+                        className="w-8 h-8 rounded-full object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-[#0866FF] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                        {activePageName.charAt(0)}
                       </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        ID: {activePageId} • {pageDetails?.category || 'Dental Clinic'}
-                      </p>
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1">
+                        <span className="font-semibold text-xs text-slate-900 truncate">{activePageName}</span>
+                        <ShieldCheck size={14} weight="fill" className="text-[#0866FF] shrink-0" />
+                      </div>
+                      <p className="text-[10px] text-slate-400">ID: {activePageId}</p>
                     </div>
                   </div>
 
@@ -518,138 +483,121 @@ const FacebookIntegration = ({
                     type="button"
                     onClick={triggerDisconnect}
                     disabled={loading}
-                    className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline shrink-0 cursor-pointer disabled:opacity-50"
+                    className="text-xs font-semibold text-rose-600 hover:underline cursor-pointer disabled:opacity-50"
                   >
-                    Disconnect Page
+                    Disconnect
                   </button>
                 </div>
 
-                {/* Master 24/7 AI Auto-Replies Toggle Switch */}
-                <div className="flex items-center justify-between gap-3 p-3.5 bg-white dark:bg-[#131f1e] rounded-xl border border-slate-200/70 dark:border-[#213533]">
+                {/* AI Toggle Switch */}
+                <div className="flex items-center justify-between gap-3 pt-1">
                   <div>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">
-                      Enable 24/7 AI Auto-Replies
-                    </p>
-                    <p className="text-[11px] text-slate-400 dark:text-slate-400 mt-0.5">
-                      Automatically replies to incoming patient inquiries and booking requests
-                    </p>
+                    <h4 className="text-xs font-semibold text-[#1E293B] dark:text-white">24/7 AI Auto-Replies</h4>
+                    <p className="text-xs text-[#6A7282] dark:text-slate-400">Respond automatically to patient messages.</p>
                   </div>
 
                   <button
                     type="button"
                     onClick={() => onToggleMessenger && onToggleMessenger(!messengerEnabled)}
-                    className="w-[50px] p-[2.5px] rounded-full transition-colors flex items-center cursor-pointer shrink-0"
+                    className="w-[46px] p-[2px] rounded-full transition-colors flex items-center cursor-pointer shrink-0"
                     style={{
                       background: messengerEnabled ? '#1A8A7A' : '#CECECE',
                       justifyContent: messengerEnabled ? 'flex-end' : 'flex-start',
                     }}
                   >
-                    <div className="w-[16px] h-[16px] bg-white rounded-full shadow-[0px_1px_2px_rgba(0,0,0,0.15)]" />
+                    <div className="w-[16px] h-[16px] bg-white rounded-full shadow-xs" />
                   </button>
                 </div>
               </div>
 
-              {/* Status Explanation Note */}
-              <div className="pt-2 border-t border-slate-200/60 dark:border-[#213533] flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <CheckCircle size={15} className="text-emerald-600 shrink-0 mt-0.5" weight="bold" />
-                <p className="leading-relaxed text-[11.5px]">
-                  SmileBot is active on this Facebook Page. All incoming patient inquiries receive instant responses.
-                </p>
+              <div className="pt-2 border-t border-slate-200/70 flex items-center gap-1.5 text-[11px] text-slate-500">
+                <CheckCircle size={14} className="text-emerald-600 shrink-0" weight="bold" />
+                <span>SmileBot is active and handling incoming patient chats.</span>
               </div>
-
             </div>
           )}
 
         </div>
 
-        {/* Right Column: Interactive Messenger Sandbox / Live Preview */}
+        {/* Right: Live Preview / Test Sandbox */}
         <div className="lg:col-span-5 flex flex-col h-full">
-          <div className="bg-[#F8FAFC] dark:bg-[#0f1716] border border-slate-200 dark:border-[#1b2b29] rounded-xl flex flex-col h-full min-h-[350px] overflow-hidden">
+          <div className="bg-[#F8FAFC] dark:bg-[#0f1716] border border-slate-200 rounded-lg flex flex-col h-full min-h-[260px] overflow-hidden">
             
-            {/* Sandbox Header */}
-            <div className="px-3.5 py-2.5 bg-white dark:bg-[#182625] border-b border-slate-200/80 dark:border-[#1b2b29] flex items-center justify-between shrink-0">
+            {/* Preview Header */}
+            <div className="px-3 py-2 bg-white dark:bg-[#182625] border-b border-slate-200 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-[#0866FF] text-white flex items-center justify-center text-[10px] font-bold">
+                <div className="w-5 h-5 rounded-full bg-[#0866FF] text-white flex items-center justify-center text-[9px] font-bold">
                   SB
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-900 dark:text-white leading-none">SmileBot</p>
-                  <p className="text-[9px] text-slate-400 mt-0.5">Live Messenger Test</p>
+                  <p className="text-xs font-bold text-[#1E293B] dark:text-white leading-none">SmileBot</p>
+                  <p className="text-[10px] text-[#6A7282] dark:text-slate-400 mt-0.5">Live Preview</p>
                 </div>
               </div>
 
-              {/* Status indicator tied to live state */}
               {isConnected ? (
                 messengerEnabled ? (
-                  <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                     Active
                   </span>
                 ) : (
-                  <span className="text-[9.5px] font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
-                    Auto-Reply Paused
+                  <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    Paused
                   </span>
                 )
               ) : (
-                <span className="text-[9.5px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full" />
+                <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
                   Offline
                 </span>
               )}
             </div>
 
-            {/* Chat Bubble Stream */}
-            <div ref={chatScrollRef} className="flex-1 p-3 overflow-y-auto space-y-2 flex flex-col min-h-[220px]">
-              <AnimatePresence initial={false}>
-                {simMessages.map((msg, index) => {
-                  const isUser = msg.sender === 'user';
-                  return (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className={`max-w-[85%] text-[11.5px] leading-relaxed px-3 py-1.5 rounded-2xl ${
-                        isUser
-                          ? 'ml-auto bg-[#0866FF] text-white rounded-br-xs'
-                          : 'mr-auto bg-white dark:bg-[#182625] text-slate-800 dark:text-slate-100 border border-slate-200/70 dark:border-[#213533] rounded-bl-xs shadow-3xs'
-                      }`}
-                    >
-                      {msg.text}
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
+            {/* Chat Messages */}
+            <div ref={chatScrollRef} className="flex-1 p-2.5 overflow-y-auto space-y-2 flex flex-col min-h-[150px] max-h-[190px]">
+              {simMessages.map((msg, idx) => {
+                const isUser = msg.sender === 'user';
+                return (
+                  <div
+                    key={idx}
+                    className={`max-w-[85%] text-[11px] leading-relaxed px-2.5 py-1.5 rounded-xl ${
+                      isUser
+                        ? 'ml-auto bg-[#0866FF] text-white rounded-br-none'
+                        : 'mr-auto bg-white dark:bg-[#182625] text-slate-800 border border-slate-200/80 rounded-bl-none shadow-2xs'
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
+                );
+              })}
 
               {simIsTyping && (
-                <div className="mr-auto bg-white dark:bg-[#182625] border border-slate-200/70 dark:border-[#213533] px-2.5 py-1.5 rounded-2xl rounded-bl-xs flex items-center gap-1 shadow-3xs">
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="mr-auto bg-white border border-slate-200 px-2 py-1 rounded-xl flex items-center gap-1 text-slate-400 text-[10px]">
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
                   <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                   <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
               )}
             </div>
 
-            {/* Interactive Test Input Bar */}
+            {/* Test Input Form */}
             <form
               onSubmit={handleSendTestMessage}
-              className="p-2 bg-white dark:bg-[#182625] border-t border-slate-200/80 dark:border-[#1b2b29] flex items-center gap-2 shrink-0"
+              className="p-1.5 bg-white border-t border-slate-200 flex items-center gap-1.5 shrink-0"
             >
               <input
                 type="text"
                 value={testInput}
                 onChange={(e) => setTestInput(e.target.value)}
-                placeholder="Send a test message to preview auto-replies..."
-                className="flex-1 bg-slate-100 dark:bg-[#131f1e] text-[11px] text-slate-800 dark:text-slate-100 px-3 py-1.5 rounded-full focus:outline-none focus:ring-1 focus:ring-[#0866FF]"
+                placeholder="Type a test message..."
+                className="flex-1 bg-slate-100 text-[11px] text-slate-800 px-2.5 py-1 rounded-full focus:outline-none focus:ring-1 focus:ring-[#0866FF]"
               />
               <button
                 type="submit"
                 disabled={!testInput.trim() || simIsTyping}
-                className="w-7 h-7 rounded-full bg-[#0866FF] hover:bg-[#075CE5] text-white flex items-center justify-center shrink-0 cursor-pointer disabled:opacity-40 transition-all"
-                title="Send test message"
+                className="w-6 h-6 rounded-full bg-[#0866FF] hover:bg-[#075CE5] text-white flex items-center justify-center shrink-0 cursor-pointer disabled:opacity-40"
               >
-                <PaperPlaneRight size={12} weight="bold" />
+                <PaperPlaneRight size={10} weight="bold" />
               </button>
             </form>
 
@@ -658,11 +606,11 @@ const FacebookIntegration = ({
 
       </div>
 
-      {/* Disconnect Confirmation Modal */}
+      {/* Disconnect Modal */}
       <ConfirmModal
         isOpen={showDisconnectConfirm}
         title="Disconnect Facebook Page"
-        message="Are you sure you want to disconnect this Facebook page? Automated messaging and appointment scheduling will stop."
+        message="Are you sure you want to disconnect this Facebook page? Automated messaging will stop."
         confirmText="Disconnect"
         cancelText="Cancel"
         type="danger"

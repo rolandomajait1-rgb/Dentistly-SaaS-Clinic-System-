@@ -152,8 +152,8 @@ export default function RegisterPage({ onRegister, onBack, onSwitchToLogin }) {
           EMAIL VERIFICATION PENDING MODAL
       ════════════════════════════════════════════════ */}
       {showVerificationModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-[4px] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[32px] p-8 sm:p-9 max-w-[420px] w-full text-center shadow-[0_20px_50px_rgba(0,0,0,0.18)] relative border border-slate-100/80 flex flex-col items-center">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-4xl p-8 sm:p-9 max-w-105 w-full text-center shadow-[0_20px_50px_rgba(0,0,0,0.18)] relative border border-slate-100/80 flex flex-col items-center">
             {/* Close button */}
             <button
               onClick={() => {
@@ -234,7 +234,7 @@ export default function RegisterPage({ onRegister, onBack, onSwitchToLogin }) {
       ════════════════════════════════════════════════ */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-[3px] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[32px] p-8 sm:p-9 max-w-[390px] w-full text-center shadow-[0_20px_50px_rgba(0,0,0,0.15)] relative border border-slate-100/80 flex flex-col items-center">
+          <div className="bg-white rounded-4xl p-8 sm:p-9 max-w-97.5 w-full text-center shadow-[0_20px_50px_rgba(0,0,0,0.15)] relative border border-slate-100/80 flex flex-col items-center">
             {/* Close button */}
             <button
               onClick={handleProceed}
@@ -284,7 +284,7 @@ export default function RegisterPage({ onRegister, onBack, onSwitchToLogin }) {
           className="absolute inset-0 bg-cover bg-center pointer-events-none"
           style={{ backgroundImage: `url(${assets.authContainerGradient})` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-tr from-[#001e1b]/80 via-[#004e47]/65 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-linear-to-tr from-[#001e1b]/80 via-primary/65 to-transparent pointer-events-none" />
 
         {/* Top: White Pill Badge with Logo */}
         <div className="relative z-10">
@@ -394,7 +394,7 @@ export default function RegisterPage({ onRegister, onBack, onSwitchToLogin }) {
         <div className="flex-1 flex items-center justify-center py-8">
           <div
             ref={formRef}
-            className="w-full max-w-[460px]"
+            className="w-full max-w-115"
             style={{ opacity: 0, transform: 'translateY(16px)', transition: 'opacity 0.4s ease-out, transform 0.4s ease-out' }}
           >
             
@@ -422,7 +422,7 @@ export default function RegisterPage({ onRegister, onBack, onSwitchToLogin }) {
                     </div>
                     <div>
                       <h4 className="text-[15px] font-bold text-slate-900">Everything on Day 1</h4>
-                      <p className="text-[13px] text-slate-500 font-medium">Appointments, EHR, reminders — fully unlocked.</p>
+                      <p className="text-[13px] text-slate-500 font-medium">Appointments, EHR, and reminders fully unlocked.</p>
                     </div>
                   </div>
 
@@ -434,7 +434,7 @@ export default function RegisterPage({ onRegister, onBack, onSwitchToLogin }) {
                     </div>
                     <div>
                       <h4 className="text-[15px] font-bold text-slate-900">Whole team included</h4>
-                      <p className="text-[13px] text-slate-500 font-medium">Add dentists, staff, and front desk — no seat limits.</p>
+                      <p className="text-[13px] text-slate-500 font-medium">Add dentists, staff, and front desk with no seat limits.</p>
                     </div>
                   </div>
 
@@ -485,7 +485,7 @@ export default function RegisterPage({ onRegister, onBack, onSwitchToLogin }) {
                   <button
                     type="button"
                     onClick={() => setStep(1)}
-                    className="w-full py-4 px-8 rounded-2xl font-bold text-[15px] text-white bg-gradient-to-r from-[#004E47] to-[#00A86B] hover:from-[#003831] hover:to-[#008f5a] active:scale-[0.99] flex items-center justify-center gap-2 shadow-[0_8px_25px_rgba(0,78,71,0.25)] hover:shadow-[0_10px_30px_rgba(0,78,71,0.35)] transition-all cursor-pointer group"
+                    className="w-full py-4 px-8 rounded-2xl font-bold text-[15px] text-white bg-linear-to-r from-[#004E47] to-[#00A86B] hover:from-[#003831] hover:to-[#008f5a] active:scale-[0.99] flex items-center justify-center gap-2 shadow-[0_8px_25px_rgba(0,78,71,0.25)] hover:shadow-[0_10px_30px_rgba(0,78,71,0.35)] transition-all cursor-pointer group"
                   >
                     <span>Start Free Trial</span>
                     <span className="material-symbols-outlined text-[19px] group-hover:translate-x-1 transition-transform">

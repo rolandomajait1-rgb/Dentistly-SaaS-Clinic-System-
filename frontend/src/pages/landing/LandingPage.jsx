@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 // Section Components
 import Navbar from './sections/Navbar';
 import Hero from './sections/Hero';
-import SocialProof from './sections/SocialProof';
 import Integrations from './sections/Integrations';
 import PainPoints from './sections/PainPoints';
 import ChatbotDemo from './sections/ChatbotDemo';
@@ -67,8 +66,6 @@ export default function LandingPage(props) {
       {/* Modular sections */}
       <Navbar {...props} />
       <Hero {...props} />
-      <hr className="border-none h-px bg-linear-to-r from-transparent via-slate-200 to-transparent mx-auto max-w-5xl" />
-      <SocialProof {...props} />
       <hr className="border-none h-px bg-linear-to-r from-transparent via-slate-200 to-transparent mx-auto max-w-5xl" />
       <Integrations {...props} />
       <hr className="border-none h-px bg-linear-to-r from-transparent via-slate-200 to-transparent mx-auto max-w-5xl" />

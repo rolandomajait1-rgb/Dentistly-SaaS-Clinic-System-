@@ -511,10 +511,10 @@ export default function OnboardingWizard({ clinicData, onComplete }) {
         </div>
 
         {/* Live Simulator Preview Side (Right) */}
-        <div className="bg-slate-900 p-6 flex items-center justify-center border-t md:border-t-0 md:border-l border-outline-variant/20 md:w-[360px] shrink-0">
+        <div className="bg-slate-900 p-6 flex items-center justify-center border-t md:border-t-0 md:border-l border-outline-variant/20 md:w-90 shrink-0">
           
           {/* Phone chassis */}
-          <div className="w-[280px] h-[500px] bg-slate-950 rounded-[40px] border-4 border-slate-800 shadow-2xl overflow-hidden flex flex-col relative">
+          <div className="w-70 h-125 bg-slate-950 rounded-[40px] border-4 border-slate-800 shadow-2xl overflow-hidden flex flex-col relative">
             
             {/* Dynamic island notch */}
             <div className="absolute top-2 left-1/2 -translate-x-1/2 w-24 h-4 bg-black rounded-full z-10 flex items-center justify-center">

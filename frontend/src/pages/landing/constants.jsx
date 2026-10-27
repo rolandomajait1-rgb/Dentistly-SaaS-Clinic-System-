@@ -130,7 +130,7 @@ export const INTEGRATIONS = [
 export const PAIN_POINTS = [
   {
     before: { icon: 'phone_disabled',    text: 'Missed calls = missed patients. No after-hours booking possible.' },
-    after:  { icon: 'smart_toy',         text: 'AI chatbot books patients 24/7, even at midnight — automatically.' },
+    after:  { icon: 'smart_toy',         text: 'AI chatbot books patients 24/7, even at midnight automatically.' },
   },
   {
     before: { icon: 'event_busy',        text: 'Paper logs, sticky notes, and manual double-bookings every day.' },
@@ -138,7 +138,7 @@ export const PAIN_POINTS = [
   },
   {
     before: { icon: 'folder_off',        text: 'Patient records buried in filing cabinets or scattered spreadsheets.' },
-    after:  { icon: 'clinical_notes',    text: 'Full EHR, treatment history & prescriptions — searchable in seconds.' },
+    after:  { icon: 'clinical_notes',    text: 'Full EHR, treatment history & prescriptions in seconds.' },
   },
   {
     before: { icon: 'notifications_off', text: 'Forgotten reminders and last-minute no-shows cost real revenue.' },
@@ -212,11 +212,11 @@ export const PRICING_PLANS = [
 export const FAQS = [
   {
     q: 'Do I need technical knowledge to set up Pivodent?',
-    a: 'No. The guided onboarding wizard walks you through everything — clinic profile, Facebook connection, and email setup. Most clinics are live in under 30 minutes.',
+    a: 'No. The guided onboarding wizard walks you through everything: clinic profile, Facebook connection, and email setup. Most clinics are live in under 30 minutes.',
   },
   {
     q: 'Does the Facebook chatbot require a developer to set up?',
-    a: 'No. The Settings panel has a built-in Facebook integration wizard. You just paste your Page ID, Access Token, and verify token — no code needed.',
+    a: 'No. The Settings panel has a built-in Facebook integration wizard. You just paste your Page ID, Access Token, and verify token with no code needed.',
   },
   {
     q: 'How does automated patient communication work?',
@@ -232,7 +232,7 @@ export const FAQS = [
   },
   {
     q: 'What happens to my data if I cancel?',
-    a: 'Your data remains accessible for 30 days after cancellation. You can export all patient records at any time from the dashboard — no lock-in.',
+    a: 'Your data remains accessible for 30 days after cancellation. You can export all patient records at any time from the dashboard with no lock-in.',
   },
   {
     q: 'Can I use my own email server (SMTP)?',
@@ -258,7 +258,7 @@ export const TESTIMONIALS = [
     avatarColor: 'from-blue-400 to-indigo-500',
     image: assets.docMarkVillanueva,
     rating: 5,
-    quote: 'The Facebook chatbot books appointments while I sleep. I wake up to 5–10 new bookings every morning without lifting a finger. My staff now spends zero time answering booking messages.',
+    quote: 'The Facebook chatbot books appointments while I sleep. I wake up to 5 to 10 new bookings every morning without lifting a finger. My staff now spends zero time answering booking messages.',
     stat: '+40% Bookings',
   },
   {
@@ -268,7 +268,7 @@ export const TESTIMONIALS = [
     avatarColor: 'from-rose-400 to-pink-500',
     image: assets.docCarlaSantos,
     rating: 5,
-    quote: 'We manage 3 clinics from one dashboard now. The superadmin panel alone is worth the Enterprise price. Real-time KPIs for every branch — it is like having a full business intelligence tool built in.',
+    quote: 'We manage 3 clinics from one dashboard now. The superadmin panel alone is worth the Enterprise price. Real-time KPIs for every branch make it like having a full business intelligence tool built in.',
     stat: '3x Efficiency',
   },
   {
@@ -278,7 +278,7 @@ export const TESTIMONIALS = [
     avatarColor: 'from-amber-400 to-orange-500',
     image: assets.docLizaMendoza,
     rating: 5,
-    quote: 'Pivodent replaced 3 separate apps we were paying for. Everything is in one place — patient files, prescriptions, and visit logs. Setup took 20 minutes. Absolutely love it.',
+    quote: 'Pivodent replaced 3 separate apps we were paying for. Everything is in one place: patient files, prescriptions, and visit logs. Setup took 20 minutes. Absolutely love it.',
     stat: '₱18k/mo Saved',
   },
 ];

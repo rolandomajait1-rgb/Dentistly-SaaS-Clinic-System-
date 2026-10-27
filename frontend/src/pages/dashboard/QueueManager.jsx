@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getQueue, getServices, createAppointment, updateAppointmentStatus } from '../../api';
+import LateArrivalModal, { isAppointmentLate } from '../../components/ui/LateArrivalModal';
 import {
   UsersThree,
   UserFocus,
@@ -26,11 +27,12 @@ const formatTime = (timeString) => {
   return `${formattedHours}:${m} ${ampm}`;
 };
 
-function QueueCard({ app, position, onCall, isCurrent }) {
+function QueueCard({ app, position, onCall, onLateArrival, isCurrent }) {
+  const isLate = isAppointmentLate(app);
   return (
     <div className={`flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 ${
       isCurrent
-        ? 'bg-primary/[0.04] border-primary/45 shadow-xs'
+        ? 'bg-primary/4 border-primary/45 shadow-xs'
         : 'bg-white border-slate-200/80 hover:border-primary/30 hover:shadow-xs'
     }`} >
       <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black shrink-0 border ${
@@ -44,6 +46,16 @@ function QueueCard({ app, position, onCall, isCurrent }) {
           <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{app.patient?.full_name || 'Walk-in'}</p>
           {isCurrent && (
             <span className="shrink-0 text-[9px] font-black bg-amber-100 text-amber-850 border border-amber-300 px-2 py-0.5 rounded-full uppercase tracking-wider">In Chair</span>
+          )}
+          {!isCurrent && isLate && onLateArrival && (
+            <button
+              type="button"
+              onClick={onLateArrival}
+              title="Patient arrived late - click to handle"
+              className="shrink-0 text-[9px] font-black bg-amber-100 text-amber-850 border border-amber-300 px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 hover:bg-amber-200 transition-colors cursor-pointer"
+            >
+              <Clock size={10} weight="bold" /> Late
+            </button>
           )}
         </div>
         <p className="text-[10px] text-slate-500 dark:text-slate-400 font-extrabold mt-1">{app.service?.service_name}</p>
@@ -71,6 +83,8 @@ export default function QueueManager() {
   const [walkinName, setWalkinName] = useState('');
   const [walkinPhone, setWalkinPhone] = useState('');
   const [walkinServiceId, setWalkinServiceId] = useState('');
+  const [lateArrivalAppointment, setLateArrivalAppointment] = useState(null);
+  const [isHandlingLate, setIsHandlingLate] = useState(false);
 
   const fetchQueue = useCallback(async () => {
     try { const data = await getQueue(); setQueue(data); } catch (err) { console.error(err); } finally { setIsLoading(false); }
@@ -250,7 +264,14 @@ export default function QueueManager() {
                   <p className="text-xs mt-1 text-slate-500 dark:text-slate-450">No upcoming appointments in the queue.</p>
                 </div>
               ) : remainingQueue.map((app, idx) => (
-                <QueueCard key={app.id} app={app} position={idx + 1} isCurrent={false} onCall={() => handleCallSpecific(app)} />
+                <QueueCard
+                  key={app.id}
+                  app={app}
+                  position={idx + 1}
+                  isCurrent={false}
+                  onCall={() => handleCallSpecific(app)}
+                  onLateArrival={() => setLateArrivalAppointment(app)}
+                />
               ))}
             </div>
           </div>
@@ -320,6 +341,44 @@ export default function QueueManager() {
           </div>
         </div>
       </div>
+
+      {/* Late Arrival Confirmation Modal from Figma */}
+      {lateArrivalAppointment && (
+        <LateArrivalModal
+          appointment={lateArrivalAppointment}
+          isOpen={!!lateArrivalAppointment}
+          onClose={() => setLateArrivalAppointment(null)}
+          isSubmitting={isHandlingLate}
+          onMoveToEndOfQueue={async (app) => {
+            setIsHandlingLate(true);
+            try {
+              if (app?.id) {
+                await updateAppointmentStatus(app.id, 'Approved', null, { move_to_end_of_queue: true });
+                await fetchQueue();
+              }
+              setLateArrivalAppointment(null);
+            } catch (err) {
+              alert('Error moving patient to end of queue: ' + err.message);
+            } finally {
+              setIsHandlingLate(false);
+            }
+          }}
+          onPromptReschedule={async (app) => {
+            setIsHandlingLate(true);
+            try {
+              if (app?.id) {
+                await updateAppointmentStatus(app.id, 'Cancelled', 'Late arrival - prompt reschedule');
+                await fetchQueue();
+              }
+              setLateArrivalAppointment(null);
+            } catch (err) {
+              alert('Error updating status: ' + err.message);
+            } finally {
+              setIsHandlingLate(false);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

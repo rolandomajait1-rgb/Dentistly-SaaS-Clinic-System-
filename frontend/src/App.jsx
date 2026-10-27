@@ -13,7 +13,7 @@ import RegisterPage from './pages/auth/RegisterPage';
 import SuperadminDashboard from './pages/superadmin/SuperadminDashboard';
 import PublicBookingPortal from './pages/booking/PublicBookingPortal';
 import OnboardingWizard from './pages/onboarding/OnboardingWizard';
-import { logout, verifyEmail } from './api';
+import { logout, verifyEmail, resetPassword, acceptInvite } from './api';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
 import NotificationCenter from './components/layout/NotificationCenter';
 import ConfirmModal from './components/ui/ConfirmModal';
@@ -34,6 +34,24 @@ export function AppContent() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showVerifiedSuccessModal, setShowVerifiedSuccessModal] = useState(false);
   const [verifyErrorModal, setVerifyErrorModal] = useState('');
+
+  /* Staff Invite Detector States */
+  const [showInviteModal, setShowInviteModal]   = useState(false);
+  const [inviteToken, setInviteToken]           = useState('');
+  const [invitePassword, setInvitePassword]     = useState('');
+  const [inviteConfirm, setInviteConfirm]       = useState('');
+  const [inviteLoading, setInviteLoading]       = useState(false);
+  const [inviteError, setInviteError]           = useState('');
+
+  /* Reset Password Detector States */
+  const [showResetModal, setShowResetModal]         = useState(false);
+  const [resetToken, setResetToken]                 = useState('');
+  const [resetEmail, setResetEmail]                 = useState('');
+  const [resetPasswordVal, setResetPasswordVal]     = useState('');
+  const [resetConfirmVal, setResetConfirmVal]       = useState('');
+  const [resetLoading, setResetLoading]             = useState(false);
+  const [resetError, setResetError]                 = useState('');
+
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('theme') || 'light';
   });
@@ -89,6 +107,7 @@ export function AppContent() {
     return 'overview';
   });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showWizard, setShowWizard] = useState(() => {
     const savedClinic = localStorage.getItem('clinic');
@@ -123,26 +142,34 @@ export function AppContent() {
     setView('dashboard');
   };
 
-  /* Email Verification Token Detector */
+  /* Token Detectors (Email Verify, Staff Invite, Password Reset) */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
-    const isVerifyPath = window.location.pathname.startsWith('/verify-email') || params.has('token');
+    const emailParam = params.get('email');
+    const path = window.location.pathname;
 
-    if (token && isVerifyPath) {
-      // Clear token from browser URL cleanly without reload
-      window.history.replaceState({}, document.title, window.location.pathname.startsWith('/verify-email') ? '/' : window.location.pathname);
-
-      verifyEmail(token)
-        .then((data) => {
-          handleLoginSuccess(data);
-          setShowVerifiedSuccessModal(true);
-          showToast('Email verified successfully! Welcome to Pivodent.', 'success');
-        })
-        .catch((err) => {
-          setVerifyErrorModal(err.message || 'The email verification link is invalid or has expired.');
-          showToast(err.message || 'Verification failed.', 'error');
-        });
+    if (token) {
+      if (path.startsWith('/accept-invite') || params.get('type') === 'invite') {
+        setInviteToken(token);
+        setShowInviteModal(true);
+      } else if (path.startsWith('/reset-password') || params.get('type') === 'reset') {
+        setResetToken(token);
+        setResetEmail(emailParam || '');
+        setShowResetModal(true);
+      } else if (path.startsWith('/verify-email') || (!path.startsWith('/book/') && !path.startsWith('/superadmin'))) {
+        window.history.replaceState({}, document.title, window.location.pathname.startsWith('/verify-email') ? '/' : window.location.pathname);
+        verifyEmail(token)
+          .then((data) => {
+            handleLoginSuccess(data);
+            setShowVerifiedSuccessModal(true);
+            showToast('Email verified successfully! Welcome to Pivodent.', 'success');
+          })
+          .catch((err) => {
+            setVerifyErrorModal(err.message || 'The email verification link is invalid or has expired.');
+            showToast(err.message || 'Verification failed.', 'error');
+          });
+      }
     }
   }, [showToast]);
 
@@ -171,6 +198,7 @@ export function AppContent() {
         return (
           <DashboardOverview 
             clinicId={clinic?.id} 
+            clinic={clinic}
             setActiveTab={setActiveTab}
             user={user}
           />
@@ -193,6 +221,8 @@ export function AppContent() {
           <PatientRecords 
             clinicId={clinic?.id} 
             user={user}
+            selectedPatient={selectedPatient}
+            setSelectedPatient={setSelectedPatient}
           />
         );
       case 'reports':
@@ -328,6 +358,187 @@ export function AppContent() {
           </div>
         </div>
       )}
+
+      {/* ── ACCEPT STAFF INVITATION MODAL ── */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-8 max-w-[420px] w-full shadow-2xl border border-slate-100 relative">
+            <button
+              onClick={() => setShowInviteModal(false)}
+              className="absolute top-5 right-5 text-slate-300 hover:text-slate-500 transition-colors p-1"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-teal-50 text-[#004E47] flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-[26px]">badge</span>
+            </div>
+
+            <h3 className="text-xl font-bold text-slate-900 mb-1">Accept Staff Invitation</h3>
+            <p className="text-xs text-slate-500 mb-5 leading-relaxed">
+              Welcome to the team! Set a secure password to activate your clinic account.
+            </p>
+
+            {inviteError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 font-medium">
+                {inviteError}
+              </div>
+            )}
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (invitePassword !== inviteConfirm) {
+                  setInviteError('Passwords do not match.');
+                  return;
+                }
+                setInviteLoading(true);
+                setInviteError('');
+                try {
+                  const data = await acceptInvite({
+                    token: inviteToken,
+                    password: invitePassword,
+                    password_confirmation: inviteConfirm,
+                  });
+                  setShowInviteModal(false);
+                  handleLoginSuccess(data);
+                  showToast('Invitation accepted! Welcome to your clinic dashboard.', 'success');
+                } catch (err) {
+                  setInviteError(err.message || 'Failed to accept invitation.');
+                } finally {
+                  setInviteLoading(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Create Password</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={invitePassword}
+                  onChange={(e) => setInvitePassword(e.target.value)}
+                  placeholder="Min 8 characters"
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#004E47] focus:ring-2 focus:ring-[#004E47]/10"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Confirm Password</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={inviteConfirm}
+                  onChange={(e) => setInviteConfirm(e.target.value)}
+                  placeholder="Repeat password"
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#004E47] focus:ring-2 focus:ring-[#004E47]/10"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={inviteLoading}
+                className="w-full h-11 bg-[#004E47] hover:bg-[#003833] text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-sm"
+              >
+                {inviteLoading ? 'Activating Account...' : 'Activate & Enter Dashboard'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── RESET PASSWORD MODAL ── */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-8 max-w-[420px] w-full shadow-2xl border border-slate-100 relative">
+            <button
+              onClick={() => setShowResetModal(false)}
+              className="absolute top-5 right-5 text-slate-300 hover:text-slate-500 transition-colors p-1"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-[26px]">key</span>
+            </div>
+
+            <h3 className="text-xl font-bold text-slate-900 mb-1">Choose New Password</h3>
+            <p className="text-xs text-slate-500 mb-5 leading-relaxed">
+              Enter your new password below for <strong className="text-slate-800">{resetEmail || 'your account'}</strong>.
+            </p>
+
+            {resetError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 font-medium">
+                {resetError}
+              </div>
+            )}
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (resetPasswordVal !== resetConfirmVal) {
+                  setResetError('Passwords do not match.');
+                  return;
+                }
+                setResetLoading(true);
+                setResetError('');
+                try {
+                  await resetPassword({
+                    token: resetToken,
+                    email: resetEmail,
+                    password: resetPasswordVal,
+                    password_confirmation: resetConfirmVal,
+                  });
+                  setShowResetModal(false);
+                  setView('login');
+                  showToast('Password reset successfully! Please sign in with your new password.', 'success');
+                } catch (err) {
+                  setResetError(err.message || 'Failed to reset password.');
+                } finally {
+                  setResetLoading(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">New Password</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={resetPasswordVal}
+                  onChange={(e) => setResetPasswordVal(e.target.value)}
+                  placeholder="Min 8 characters"
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#004E47] focus:ring-2 focus:ring-[#004E47]/10"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Confirm New Password</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={resetConfirmVal}
+                  onChange={(e) => setResetConfirmVal(e.target.value)}
+                  placeholder="Repeat new password"
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#004E47] focus:ring-2 focus:ring-[#004E47]/10"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={resetLoading}
+                className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-sm"
+              >
+                {resetLoading ? 'Resetting Password...' : 'Save New Password & Sign In'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 
@@ -405,7 +616,10 @@ export function AppContent() {
       {/* Sidebar navigation */}
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={(tab) => {
+          setSelectedPatient(null);
+          setActiveTab(tab);
+        }}
         onLogout={triggerLogout}
         clinic={clinic}
         user={user}
@@ -455,6 +669,7 @@ export function AppContent() {
                     <button
                       key={item.id}
                       onClick={() => {
+                        setSelectedPatient(null);
                         setActiveTab(item.id);
                         setIsMobileMenuOpen(false);
                       }}
@@ -495,17 +710,68 @@ export function AppContent() {
 
         {/* ── Top App Bar ── */}
         <header
-          className="flex justify-between items-center w-full px-8 shrink-0 z-40 bg-white"
+          className="flex justify-between items-center w-full px-4 md:px-8 shrink-0 z-40 bg-white"
           style={{ height: 76, borderBottom: '1px rgba(0, 0, 0, 0.10) solid' }}
         >
-          {/* Mobile menu toggle (hidden on desktop) */}
-          <div className="flex items-center gap-3 md:hidden">
-            <button 
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="p-2 -ml-2 text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
-            >
-              <span className="material-symbols-outlined">menu</span>
-            </button>
+          {/* Mobile menu toggle & title (hidden on desktop) */}
+          <div className="flex items-center gap-2 sm:gap-3 md:hidden min-w-0">
+            {activeTab === 'patients' && selectedPatient ? (
+              <button 
+                onClick={() => setSelectedPatient(null)}
+                className="p-2 -ml-1 text-[#0E3F39] hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0"
+                aria-label="Back to patients"
+              >
+                <span className="material-symbols-outlined">arrow_back_ios_new</span>
+              </button>
+            ) : (
+              <button 
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="p-2 -ml-1 text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0"
+                aria-label="Open mobile menu"
+              >
+                <span className="material-symbols-outlined">menu</span>
+              </button>
+            )}
+            <div className="flex flex-col min-w-0">
+              <span
+                style={{
+                  color: '#99A1AF',
+                  fontSize: 11,
+                  fontFamily: "'Work Sans', sans-serif",
+                  fontWeight: '500',
+                  textTransform: 'uppercase',
+                  lineHeight: '14px',
+                }}
+              >
+                clinic owner
+              </span>
+              <span
+                className="truncate"
+                style={{
+                  color: '#0E3F39',
+                  fontSize: 16,
+                  fontFamily: "'Work Sans', sans-serif",
+                  fontWeight: '600',
+                  lineHeight: '24px',
+                }}
+              >
+                {activeTab === 'patients' && selectedPatient ? 'Patient Information' : getPageHeaderTitle()}
+              </span>
+            </div>
+          </div>
+
+          {/* Page Title (desktop) */}
+          <div className="hidden md:flex items-center gap-2.5">
+            {activeTab === 'patients' && selectedPatient && (
+              <button
+                type="button"
+                onClick={() => setSelectedPatient(null)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[#0E3F39] hover:bg-slate-100 transition-colors cursor-pointer -ml-2"
+                title="Back to Patients"
+              >
+                <span className="material-symbols-outlined text-[18px]">arrow_back_ios_new</span>
+              </button>
+            )}
             <div className="flex flex-col">
               <span
                 style={{
@@ -519,7 +785,7 @@ export function AppContent() {
               >
                 clinic owner
               </span>
-              <span
+              <h2
                 style={{
                   color: '#0E3F39',
                   fontSize: 18,
@@ -528,40 +794,13 @@ export function AppContent() {
                   lineHeight: '28px',
                 }}
               >
-                {getPageHeaderTitle()}
-              </span>
+                {activeTab === 'patients' && selectedPatient ? 'Patient Information' : getPageHeaderTitle()}
+              </h2>
             </div>
           </div>
 
-          {/* Page Title (desktop) */}
-          <div className="hidden md:flex flex-col">
-            <span
-              style={{
-                color: '#99A1AF',
-                fontSize: 12,
-                fontFamily: "'Work Sans', sans-serif",
-                fontWeight: '500',
-                textTransform: 'uppercase',
-                lineHeight: '16px',
-              }}
-            >
-              clinic owner
-            </span>
-            <h2
-              style={{
-                color: '#0E3F39',
-                fontSize: 18,
-                fontFamily: "'Work Sans', sans-serif",
-                fontWeight: '600',
-                lineHeight: '28px',
-              }}
-            >
-              {getPageHeaderTitle()}
-            </h2>
-          </div>
-
           {/* Trailing Actions */}
-          <div className="flex items-center gap-5 ml-auto">
+          <div className="flex items-center gap-2.5 sm:gap-5 ml-auto shrink-0">
             {/* Notification Bell */}
             <div className="relative">
               <button 
@@ -570,18 +809,15 @@ export function AppContent() {
                 aria-label="Notifications"
               >
                 <img src={assets.iconBell} alt="Notifications" className="w-[18px] h-[18px] object-contain" />
-                {/* Red dot badge */}
-                <div
-                  style={{
-                    width: 8,
-                    height: 8,
-                    position: 'absolute',
-                    top: 6,
-                    right: 6,
-                    background: '#E05252',
-                    borderRadius: '50%',
-                  }}
-                />
+                {/* Dynamic unread count badge */}
+                {unreadCount > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-[#E05252] text-white text-[10px] font-extrabold rounded-full flex items-center justify-center shadow-sm pointer-events-none"
+                    style={{ lineHeight: '1' }}
+                  >
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
               
               <NotificationCenter 
@@ -651,11 +887,10 @@ export function AppContent() {
           {/* Confirm Modal */}
           <ConfirmModal
             isOpen={showLogoutConfirm}
-            title="Confirm Logout"
-            message="Are you sure you want to log out of the Dental System? You will need to log back in to access your clinic."
-            confirmText="Log out"
-            cancelText="Cancel"
-            type="danger"
+            title="Are you sure you want to log out?"
+            confirmText="Yes"
+            cancelText="No"
+            type="logout"
             onConfirm={() => {
                setShowLogoutConfirm(false);
                handleLogout();

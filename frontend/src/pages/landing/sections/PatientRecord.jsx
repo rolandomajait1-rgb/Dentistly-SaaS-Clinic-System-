@@ -58,7 +58,7 @@ export default function PatientRecord() {
           </Heading>
           
           <p className="text-[16px] text-slate-600 mb-8 leading-relaxed font-medium">
-            A 360° patient dashboard that unites clinical documentation with billing and scheduling. No more searching through paper charts or disconnected apps — everything fits inside clean, responsive patient profiles.
+            A 360° patient dashboard that unites clinical documentation with billing and scheduling. No more searching through paper charts or disconnected apps, because everything fits inside clean, responsive patient profiles.
           </p>
           
           <ul className="space-y-6">
@@ -74,8 +74,8 @@ export default function PatientRecord() {
                   <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>{item.icon}</span>
                 </div>
                 <div className="transition-transform duration-300 group-hover:translate-x-1">
-                  <h4 className="text-[14px] font-extrabold text-slate-800 leading-tight mb-1 group-hover:text-primary transition-colors">{item.title}</h4>
-                  <p className="text-[12px] text-slate-500 font-medium leading-relaxed">{item.desc}</p>
+                  <h4 className="text-[15px] font-extrabold text-slate-900 leading-tight mb-1 group-hover:text-primary transition-colors">{item.title}</h4>
+                  <p className="text-[13.5px] text-slate-600 font-medium leading-relaxed">{item.desc}</p>
                 </div>
               </li>
             ))}
@@ -150,7 +150,7 @@ export default function PatientRecord() {
                     {[
                       { l: 'Last Visit', v: 'June 10, 2026', icon: 'history' },
                       { l: 'Treatment', v: 'Oral Prophylaxis & Cleaning', icon: 'medical_services' },
-                      { l: 'Diagnosis', v: 'Gingivitis — mild', icon: 'healing' },
+                      { l: 'Diagnosis', v: 'Gingivitis (Mild)', icon: 'healing' },
                       { l: 'Prescription', v: 'Amoxicillin 500mg · 3×/day', icon: 'pill' },
                       { l: 'Next Booking', v: 'June 20 · 9:00 AM', hi: true, icon: 'event' },
                     ].map(({ l, v, hi, icon }) => (

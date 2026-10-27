@@ -132,7 +132,7 @@ export default function ChatbotDemo() {
             nextState = 'prices';
           } else if (id === 'location') {
             userMsg = "Where is your clinic and what are your hours? 📍";
-            botReply = "📍 We are located at 123 Rizal Avenue, Makati City (near Greenbelt).\n\n🕒 Hours:\nMonday–Saturday: 8:00 AM – 6:00 PM\nSunday: Closed";
+            botReply = "📍 We are located at 123 Rizal Avenue, Makati City (near Greenbelt).\n\n🕒 Hours:\nMonday to Saturday: 8:00 AM to 6:00 PM\nSunday: Closed";
             nextState = 'location';
           } else if (id === 'dentist') {
             userMsg = "I need to talk to a dentist 💬";
@@ -154,7 +154,7 @@ export default function ChatbotDemo() {
             nextState = 'booking_day';
           } else if (id === 'location') {
             userMsg = "Show clinic hours 📍";
-            botReply = "📍 We are located at 123 Rizal Avenue, Makati City (near Greenbelt).\n\n🕒 Hours:\nMonday–Saturday: 8:00 AM – 6:00 PM\nSunday: Closed";
+            botReply = "📍 We are located at 123 Rizal Avenue, Makati City (near Greenbelt).\n\n🕒 Hours:\nMonday to Saturday: 8:00 AM to 6:00 PM\nSunday: Closed";
             nextState = 'location';
           }
           break;
@@ -229,7 +229,7 @@ export default function ChatbotDemo() {
       
       {/* Dynamic Glowing ambient lights */}
       <motion.div 
-        className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full pointer-events-none opacity-25 z-0" 
+        className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-200 h-200 rounded-full pointer-events-none opacity-25 z-0" 
         style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.22) 0%, rgba(99,102,241,0.06) 50%, transparent 80%)' }} 
         animate={{ scale: [1, 1.15, 1], opacity: [0.2, 0.3, 0.2] }}
         transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
@@ -253,8 +253,8 @@ export default function ChatbotDemo() {
             <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-emerald-500 to-teal-400">Booking Machine.</span>
           </Heading>
 
-          <p className="text-slate-600 text-[15.5px] leading-relaxed mb-12 max-w-[480px] font-medium">
-            Patients message your clinic on Messenger. The AI chatbot answers location queries, gives service pricing, and books slots directly — showing up on your dashboard instantly.
+          <p className="text-slate-600 text-[15.5px] leading-relaxed mb-12 max-w-120 font-medium">
+            Patients message your clinic on Messenger. The AI chatbot answers location queries, gives service pricing, and books slots directly, showing up on your dashboard instantly.
           </p>
 
           {/* Upgraded Glassmorphic Feature Grid */}
@@ -312,10 +312,10 @@ export default function ChatbotDemo() {
                   {item.icon}
                 </div>
                 <div>
-                  <p className="text-[13.5px] font-bold text-slate-800 dark:text-slate-100 group-hover:text-primary transition-colors duration-300">
+                  <p className="text-[14.5px] font-bold text-slate-800 dark:text-slate-100 group-hover:text-primary transition-colors duration-300">
                     {item.label}
                   </p>
-                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  <p className="text-[12.5px] text-slate-600 dark:text-slate-400 mt-1 leading-relaxed font-medium">
                     {item.desc}
                   </p>
                 </div>
@@ -339,30 +339,30 @@ export default function ChatbotDemo() {
           {/* Bezel Smartphone container - Silver Titanium Pro Max style */}
           <div 
             ref={cardRef} 
-            className="relative w-full max-w-[340px] md:max-w-[360px] bg-linear-to-b from-[#e3e4e6] via-[#d1d2d5] to-[#e3e4e6] rounded-[52px] p-[8px] shadow-[0_30px_70px_rgba(0,78,71,0.06),0_15px_35px_rgba(0,0,0,0.15)] border border-[#afb1b4] transition-all duration-500 transform-gpu cursor-pointer select-none"
+            className="relative w-full max-w-85 md:max-w-90 bg-linear-to-b from-[#e3e4e6] via-[#d1d2d5] to-[#e3e4e6] rounded-[52px] p-2 shadow-[0_30px_70px_rgba(0,78,71,0.06),0_15px_35px_rgba(0,0,0,0.15)] border border-[#afb1b4] transition-all duration-500 transform-gpu cursor-pointer select-none"
             style={{ transform: 'perspective(1000px) rotateX(3deg) rotateY(-5deg)', transformStyle: 'preserve-3d' }}
           >
             {/* Silver Side Buttons */}
             {/* Left: Volume Up */}
-            <div className="absolute left-[-2.5px] top-[110px] w-[3px] h-[35px] bg-[#b0b2b5] rounded-r-[1.5px] border border-black/15 shadow-[inset_1px_0_1px_rgba(255,255,255,0.5)]" />
+            <div className="absolute left-[-2.5px] top-27.5 w-0.75 h-8.75 bg-[#b0b2b5] rounded-r-[1.5px] border border-black/15 shadow-[inset_1px_0_1px_rgba(255,255,255,0.5)]" />
             {/* Left: Volume Down */}
-            <div className="absolute left-[-2.5px] top-[155px] w-[3px] h-[35px] bg-[#b0b2b5] rounded-r-[1.5px] border border-black/15 shadow-[inset_1px_0_1px_rgba(255,255,255,0.5)]" />
+            <div className="absolute left-[-2.5px] top-38.75 w-0.75 h-8.75 bg-[#b0b2b5] rounded-r-[1.5px] border border-black/15 shadow-[inset_1px_0_1px_rgba(255,255,255,0.5)]" />
             {/* Right: Power Button */}
-            <div className="absolute right-[-2.5px] top-[135px] w-[3px] h-[55px] bg-[#b0b2b5] rounded-l-[1.5px] border border-black/15 shadow-[inset_-1px_0_1px_rgba(255,255,255,0.5)]" />
+            <div className="absolute right-[-2.5px] top-33.75 w-0.75 h-13.75 bg-[#b0b2b5] rounded-l-[1.5px] border border-black/15 shadow-[inset_-1px_0_1px_rgba(255,255,255,0.5)]" />
 
             {/* Screen bezel panel (iPhone Bezel style, h-[580px] for sleek long aspect ratio) */}
-            <div className="relative w-full h-[580px] bg-[#f4f7f6] rounded-[44px] overflow-hidden flex flex-col border-[4.5px] border-black shadow-[inset_0_0_8px_rgba(0,0,0,0.25)] z-10">
+            <div className="relative w-full h-145 bg-[#f4f7f6] rounded-[44px] overflow-hidden flex flex-col border-[4.5px] border-black shadow-[inset_0_0_8px_rgba(0,0,0,0.25)] z-10">
               
               {/* Screen Glass Reflection Shine */}
-              <div className="absolute inset-0 bg-linear-to-tr from-transparent via-white/[0.06] to-white/[0.12] pointer-events-none z-45" />
+              <div className="absolute inset-0 bg-linear-to-tr from-transparent via-white/6 to-white/12 pointer-events-none z-45" />
 
               {/* iOS Bottom Swipe Home Indicator Bar */}
-              <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-32 h-[4px] bg-black/20 rounded-full z-50 pointer-events-none" />
+              <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-32 h-1 bg-black/20 rounded-full z-50 pointer-events-none" />
 
               {/* Curved Top Notch from User Reference Image */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[110px] h-[18px] bg-black rounded-b-[12px] z-50 pointer-events-none flex flex-col items-center justify-start pt-[3px]">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-27.5 h-4.5 bg-black rounded-b-xl z-50 pointer-events-none flex flex-col items-center justify-start pt-0.75">
                 {/* Thin speaker line inside notch */}
-                <div className="w-[30px] h-[2px] bg-neutral-800 rounded-full" />
+                <div className="w-7.5 h-0.5 bg-neutral-800 rounded-full" />
               </div>
 
               {/* Phone Status Bar */}

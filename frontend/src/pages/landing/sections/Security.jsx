@@ -70,7 +70,7 @@ export default function Security() {
               <p className="text-[56px] font-black text-white leading-none my-4 tracking-tight font-display">
                 100%
               </p>
-              <p className="text-primary-fixed/70 text-[13px] leading-relaxed font-medium">
+              <p className="text-primary-fixed/85 text-[14px] leading-relaxed font-medium">
                 Adherence to Philippine Data Privacy Act of 2012 (DPA) and global HIPAA frameworks with zero third-party data sharing.
               </p>
             </div>
@@ -109,7 +109,7 @@ export default function Security() {
               <h3 className="text-[20px] font-black text-slate-800 tracking-tight leading-tight font-display mb-2.5">
                 Isolated Clinic Data Protection
               </h3>
-              <p className="text-slate-500 text-[13px] font-medium leading-relaxed">
+              <p className="text-slate-600 text-[14px] font-medium leading-relaxed">
                 Strict multi-tenant segregation ensures your clinic's patient records, financial transactions, and medical notes are 100% isolated and never accessible by other clinics.
               </p>
             </div>
@@ -143,7 +143,7 @@ export default function Security() {
             </div>
 
             <div className="my-5">
-              <p className="text-slate-500 text-[13px] font-medium leading-relaxed">
+              <p className="text-slate-600 text-[14px] font-medium leading-relaxed">
                 Continuous system telemetry, access audit trails, and automatic intrusion detection systems monitor and flag unauthorized access.
               </p>
             </div>
@@ -165,7 +165,7 @@ export default function Security() {
 
         {/* Security Disclosures */}
         <div className="mt-16 pt-8 border-t border-slate-200/80 text-center max-w-2xl mx-auto px-4">
-          <p className="text-slate-500 text-[13px] leading-relaxed font-medium">
+          <p className="text-slate-600 text-[14px] leading-relaxed font-medium">
             <strong className="text-slate-800 font-bold">Your clinic, your data.</strong> We never sell patient information to third parties. All database instances are housed behind Virtual Private Clouds (VPC) with automated alerts. Need official documentation? Request our <a href="#" className="text-emerald-700 underline hover:no-underline font-bold">Security Whitepaper</a> or <a href="#" className="text-emerald-700 underline hover:no-underline font-bold">SOC 2 Audit Report</a>.
           </p>
         </div>

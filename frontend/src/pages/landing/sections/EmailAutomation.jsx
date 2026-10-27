@@ -409,7 +409,7 @@ export default function EmailAutomation() {
             </Heading>
 
             <p className="text-slate-600 text-[15.5px] leading-relaxed mb-12 max-w-[480px] font-medium">
-              Every patient touchpoint — confirmations, reminders, follow-ups — handled automatically by email. Your staff focuses on care, not copy-paste.
+              Every patient touchpoint including confirmations, reminders, and follow-ups is handled automatically by email. Your staff focuses on care, not copy-paste.
             </p>
 
             {/* Upgraded Glassmorphic Feature Grid */}
@@ -430,10 +430,10 @@ export default function EmailAutomation() {
                     {item.icon}
                   </div>
                   <div>
-                    <p className="text-[13.5px] font-bold text-slate-800 dark:text-slate-100 group-hover:text-primary transition-colors duration-300">
+                    <p className="text-[14.5px] font-bold text-slate-800 dark:text-slate-100 group-hover:text-primary transition-colors duration-300">
                       {item.title}
                     </p>
-                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                    <p className="text-[12.5px] text-slate-600 dark:text-slate-400 mt-1 leading-relaxed font-medium">
                       {item.desc}
                     </p>
                   </div>

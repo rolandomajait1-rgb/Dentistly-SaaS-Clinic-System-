@@ -456,7 +456,7 @@ export default function ReportsAnalytics({ clinicId, user }) {
 
           {/* Date range filter pills container */}
           <div
-            className="flex items-center gap-1 p-0.5 rounded-[10px]"
+            className="flex items-center gap-1 p-0.5 rounded-[10px] overflow-x-auto max-w-full no-scrollbar"
             style={{ background: '#F0F4F3' }}
           >
             {[
@@ -470,7 +470,7 @@ export default function ReportsAnalytics({ clinicId, user }) {
                 <button
                   key={opt.id}
                   onClick={() => setDateRange(opt.id)}
-                  className="transition-all cursor-pointer select-none"
+                  className="transition-all cursor-pointer select-none shrink-0 whitespace-nowrap"
                   style={
                     isActive
                       ? {
@@ -1084,7 +1084,7 @@ export default function ReportsAnalytics({ clinicId, user }) {
 
             <div className="text-center pt-2 border-t border-slate-100">
               <span className="text-[11px] text-[#5A7A76]">
-                Busiest time slot: <strong className="text-[#0E3F39]">10:00 AM – 11:00 AM</strong>
+                Busiest time slot: <strong className="text-[#0E3F39]">10:00 AM to 11:00 AM</strong>
               </span>
             </div>
           </div>

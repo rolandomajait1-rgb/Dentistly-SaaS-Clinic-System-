@@ -97,7 +97,7 @@ export default function Hero({ onLogin, onGetStarted }) {
             </motion.h1>
 
             <motion.p variants={STAGGER_ITEM_VARIANTS} className="text-[17px] text-on-surface-variant/90 mb-6 max-w-[480px] leading-relaxed font-medium">
-              Pivodent automates your clinic from end to end — chatbot booking, EHR, Email reminders. <strong className="text-primary font-bold">Most clinics go live in under 30 minutes.</strong>
+              Pivodent automates your clinic from end to end: chatbot booking, EHR, and email reminders. <strong className="text-primary font-bold">Most clinics go live in under 30 minutes.</strong>
             </motion.p>
             
             {/* Social proof avatars */}
@@ -136,7 +136,7 @@ export default function Hero({ onLogin, onGetStarted }) {
                 whileTap={{ scale: 0.98 }}
                 className="bg-primary text-on-primary font-extrabold text-[12px] tracking-wider uppercase px-8 py-4 rounded-full hover:bg-primary-container transition-all hover:shadow-[0_12px_24px_rgba(0,78,71,0.22)] flex items-center justify-center gap-3 group cursor-pointer"
               >
-                Start Free — No Credit Card
+                Start Free • No Credit Card
                 <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
               </motion.button>
               <motion.button 

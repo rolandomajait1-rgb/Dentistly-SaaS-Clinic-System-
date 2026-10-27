@@ -106,9 +106,9 @@ export default function Modules() {
       <UnifiedBackground />
       
       {/* Subtle background haze/gradient matching top-left corner of reference image */}
-      <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-linear-to-br from-teal-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-0 left-0 w-100 h-100 bg-linear-to-br from-teal-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
 
-      <div className="max-w-[1200px] mx-auto px-6">
+      <div className="max-w-300 mx-auto px-6">
         {/* Section Header */}
         <motion.div 
           className="text-center mb-16"
@@ -155,7 +155,7 @@ export default function Modules() {
                 AI Facebook Chatbot
               </h3>
               <p className="text-white/80 text-[13.5px] leading-relaxed mb-8">
-                Books appointments via Messenger, 24/7 — even while you sleep. No staff needed.
+                Books appointments via Messenger, 24/7 and even while you sleep. No staff needed.
               </p>
             </div>
 
