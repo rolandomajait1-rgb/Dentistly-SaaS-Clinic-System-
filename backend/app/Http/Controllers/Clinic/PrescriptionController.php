@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Clinic;
 
 use App\Http\Controllers\Controller;
 use App\Models\{Patient, Prescription};
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class PrescriptionController extends Controller
 {
@@ -33,6 +35,13 @@ class PrescriptionController extends Controller
 
         $patient = Patient::where('clinic_id', $clinicId)->findOrFail($patientId);
 
+        // RBAC gate check: only dentists and administrators can issue prescriptions
+        if (Gate::has('manage-prescriptions') && !Gate::allows('manage-prescriptions')) {
+            return response()->json([
+                'message' => 'Unauthorized: Only licensed dentists and clinic administrators can generate prescriptions.'
+            ], 403);
+        }
+
         $request->validate([
             'prescription_date' => 'required|date',
             'doctor_name' => 'required|string|max:255',
@@ -50,6 +59,15 @@ class PrescriptionController extends Controller
             'items' => $request->items,
             'instructions' => $request->instructions,
         ]);
+
+        AuditLogger::log(
+            $clinicId,
+            'create_prescription',
+            'Prescription',
+            $prescription->id,
+            ['patient_id' => $patient->id, 'doctor_name' => $prescription->doctor_name],
+            $request
+        );
 
         return response()->json([
             'success' => true,

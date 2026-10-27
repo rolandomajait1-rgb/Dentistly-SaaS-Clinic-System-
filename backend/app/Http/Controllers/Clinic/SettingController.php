@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Clinic;
 
 use App\Http\Controllers\Controller;
 use App\Models\{Clinic, ClinicFaq, FbPageIntegration, Patient};
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 
 class SettingController extends Controller
@@ -117,6 +118,15 @@ class SettingController extends Controller
                 ]
             );
         }
+
+        AuditLogger::log(
+            $clinic->id,
+            'update_clinic_settings',
+            'Clinic',
+            $clinic->id,
+            ['clinic_name' => $clinic->clinic_name],
+            $request
+        );
 
         return response()->json([
             'message' => 'Settings updated successfully.',

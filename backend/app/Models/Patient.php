@@ -30,6 +30,9 @@ class Patient extends Model
 
     protected $casts = [
         'birth_date' => 'date',
+        'medical_history' => 'encrypted',
+        'allergies' => 'encrypted',
+        'notes' => 'encrypted',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

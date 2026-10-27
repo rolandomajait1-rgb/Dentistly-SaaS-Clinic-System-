@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\{Tenant, Clinic, ClinicStaff, Patient, ToothChart, Prescription};
+use App\Models\{Tenant, Clinic, ClinicStaff, Patient, Prescription, PatientHistory};
 use Tests\TestCase;
 use Laravel\Sanctum\Sanctum;
 use Illuminate\Support\Facades\Hash;
@@ -75,14 +75,6 @@ class EhrTest extends TestCase
     {
         Sanctum::actingAs($this->staffA);
 
-        // Add dummy tooth condition
-        ToothChart::create([
-            'clinic_id' => $this->clinicA->id,
-            'patient_id' => $this->patientA->id,
-            'tooth_number' => 14,
-            'condition' => 'decayed',
-        ]);
-
         // Add dummy prescription
         Prescription::create([
             'clinic_id' => $this->clinicA->id,
@@ -92,49 +84,67 @@ class EhrTest extends TestCase
             'items' => [['name' => 'Amoxicillin', 'dosage' => '500mg', 'frequency' => '3x a day', 'quantity' => 21]],
         ]);
 
+        // Add dummy SOAP consultation record
+        PatientHistory::create([
+            'clinic_id' => $this->clinicA->id,
+            'patient_id' => $this->patientA->id,
+            'service_provided' => 'Dental Checkup',
+            'diagnosis' => 'Dental Caries',
+            'soap_subjective' => 'Patient complains of sensitivity.',
+            'soap_objective' => 'Caries on occlusal surface.',
+            'soap_assessment' => 'Mild decay',
+            'soap_plan' => 'Composite filling recommended',
+            'service_date' => now()->toDateString(),
+            'performed_by' => $this->staffA->id,
+        ]);
+
         $response = $this->getJson("/api/dashboard/patients/{$this->patientA->id}/ehr");
 
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'patient',
-                'tooth_charts' => [
-                    '*' => ['id', 'tooth_number', 'condition']
-                ],
                 'prescriptions' => [
                     '*' => ['id', 'doctor_name', 'items']
+                ],
+                'soap_notes' => [
+                    '*' => ['id', 'soap_subjective', 'soap_assessment', 'soap_plan']
                 ]
             ]);
 
         $data = $response->json();
         $this->assertEquals('Patient A', $data['patient']['full_name']);
-        $this->assertEquals(14, $data['tooth_charts'][0]['tooth_number']);
-        $this->assertEquals('decayed', $data['tooth_charts'][0]['condition']);
         $this->assertEquals('Amoxicillin', $data['prescriptions'][0]['items'][0]['name']);
+        $this->assertEquals('Patient complains of sensitivity.', $data['soap_notes'][0]['soap_subjective']);
     }
 
-    public function test_can_update_tooth_chart_states(): void
+    public function test_can_create_patient_soap_note(): void
     {
         Sanctum::actingAs($this->staffA);
 
         $payload = [
-            'tooth_number' => 18,
-            'condition' => 'filled',
-            'notes' => 'Restored cavity on distal surface'
+            'subjective' => 'Sharp pain on chewing, upper right quadrant.',
+            'objective' => 'Deep cavity #16, positive percussion test.',
+            'assessment' => 'Irreversible Pulpitis #16',
+            'plan' => 'Initiate RCT, prescribe analgesics, follow up in 5 days.',
+            'vital_signs' => [
+                'blood_pressure' => '120/80',
+                'pulse' => '76 bpm'
+            ],
+            'treatment' => 'Root Canal Therapy Consultation',
         ];
 
-        $response = $this->postJson("/api/dashboard/patients/{$this->patientA->id}/tooth-chart", $payload);
+        $response = $this->postJson("/api/dashboard/patients/{$this->patientA->id}/soap-notes", $payload);
 
-        $response->assertStatus(200)
+        $response->assertStatus(201)
             ->assertJson([
                 'success' => true,
-                'message' => 'Tooth status updated.'
+                'message' => 'Clinical SOAP note recorded successfully.'
             ]);
 
-        $this->assertDatabaseHas('tooth_charts', [
+        $this->assertDatabaseHas('patient_history', [
             'clinic_id' => $this->clinicA->id,
             'patient_id' => $this->patientA->id,
-            'tooth_number' => 18,
-            'condition' => 'filled',
+            'service_provided' => 'Root Canal Therapy Consultation',
         ]);
     }
 
@@ -157,7 +167,7 @@ class EhrTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'message' => 'Prescription created successfully.'
+                'message' => 'F2F Prescription created and recorded successfully.'
             ]);
 
         $this->assertDatabaseHas('prescriptions', [
@@ -176,9 +186,13 @@ class EhrTest extends TestCase
         // Should return 404 since it's scoped to Clinic B and doesn't exist there
         $response->assertStatus(404);
 
-        // Dr. B tries to write to Clinic A's patient tooth chart
-        $payload = ['tooth_number' => 10, 'condition' => 'missing'];
-        $response = $this->postJson("/api/dashboard/patients/{$this->patientA->id}/tooth-chart", $payload);
-        $response->assertStatus(404);
+        // Dr. B tries to write a SOAP note to Clinic A's patient
+        $payload = [
+            'subjective' => 'Hacker note',
+            'assessment' => 'Test',
+            'plan' => 'Test'
+        ];
+        $writeResponse = $this->postJson("/api/dashboard/patients/{$this->patientA->id}/soap-notes", $payload);
+        $writeResponse->assertStatus(404);
     }
 }

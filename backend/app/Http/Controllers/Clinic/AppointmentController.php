@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Clinic;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Appointment, Clinic, Patient};
+use App\Models\{Appointment, Clinic, Patient, CalendarSlot};
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Services\AuditLogger;
 
 class AppointmentController extends Controller
 {
@@ -17,35 +19,170 @@ class AppointmentController extends Controller
     public function getOverview(Request $request)
     {
         $clinicId = $request->user()->clinic_id;
+        $clinic = Clinic::with('subscription.plan')->find($clinicId);
+        $now = Carbon::now();
         $today = Carbon::today()->toDateString();
 
+        $startThisMonth = $now->copy()->startOfMonth();
+        $endThisMonth = $now->copy()->endOfMonth();
+        $startLastMonth = $now->copy()->subMonth()->startOfMonth();
+        $endLastMonth = $now->copy()->subMonth()->endOfMonth();
+
+        // 1. Patient metrics
         $totalPatients = Patient::where('clinic_id', $clinicId)->count();
-        $pendingCount = Appointment::where('clinic_id', $clinicId)->where('status', 'pending')->count();
-        
-        $activeQueue = Appointment::where('clinic_id', $clinicId)
-            ->whereDate('appointment_date', $today)
-            ->whereIn('status', ['confirmed', 'in_progress'])
+        $newPatientsThisMonth = Patient::where('clinic_id', $clinicId)
+            ->whereBetween('created_at', [$startThisMonth, $endThisMonth])
+            ->count();
+        $newPatientsLastMonth = Patient::where('clinic_id', $clinicId)
+            ->whereBetween('created_at', [$startLastMonth, $endLastMonth])
+            ->count();
+        $newPatientsGrowth = $newPatientsThisMonth - $newPatientsLastMonth;
+
+        // 2. Pending bookings (requiring clinic staff action)
+        $pendingCount = Appointment::where('clinic_id', $clinicId)
+            ->whereIn('status', ['pending', 'Pending'])
             ->count();
 
-        $completedToday = Appointment::where('clinic_id', $clinicId)
-            ->whereDate('appointment_date', $today)
-            ->where('status', 'completed')
-            ->count();
-
+        // 3. Today's Appointments
         $todayAppointments = Appointment::where('clinic_id', $clinicId)
             ->whereDate('appointment_date', $today)
             ->with(['patient', 'service'])
             ->orderBy('appointment_time')
             ->get();
 
+        $totalAppointmentsToday = $todayAppointments->count();
+
+        $completedToday = $todayAppointments->filter(fn($a) => in_array(strtolower($a->status), ['completed']))->count();
+
+        $noShowsToday = $todayAppointments->filter(fn($a) => in_array(strtolower($a->status), ['cancelled', 'no_show', 'missed', 'rejected']))->count();
+        $noShowsRateToday = $totalAppointmentsToday > 0 ? round(($noShowsToday / $totalAppointmentsToday) * 100, 1) : 0;
+
+        $remainingToday = $todayAppointments->filter(fn($a) => in_array(strtolower($a->status), ['pending', 'approved', 'serving', 'in_progress', 'confirmed', 'scheduled']))->count();
+
+        $activeQueue = $todayAppointments->filter(fn($a) => in_array(strtolower($a->status), ['approved', 'serving', 'in_progress', 'confirmed']))->count();
+
+        // 4. Monthly Appointments, Revenue, and Cancellation Rate
+        $thisMonthAppointments = Appointment::where('clinic_id', $clinicId)
+            ->whereBetween('appointment_date', [$startThisMonth->toDateString(), $endThisMonth->toDateString()])
+            ->with('service')
+            ->get();
+
+        $totalAppointmentsThisMonth = $thisMonthAppointments->count();
+        $cancelledThisMonth = $thisMonthAppointments->filter(fn($a) => in_array(strtolower($a->status), ['cancelled', 'rejected', 'no_show']))->count();
+        $cancellationRateThisMonth = $totalAppointmentsThisMonth > 0 ? round(($cancelledThisMonth / $totalAppointmentsThisMonth) * 100, 1) : 0;
+
+        $revenueThisMonth = $thisMonthAppointments
+            ->filter(fn($a) => in_array(strtolower($a->status), ['completed', 'approved', 'serving']))
+            ->sum(fn($a) => $a->service ? (float)$a->service->price : 0);
+
+        $lastMonthAppointments = Appointment::where('clinic_id', $clinicId)
+            ->whereBetween('appointment_date', [$startLastMonth->toDateString(), $endLastMonth->toDateString()])
+            ->with('service')
+            ->get();
+
+        $revenueLastMonth = $lastMonthAppointments
+            ->filter(fn($a) => in_array(strtolower($a->status), ['completed', 'approved', 'serving']))
+            ->sum(fn($a) => $a->service ? (float)$a->service->price : 0);
+
+        if ($revenueLastMonth > 0) {
+            $revenueGrowth = round((($revenueThisMonth - $revenueLastMonth) / $revenueLastMonth) * 100, 1);
+        } else {
+            $revenueGrowth = $revenueThisMonth > 0 ? 100.0 : 0.0;
+        }
+
+        // 5. Enrich today's appointments with patient history frequency
+        $patientIds = $todayAppointments->pluck('patient_id')->unique()->filter();
+        $patientHistoryCounts = Appointment::where('clinic_id', $clinicId)
+            ->whereIn('patient_id', $patientIds)
+            ->select('patient_id', DB::raw('count(*) as count'))
+            ->groupBy('patient_id')
+            ->pluck('count', 'patient_id');
+
+        $enrichedTodayAppointments = $todayAppointments->map(function ($appt) use ($patientHistoryCounts) {
+            $count = $patientHistoryCounts[$appt->patient_id] ?? 1;
+            $appt->patient_type = $count > 1 ? 'Returning' : 'New Patient';
+            $appt->duration = ($appt->service && $appt->service->duration_minutes) ? $appt->service->duration_minutes . 'min' : '30min';
+            return $appt;
+        });
+
+        // 6. Clinic Alerts
+        $alerts = [];
+        if ($pendingCount > 0) {
+            $alerts[] = [
+                'id' => 'alert-pending',
+                'type' => 'warning',
+                'message' => "{$pendingCount} appointment request" . ($pendingCount > 1 ? 's' : '') . " awaiting clinic staff confirmation.",
+                'time' => 'Action required',
+                'tab' => 'schedule'
+            ];
+        }
+
+        if ($noShowsToday > 0) {
+            $alerts[] = [
+                'id' => 'alert-noshow',
+                'type' => 'info',
+                'message' => "{$noShowsToday} patient" . ($noShowsToday > 1 ? 's' : '') . " cancelled or no-show today.",
+                'time' => 'Today',
+                'tab' => 'schedule'
+            ];
+        }
+
+        $upcomingNext = $todayAppointments->filter(fn($a) => in_array(strtolower($a->status), ['approved', 'serving', 'in_progress', 'pending']))->first();
+        if ($upcomingNext) {
+            $formattedTime = Carbon::parse($upcomingNext->appointment_time)->format('g:i A');
+            $patientName = $upcomingNext->patient?->full_name ?? 'Walk-in Patient';
+            $serviceName = $upcomingNext->service?->service_name ?? 'Consultation';
+            $alerts[] = [
+                'id' => 'alert-upcoming',
+                'type' => 'notice',
+                'message' => "Next in queue: {$patientName} ({$serviceName}) at {$formattedTime}.",
+                'time' => 'Upcoming',
+                'tab' => 'schedule'
+            ];
+        }
+
+        if (empty($alerts)) {
+            $alerts[] = [
+                'id' => 'alert-all-clear',
+                'type' => 'success',
+                'message' => 'All schedules and patient queues are up to date.',
+                'time' => 'Just now',
+                'tab' => 'schedule'
+            ];
+        }
+
         return response()->json([
             'stats' => [
+                // Backward-compatible fields
                 'totalPatients' => $totalPatients,
                 'pendingAppointments' => $pendingCount,
                 'activeQueue' => $activeQueue,
-                'completedToday' => $completedToday
+                'completedToday' => $completedToday,
+
+                // Dynamic Metric Cards
+                'revenueThisMonth' => $revenueThisMonth,
+                'revenueLastMonth' => $revenueLastMonth,
+                'revenueGrowth' => $revenueGrowth,
+                'newPatientsThisMonth' => $newPatientsThisMonth,
+                'newPatientsLastMonth' => $newPatientsLastMonth,
+                'newPatientsGrowth' => $newPatientsGrowth,
+                'cancellationRateThisMonth' => $cancellationRateThisMonth,
+                'cancelledThisMonth' => $cancelledThisMonth,
+                'totalAppointmentsThisMonth' => $totalAppointmentsThisMonth,
+                'noShowsToday' => $noShowsToday,
+                'noShowsRateToday' => $noShowsRateToday,
+                'totalAppointmentsToday' => $totalAppointmentsToday,
+                'remainingToday' => $remainingToday,
             ],
-            'todayAppointments' => $todayAppointments
+            'clinic' => [
+                'id' => $clinic?->id ?? $clinicId,
+                'name' => $clinic?->clinic_name ?? 'Dental Clinic',
+                'email' => $clinic?->email,
+                'currency' => 'PHP',
+                'plan' => $clinic?->subscription?->plan?->plan_name ?? 'Professional',
+            ],
+            'alerts' => $alerts,
+            'todayAppointments' => $enrichedTodayAppointments
         ]);
     }
 
@@ -74,17 +211,28 @@ class AppointmentController extends Controller
 
         $request->validate([
             'status' => 'required|in:Pending,Approved,Serving,Completed,Cancelled',
-            'cancellation_reason' => 'nullable|string|max:500'
+            'cancellation_reason' => 'nullable|string|max:500',
+            'move_to_end_of_queue' => 'nullable|boolean'
         ]);
 
         $appointment = Appointment::where('clinic_id', $clinicId)->with(['patient', 'service'])->findOrFail($id);
         $status = $request->status;
 
-        if ($status === 'Approved' && empty($appointment->queue_number)) {
-            $maxQueue = Appointment::where('clinic_id', $appointment->clinic_id)
-                ->whereDate('appointment_date', $appointment->appointment_date)
-                ->max('queue_number') ?? 0;
-            $appointment->queue_number = $maxQueue + 1;
+        if ($request->boolean('move_to_end_of_queue') || $status === 'Approved') {
+            if ($request->boolean('move_to_end_of_queue') || empty($appointment->queue_number)) {
+                $maxQueue = Appointment::where('clinic_id', $appointment->clinic_id)
+                    ->whereDate('appointment_date', $appointment->appointment_date)
+                    ->max('queue_number') ?? 0;
+                $appointment->queue_number = $maxQueue + 1;
+            }
+            if ($request->boolean('move_to_end_of_queue')) {
+                $status = 'Approved';
+                $appointment->staff_notes = trim(($appointment->staff_notes ? $appointment->staff_notes . "\n" : '') . 'Late arrival - moved to end of queue');
+            }
+            if ($request->user()) {
+                $appointment->approved_by = $request->user()->id;
+            }
+            $appointment->approved_at = now();
         }
 
         if ($request->has('cancellation_reason') && $status === 'Cancelled') {
@@ -136,30 +284,73 @@ class AppointmentController extends Controller
             'medical_notes' => 'nullable|string'
         ]);
 
-        // Find or create patient
-        $patient = Patient::firstOrCreate(
-            ['clinic_id' => $clinicId, 'contact_number' => $request->phone],
-            [
-                'fb_messenger_id' => 'walkin_' . Str::random(12),
-                'full_name' => $request->patient_name,
-                'medical_history' => $request->medical_notes ?? '',
-            ]
-        );
+        $clinic = Clinic::with('subscription.plan')->find($clinicId);
+        $plan = $clinic?->subscription?->plan;
 
-        $maxQueue = Appointment::where('clinic_id', $clinicId)
-            ->whereDate('appointment_date', $request->date)
-            ->max('queue_number') ?? 0;
+        // Check subscription plan limit on appointments
+        if ($plan && $plan->max_appointments_per_month) {
+            $monthCount = Appointment::where('clinic_id', $clinicId)
+                ->whereMonth('appointment_date', Carbon::parse($request->date)->month)
+                ->whereYear('appointment_date', Carbon::parse($request->date)->year)
+                ->count();
+            if ($monthCount >= $plan->max_appointments_per_month) {
+                return response()->json([
+                    'message' => 'Monthly appointment limit reached for your subscription plan (' . $plan->max_appointments_per_month . ' max). Please upgrade to schedule more appointments.'
+                ], 403);
+            }
+        }
 
-        $appointment = Appointment::create([
-            'clinic_id' => $clinicId,
-            'patient_id' => $patient->id,
-            'dental_service_id' => $request->service_id,
-            'appointment_date' => $request->date,
-            'appointment_time' => $request->time,
-            'status' => 'Approved',
-            'queue_number' => $maxQueue + 1,
-            'reason_for_visit' => 'Staff / Walk-In Scheduled',
-        ]);
+        $appointment = DB::transaction(function () use ($clinicId, $request) {
+            // Find or create patient
+            $patient = Patient::firstOrCreate(
+                ['clinic_id' => $clinicId, 'contact_number' => $request->phone],
+                [
+                    'fb_messenger_id' => 'walkin_' . Str::random(12),
+                    'full_name' => $request->patient_name,
+                    'medical_history' => $request->medical_notes ?? '',
+                ]
+            );
+
+            // Concurrency lock: If there is a slot for this date & time, lock and mark booked
+            $slot = CalendarSlot::where('clinic_id', $clinicId)
+                ->whereDate('slot_date', $request->date)
+                ->where('slot_time', Carbon::parse($request->time)->format('H:i:s'))
+                ->lockForUpdate()
+                ->first();
+
+            $maxQueue = Appointment::where('clinic_id', $clinicId)
+                ->whereDate('appointment_date', $request->date)
+                ->max('queue_number') ?? 0;
+
+            $appt = Appointment::create([
+                'clinic_id' => $clinicId,
+                'patient_id' => $patient->id,
+                'dental_service_id' => $request->service_id,
+                'appointment_date' => $request->date,
+                'appointment_time' => $request->time,
+                'status' => 'Approved',
+                'queue_number' => $maxQueue + 1,
+                'reason_for_visit' => 'Staff / Walk-In Scheduled',
+            ]);
+
+            if ($slot) {
+                $slot->update([
+                    'status' => 'booked',
+                    'appointment_id' => $appt->id,
+                ]);
+            }
+
+            AuditLogger::log(
+                $clinicId,
+                'staff_created_appointment',
+                'Appointment',
+                $appt->id,
+                ['patient_name' => $patient->full_name, 'date' => $request->date, 'time' => $request->time],
+                $request
+            );
+
+            return $appt;
+        });
 
         return response()->json([
             'message' => 'Appointment booked successfully.',

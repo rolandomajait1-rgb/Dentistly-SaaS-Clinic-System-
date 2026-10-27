@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Clinic;
 
 use App\Http\Controllers\Controller;
-use App\Models\ClinicStaff;
+use App\Models\{Clinic, ClinicStaff};
+use App\Services\{AuditLogger, MailService};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class StaffController extends Controller
 {
@@ -14,7 +18,10 @@ class StaffController extends Controller
      */
     public function getStaff(Request $request)
     {
-        $clinicId = $request->user()->clinic_id ?? 1;
+        $clinicId = $request->user()->clinic_id;
+        if (!$clinicId) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized: User has no associated clinic.'], 403);
+        }
 
         $staff = ClinicStaff::where('clinic_id', $clinicId)
             ->orderBy('id', 'asc')
@@ -97,6 +104,7 @@ class StaffController extends Controller
                 'last_login' => $s->updated_at ? $s->updated_at->format('M d, Y h:i A') : 'Jul 19, 2026 10:30 AM',
                 'started' => $s->created_at ? $s->created_at->format('M d, Y') : 'Jan 10, 2023',
                 'is_active' => (bool) $s->is_active,
+                'invite_pending' => $s->isInvitationPending(),
             ];
         });
 
@@ -107,11 +115,21 @@ class StaffController extends Controller
     }
 
     /**
-     * Create a new staff user for the clinic
+     * Create a new staff user and dispatch invite token email
      */
     public function createStaff(Request $request)
     {
-        $clinicId = $request->user()->clinic_id ?? 1;
+        $clinicId = $request->user()->clinic_id;
+        if (!$clinicId) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized: User has no associated clinic.'], 403);
+        }
+
+        if (Gate::has('manage-staff') && !Gate::allows('manage-staff')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Only clinic owners and administrators can add staff.'
+            ], 403);
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -119,6 +137,19 @@ class StaffController extends Controller
             'role' => 'required|string',
             'password' => 'nullable|string|min:6',
         ]);
+
+        // Check subscription tier limit on staff members
+        $clinic = Clinic::with('subscription.plan')->find($clinicId);
+        $plan = $clinic?->subscription?->plan;
+        if ($plan && $plan->max_staff) {
+            $currentCount = ClinicStaff::where('clinic_id', $clinicId)->count();
+            if ($currentCount >= $plan->max_staff) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Your subscription plan limit has been reached ({$plan->max_staff} staff max). Please upgrade to add more team members."
+                ], 403);
+            }
+        }
 
         // Map role to standard DB enum if needed
         $dbRole = match (strtolower($validated['role'])) {
@@ -136,19 +167,48 @@ class StaffController extends Controller
             ], 422);
         }
 
+        $inviteToken = Str::random(40);
+        $inviteExpiresAt = now()->addHours(48);
+
         $staff = ClinicStaff::create([
-            'clinic_id' => $clinicId,
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password'] ?? 'Pivodent123!'),
-            'role' => $dbRole,
-            'is_active' => true,
-            'email_verified_at' => now(),
+            'clinic_id'         => $clinicId,
+            'name'              => $validated['name'],
+            'email'             => $validated['email'],
+            'password'          => Hash::make($validated['password'] ?? Str::random(16)),
+            'role'              => $dbRole,
+            'is_active'         => true,
+            'invite_token'      => $inviteToken,
+            'invite_expires_at' => $inviteExpiresAt,
+            'email_verified_at' => !empty($validated['password']) ? now() : null,
         ]);
+
+        // Send invitation email with activation link
+        try {
+            $mailService = resolve(MailService::class);
+            $appBaseUrl = rtrim(config('app.url', 'http://localhost:5173'), '/');
+            $inviteUrl = "{$appBaseUrl}/accept-invite?token={$inviteToken}";
+            $clinicName = $clinic ? $clinic->clinic_name : 'Pivodent SaaS';
+
+            $subject = "Invitation to join {$clinicName} on Pivodent";
+            $message = "Hello {$staff->name},\n\nYou have been invited to join {$clinicName} as a {$validated['role']}.\n\nPlease click the link below to accept your invitation and configure your password:\n\n{$inviteUrl}\n\nThis invitation link will expire in 48 hours.\n\nWarm regards,\n{$clinicName} Team";
+
+            $mailService->sendClinicMail($clinic, $staff->email, $subject, $message);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to dispatch staff invitation email: ' . $e->getMessage());
+        }
+
+        AuditLogger::log(
+            $clinicId,
+            'create_staff',
+            'ClinicStaff',
+            $staff->id,
+            ['name' => $staff->name, 'email' => $staff->email, 'role' => $staff->role],
+            $request
+        );
 
         return response()->json([
             'success' => true,
-            'message' => 'Staff member created successfully.',
+            'message' => 'Staff member created successfully. An invitation email has been dispatched.',
             'staff' => [
                 'id' => $staff->id,
                 'name' => $staff->name,
@@ -158,6 +218,7 @@ class StaffController extends Controller
                 'last_login' => now()->format('M d, Y h:i A'),
                 'started' => now()->format('M d, Y'),
                 'is_active' => true,
+                'invite_pending' => true,
             ]
         ], 201);
     }
@@ -167,10 +228,28 @@ class StaffController extends Controller
      */
     public function deleteStaff(Request $request, int $id)
     {
-        $clinicId = $request->user()->clinic_id ?? 1;
+        $clinicId = $request->user()->clinic_id;
+        if (!$clinicId) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized: User has no associated clinic.'], 403);
+        }
+
+        if (Gate::has('manage-staff') && !Gate::allows('manage-staff')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Only clinic owners and administrators can remove staff.'
+            ], 403);
+        }
 
         $staff = ClinicStaff::where('id', $id)->where('clinic_id', $clinicId)->first();
         if ($staff) {
+            AuditLogger::log(
+                $clinicId,
+                'delete_staff',
+                'ClinicStaff',
+                $staff->id,
+                ['name' => $staff->name, 'email' => $staff->email],
+                $request
+            );
             $staff->delete();
         }
 

@@ -26,20 +26,34 @@ class ClinicStaff extends Authenticatable
         'is_active',
         'email_verified_at',
         'verification_token',
+        'invite_token',
+        'invite_expires_at',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
+        'verification_token',
+        'invite_token',
     ];
 
     protected $casts = [
         'permissions' => 'array',
         'is_active' => 'boolean',
         'email_verified_at' => 'datetime',
+        'invite_expires_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    /**
+     * Check if staff has a pending invitation
+     */
+    public function isInvitationPending(): bool
+    {
+        return !empty($this->invite_token) && 
+               (!$this->invite_expires_at || $this->invite_expires_at->isFuture());
+    }
 
     /**
      * Get the clinic that owns the staff.

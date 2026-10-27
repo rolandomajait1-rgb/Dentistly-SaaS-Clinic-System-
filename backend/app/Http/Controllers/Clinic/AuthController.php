@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Clinic;
 
 use App\Http\Controllers\Controller;
 use App\Models\{Clinic, ClinicStaff, Tenant, SubscriptionPlan, Subscription, DentalService};
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Hash, DB, Log, Http};
 use Illuminate\Support\Str;
@@ -324,12 +325,27 @@ class AuthController extends Controller
 
         $idToken = $request->credential;
 
-        // Verify token via Google API
-        $response = Http::get("https://oauth2.googleapis.com/tokeninfo?id_token={$idToken}");
+        // Verify token via Google API with resilient timeout and error handling
+        try {
+            $response = Http::timeout(15)
+                ->withoutVerifying() // Avoid cURL CA bundle mismatches on Windows development
+                ->get("https://oauth2.googleapis.com/tokeninfo", [
+                    'id_token' => $idToken,
+                ]);
+        } catch (\Throwable $e) {
+            Log::error('Google Auth verification request failed: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Unable to contact Google authentication service. Please check your internet connection or try again.'
+            ], 500);
+        }
 
         if ($response->failed()) {
+            Log::warning('Google Auth tokeninfo rejected token', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
             return response()->json([
-                'message' => 'Google authentication failed. Invalid token.'
+                'message' => 'Google authentication failed. The token is invalid or expired. Please sign in again.'
             ], 400);
         }
 
@@ -337,6 +353,10 @@ class AuthController extends Controller
 
         $clientId = config('services.google.client_id');
         if ($clientId && isset($payload['aud']) && $payload['aud'] !== $clientId) {
+            Log::warning('Google Auth client ID mismatch', [
+                'expected' => $clientId,
+                'received' => $payload['aud'] ?? null,
+            ]);
             return response()->json([
                 'message' => 'Google authentication failed. Client ID mismatch.'
             ], 400);
@@ -349,14 +369,22 @@ class AuthController extends Controller
             ], 400);
         }
 
-        $staff = ClinicStaff::where('email', $email)
+        // Case-insensitive lookup for active staff
+        $staff = ClinicStaff::whereRaw('LOWER(email) = ?', [strtolower(trim($email))])
             ->where('is_active', true)
             ->first();
 
         if (!$staff) {
+            Log::info('Google Auth staff not found', ['email' => $email]);
             return response()->json([
-                'message' => 'No registered staff account found for this Google email address (' . $email . '). Please contact your clinic administrator.'
+                'message' => 'No registered staff account found for this Google email address (' . $email . '). Please make sure you are using your registered clinic email.'
             ], 401);
+        }
+
+        // Automatically mark email as verified since Google has verified it
+        if (!$staff->email_verified_at) {
+            $staff->email_verified_at = now();
+            $staff->save();
         }
 
         $clinic = Clinic::with('fbPageIntegration')->find($staff->clinic_id);
@@ -364,7 +392,158 @@ class AuthController extends Controller
         $staff->tokens()->delete();
         $token = $staff->createToken('dashboard-access')->plainTextToken;
 
+        Log::info('Google Auth login successful', [
+            'staff_id' => $staff->id,
+            'clinic_id' => $staff->clinic_id,
+            'email' => $staff->email,
+        ]);
+
         return response()->json([
+            'user' => [
+                'id' => $staff->id,
+                'name' => $staff->name,
+                'email' => $staff->email,
+                'role' => $staff->role,
+                'clinic_id' => $staff->clinic_id,
+            ],
+            'clinic' => $clinic,
+            'token' => $token
+        ]);
+    }
+
+    /**
+     * Send password reset link to staff email
+     */
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $staff = ClinicStaff::where('email', $request->email)->first();
+        if ($staff) {
+            $token = Str::random(64);
+
+            DB::table('password_reset_tokens')->updateOrInsert(
+                ['email' => $staff->email],
+                ['token' => Hash::make($token), 'created_at' => now()]
+            );
+
+            try {
+                $mailService = resolve(\App\Services\MailService::class);
+                $clinic = Clinic::find($staff->clinic_id);
+                $appBaseUrl = rtrim(config('app.url', 'http://localhost:5173'), '/');
+                $resetUrl = "{$appBaseUrl}/reset-password?token={$token}&email=" . urlencode($staff->email);
+
+                $subject = "Reset Your Pivodent Password";
+                $message = "Hello {$staff->name},\n\nWe received a request to reset your password. Click the link below to set a new password:\n\n{$resetUrl}\n\nIf you did not request a password reset, please ignore this email.";
+                $mailService->sendClinicMail($clinic, $staff->email, $subject, $message);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to dispatch password reset email: ' . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'If an account exists with that email address, a password reset link has been dispatched.'
+        ]);
+    }
+
+    /**
+     * Reset staff password using verification token
+     */
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token' => 'required|string',
+            'email' => 'required|email',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $record = DB::table('password_reset_tokens')->where('email', $request->email)->first();
+        if (!$record || !Hash::check($request->token, $record->token)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired password reset token.'
+            ], 422);
+        }
+
+        // Token expires after 60 minutes
+        if (Carbon::parse($record->created_at)->addMinutes(60)->isPast()) {
+            DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+            return response()->json([
+                'success' => false,
+                'message' => 'Password reset token has expired. Please request a new link.'
+            ], 422);
+        }
+
+        $staff = ClinicStaff::where('email', $request->email)->firstOrFail();
+        $staff->password = Hash::make($request->password);
+        $staff->save();
+
+        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        AuditLogger::log(
+            $staff->clinic_id,
+            'password_reset_completed',
+            'ClinicStaff',
+            $staff->id,
+            ['email' => $staff->email],
+            $request
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password reset successfully. You may now log in with your new password.'
+        ]);
+    }
+
+    /**
+     * Accept staff invitation and activate account
+     */
+    public function acceptInvite(Request $request)
+    {
+        $request->validate([
+            'token' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $staff = ClinicStaff::where('invite_token', $request->token)->first();
+
+        if (!$staff) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid invitation link or token.'
+            ], 404);
+        }
+
+        if ($staff->invite_expires_at && $staff->invite_expires_at->isPast()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This invitation has expired. Please ask your clinic administrator to re-invite you.'
+            ], 410);
+        }
+
+        $staff->password = Hash::make($request->password);
+        $staff->invite_token = null;
+        $staff->invite_expires_at = null;
+        $staff->is_active = true;
+        $staff->email_verified_at = now();
+        $staff->save();
+
+        $clinic = Clinic::with('fbPageIntegration')->find($staff->clinic_id);
+        $token = $staff->createToken('dashboard-access')->plainTextToken;
+
+        AuditLogger::log(
+            $staff->clinic_id,
+            'accept_staff_invitation',
+            'ClinicStaff',
+            $staff->id,
+            ['email' => $staff->email, 'role' => $staff->role],
+            $request
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Invitation accepted and account activated successfully!',
             'user' => [
                 'id' => $staff->id,
                 'name' => $staff->name,

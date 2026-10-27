@@ -143,7 +143,19 @@ class Clinic extends Model
      */
     public function getPublicBookingUrl(): string
     {
-        $baseUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173'));
+        $baseUrl = config('app.frontend_url') ?: env('FRONTEND_URL');
+
+        // If frontend_url is not set or points to localhost, but app.url is an HTTPS public URL (e.g. ngrok/production),
+        // use app.url so external mobile Messenger users can reach the portal.
+        $appUrl = config('app.url', '');
+        if (empty($baseUrl) || str_contains($baseUrl, 'localhost') || str_contains($baseUrl, '127.0.0.1')) {
+            if (!empty($appUrl) && str_starts_with($appUrl, 'https://')) {
+                $baseUrl = $appUrl;
+            } else {
+                $baseUrl = $baseUrl ?: 'http://localhost:5173';
+            }
+        }
+
         return rtrim($baseUrl, '/') . '/book/' . $this->slug;
     }
 }

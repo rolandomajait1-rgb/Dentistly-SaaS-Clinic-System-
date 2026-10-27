@@ -19,9 +19,22 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    'allowed_origins' => [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'https://superfinical-amuck-veola.ngrok-free.dev',
+    ],
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '#^http://localhost(:\d+)?$#',
+        '#^http://127\.0\.0\.1(:\d+)?$#',
+        '#^http://192\.168\.\d+\.\d+(:\d+)?$#',
+        '#^http://10\.\d+\.\d+\.\d+(:\d+)?$#',
+        '#^https://.*\.ngrok-free\.dev$#',
+        '#^https://.*\.ngrok\.app$#',
+    ],
 
     'allowed_headers' => ['*'],
 

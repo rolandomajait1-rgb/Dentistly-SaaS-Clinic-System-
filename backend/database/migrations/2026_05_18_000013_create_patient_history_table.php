@@ -12,16 +12,16 @@ return new class extends Migration
             $table->id();
             $table->foreignId('clinic_id')->constrained()->onDelete('cascade');
             $table->foreignId('patient_id')->constrained()->onDelete('cascade');
-            $table->foreignId('appointment_id')->constrained()->onDelete('cascade');
-            $table->foreignId('dental_service_id')->constrained();
-            $table->text('service_provided');
+            $table->foreignId('appointment_id')->nullable()->constrained()->onDelete('cascade');
+            $table->foreignId('dental_service_id')->nullable()->constrained();
+            $table->text('service_provided')->nullable();
             $table->text('diagnosis')->nullable();
             $table->text('treatment')->nullable();
             $table->text('prescription')->nullable();
             $table->text('doctor_notes')->nullable();
             $table->decimal('amount_charged', 10, 2)->nullable();
             $table->date('service_date');
-            $table->foreignId('performed_by')->constrained('clinic_staff');
+            $table->foreignId('performed_by')->nullable()->constrained('clinic_staff');
             $table->date('next_visit_date')->nullable();
             $table->timestamps();
             
