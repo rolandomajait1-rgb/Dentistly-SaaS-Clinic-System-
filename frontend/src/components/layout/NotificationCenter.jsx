@@ -1,36 +1,145 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNotifications } from '../../context/NotificationContext';
-import { formatRelativeTime } from '../../utils/time';
 import { updateAppointmentStatus } from '../../api';
-import {
-  BellSlash,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Chat,
-  ArrowsClockwise,
-  Check,
-  CircleNotch,
-} from '@phosphor-icons/react';
+
+// Format time to match Figma design (e.g. "9:18 AM", "Yesterday", or "Oct 6")
+function formatTimeDisplay(dateString) {
+  try {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    if (isToday) {
+      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    }
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    }
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch {
+    return 'Recently';
+  }
+}
+
+// Category icon badges according to Figma specification
+function renderNotificationBadge(type, title = '', iconName = '') {
+  const t = (type || '').toLowerCase();
+  const tit = (title || '').toLowerCase();
+
+  // 1. Red Badge (No-show, Cancellation, Declined)
+  if (t.includes('cancel') || tit.includes('no-show') || tit.includes('cancellation')) {
+    return {
+      bg: '#FEE2E2',
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="8" cy="5" r="3" stroke="#B91C1C" strokeWidth="1.3" />
+          <path d="M3 13C3 10.79 5.24 9 8 9C9.1 9 10.1 9.3 10.9 9.8" stroke="#B91C1C" strokeWidth="1.3" strokeLinecap="round" />
+          <path d="M11.5 12.5H14.5" stroke="#B91C1C" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+      ),
+    };
+  }
+
+  // 2. Purple Badge (Patient Escalation, Chatbot, Inquiries, Admin review)
+  if (
+    t.includes('chat') ||
+    tit.includes('escalat') ||
+    tit.includes('chatbot') ||
+    tit.includes('inquiry') ||
+    iconName === 'chat' ||
+    iconName === 'facebook'
+  ) {
+    return {
+      bg: '#EDE9FE',
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M13.33 8.67C13.33 11 10.95 12.67 8 12.67C7.1 12.67 6.25 12.5 5.5 12.2L2.67 13L3.45 10.5C2.95 9.95 2.67 9.3 2.67 8.67C2.67 6.34 5.05 4.67 8 4.67C10.95 4.67 13.33 6.34 13.33 8.67Z"
+            stroke="#7C3AED"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+    };
+  }
+
+  // 3. Green Badge (Check-in, Approved, Confirmed, Completed)
+  if (
+    t.includes('approved') ||
+    tit.includes('check-in') ||
+    tit.includes('confirmed') ||
+    tit.includes('completed')
+  ) {
+    return {
+      bg: '#D1FAE5',
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M13.33 4.67L6.33 11.67L3 8.33"
+            stroke="#047857"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+    };
+  }
+
+  // 4. Blue Badge (Subscription, Plan expiring, System announcements)
+  if (
+    t.includes('subscription') ||
+    tit.includes('expir') ||
+    tit.includes('plan') ||
+    t.includes('system') ||
+    iconName === 'sync'
+  ) {
+    return {
+      bg: '#DBEAFE',
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="3.33" width="12" height="9.33" rx="1.5" stroke="#1D4ED8" strokeWidth="1.3" />
+          <path d="M2 6.67H14" stroke="#1D4ED8" strokeWidth="1.3" />
+          <path d="M5 10H7" stroke="#1D4ED8" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+      ),
+    };
+  }
+
+  // 5. Amber Badge (Pending requests, default)
+  return {
+    bg: '#FEF3C7',
+    icon: (
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="8" cy="8" r="5.33" stroke="#D97706" strokeWidth="1.3" />
+        <path d="M8 5.33V8L10 10" stroke="#D97706" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
+    ),
+  };
+}
 
 export default function NotificationCenter({ isOpen, onClose, setActiveTab }) {
   const {
     notifications,
     markAsRead,
     markAllAsRead,
-    clearAll,
     showToast,
+    updateNotification,
+    refreshNotifications,
   } = useNotifications();
 
-  const [activeTab, setLocalActiveTab] = useState('all'); // 'all', 'unread'
   const [loadingId, setLoadingId] = useState(null);
+  const [filterMode, setFilterMode] = useState('all'); // 'all', 'history'
   const dropdownRef = useRef(null);
 
   // Close dropdown on click outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        // Check if the click was on the bell button to avoid double toggle
         if (!event.target.closest('.notification-bell-btn')) {
           onClose();
         }
@@ -47,11 +156,7 @@ export default function NotificationCenter({ isOpen, onClose, setActiveTab }) {
 
   if (!isOpen) return null;
 
-  // Filter notifications
-  const displayedNotifications = notifications.filter((n) => {
-    if (activeTab === 'unread') return !n.read;
-    return true;
-  });
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   // Handle clicking a notification
   const handleItemClick = (n) => {
@@ -59,33 +164,29 @@ export default function NotificationCenter({ isOpen, onClose, setActiveTab }) {
     if (n.actionTab) {
       setActiveTab(n.actionTab);
     }
+    onClose();
   };
 
-  // Inline approval actions
+  // Inline approval actions for pending appointments
   const handleApprove = async (e, n) => {
-    e.stopPropagation(); // prevent triggering item click
+    e.stopPropagation();
     setLoadingId(n.id);
-    
     try {
       if (n.appointmentId) {
-        // Real database appointment approval
         await updateAppointmentStatus(n.appointmentId, 'Approved');
         showToast('Appointment approved successfully!', 'success');
       } else {
-        // Mock appointment approval helper (for demo data)
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        showToast('Mock appointment approved successfully!', 'success');
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        showToast('Appointment approved successfully!', 'success');
       }
-      
-      // Update notification text in the UI to reflect it is approved
-      n.read = true;
-      n.type = 'appointment_approved';
-      n.title = 'Appointment Confirmed';
-      n.description = n.description.replace('requested', 'confirmed for') + ' (Approved)';
-      n.icon = 'check_circle';
-      
+      updateNotification(n.id, {
+        read: true,
+        type: 'appointment_approved',
+        title: 'Appointment Confirmed',
+        description: n.description.replace('requested', 'confirmed for') + ' (Approved)',
+      });
+      if (refreshNotifications) setTimeout(refreshNotifications, 800);
     } catch (err) {
-      console.error(err);
       showToast('Error approving appointment: ' + err.message, 'error');
     } finally {
       setLoadingId(null);
@@ -95,248 +196,276 @@ export default function NotificationCenter({ isOpen, onClose, setActiveTab }) {
   const handleDecline = async (e, n) => {
     e.stopPropagation();
     setLoadingId(n.id);
-    
     try {
       if (n.appointmentId) {
         await updateAppointmentStatus(n.appointmentId, 'Cancelled');
         showToast('Appointment declined/cancelled.', 'info');
       } else {
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        showToast('Mock appointment declined/cancelled.', 'info');
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        showToast('Appointment declined/cancelled.', 'info');
       }
-      
-      n.read = true;
-      n.type = 'appointment_cancelled';
-      n.title = 'Appointment Declined';
-      n.description = n.description.replace('requested', 'declined for') + ' (Cancelled)';
-      n.icon = 'cancel';
-      
+      updateNotification(n.id, {
+        read: true,
+        type: 'appointment_cancelled',
+        title: 'Appointment Declined',
+        description: n.description.replace('requested', 'declined for') + ' (Cancelled)',
+      });
+      if (refreshNotifications) setTimeout(refreshNotifications, 800);
     } catch (err) {
-      console.error(err);
       showToast('Error updating appointment: ' + err.message, 'error');
     } finally {
       setLoadingId(null);
     }
   };
 
-  // Get icon and color styling based on notification type/icon name
-  const getIconConfig = (iconName, type) => {
-    let bg = 'bg-surface-container';
-    let color = 'text-on-surface-variant';
-    let IconComponent = Clock;
-
-    if (type === 'appointment_approved') {
-      bg = 'bg-[#e5f6f4]'; color = 'text-primary'; IconComponent = CheckCircle;
-    } else if (type === 'appointment_cancelled') {
-      bg = 'bg-error-container'; color = 'text-error'; IconComponent = XCircle;
-    } else if (type === 'appointment_pending') {
-      bg = 'bg-[#fdf6e3]'; color = 'text-amber-700'; IconComponent = Clock;
-    } else if (iconName === 'chat' || iconName === 'facebook') {
-      bg = 'bg-[#eff4ff]'; color = 'text-[#1877f2]'; IconComponent = Chat;
-    } else if (iconName === 'sync') {
-      bg = 'bg-surface-container-high'; color = 'text-primary'; IconComponent = ArrowsClockwise;
-    }
-
-    return { bg, color, IconComponent };
-  };
+  const displayedNotifications =
+    filterMode === 'history'
+      ? notifications
+      : notifications.slice(0, 8);
 
   return (
-    <>
-      <style>{`
-        .notification-dropdown-panel {
-          position: absolute;
-          top: 60px;
-          right: 0;
-          width: 380px;
-          max-height: 520px;
-          display: flex;
-          flex-direction: column;
-          border-radius: 16px;
-          background: rgba(255, 255, 255, 0.92);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.5);
-          box-shadow: 0 16px 40px rgba(0, 78, 71, 0.08);
-          z-index: 1000;
-          transform-origin: top right;
-          animation: dropdownSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
+    <div
+      ref={dropdownRef}
+      className="absolute top-[calc(100%+12px)] right-0 z-50 flex flex-col bg-white shadow-[0px_4px_20px_rgba(0,0,0,0.10),0px_0px_4px_rgba(0,0,0,0.08)] rounded-[16px] overflow-hidden border border-black/5 animate-in fade-in zoom-in-95 duration-150 select-none"
+      style={{
+        width: 568,
+        maxWidth: 'calc(100vw - 24px)',
+        paddingTop: 15,
+        paddingBottom: 15,
+      }}
+    >
+      {/* ─── Header ───────────────────────────────────────────────────────────── */}
+      <div
+        className="flex items-center justify-between"
+        style={{
+          paddingLeft: 25,
+          paddingRight: 25,
+          paddingTop: 10,
+          paddingBottom: 10,
+        }}
+      >
+        {/* Title + Unread Count Badge */}
+        <div className="flex items-center gap-2.5">
+          <span
+            style={{
+              color: '#0E3F39',
+              fontSize: 14,
+              fontFamily: "'Work Sans', sans-serif",
+              fontWeight: '700',
+              lineHeight: '20px',
+            }}
+          >
+            Notification
+          </span>
 
-        @keyframes dropdownSlideIn {
-          from {
-            transform: scale(0.95) translateY(-10px);
-            opacity: 0;
-          }
-          to {
-            transform: scale(1) translateY(0);
-            opacity: 1;
-          }
-        }
-
-        @media (max-width: 640px) {
-          .notification-dropdown-panel {
-            position: fixed;
-            top: 64px;
-            left: 12px;
-            right: 12px;
-            width: calc(100% - 24px);
-            max-height: calc(100vh - 80px);
-          }
-        }
-
-        .notification-item-row {
-          transition: background-color 0.15s ease;
-        }
-        .notification-item-row:hover {
-          background-color: rgba(0, 78, 71, 0.03);
-        }
-        
-        .notification-unread-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: var(--color-primary);
-          box-shadow: 0 0 8px var(--color-primary);
-        }
-      `}</style>
-
-      <div ref={dropdownRef} className="notification-dropdown-panel overflow-hidden">
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-outline-variant flex justify-between items-center shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="font-extrabold text-on-surface text-base">Notifications</span>
-            {notifications.filter(n => !n.read).length > 0 && (
-              <span className="bg-primary text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                {notifications.filter(n => !n.read).length} new
+          {unreadCount > 0 && (
+            <div
+              style={{
+                width: 16,
+                height: 16,
+                background: '#E05252',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <span
+                style={{
+                  color: 'white',
+                  fontSize: 12,
+                  fontFamily: "'Work Sans', sans-serif",
+                  fontWeight: '700',
+                  lineHeight: '16px',
+                  wordWrap: 'break-word',
+                }}
+              >
+                {unreadCount > 9 ? '9+' : unreadCount}
               </span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={markAllAsRead}
-              disabled={notifications.filter(n => !n.read).length === 0}
-              className="text-[10px] font-bold tracking-wider uppercase text-primary hover:underline disabled:opacity-40 cursor-pointer"
-            >
-              Mark all read
-            </button>
-            <span className="w-1 h-1 rounded-full bg-outline-variant" />
-            <button
-              onClick={clearAll}
-              disabled={notifications.length === 0}
-              className="text-[10px] font-bold tracking-wider uppercase text-on-surface-variant hover:text-error disabled:opacity-40 cursor-pointer"
-            >
-              Clear all
-            </button>
-          </div>
-        </div>
-
-        {/* Tab switchers */}
-        <div className="flex px-3 bg-surface-bright/50 border-b border-outline-variant/50 shrink-0">
-          <button
-            onClick={() => setLocalActiveTab('all')}
-            className={`flex-1 py-2 text-center text-[10px] font-extrabold tracking-widest uppercase border-b-2 cursor-pointer transition-all ${
-              activeTab === 'all'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-on-surface-variant hover:text-on-surface'
-            }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setLocalActiveTab('unread')}
-            className={`flex-1 py-2 text-center text-[10px] font-extrabold tracking-widest uppercase border-b-2 cursor-pointer transition-all ${
-              activeTab === 'unread'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-on-surface-variant hover:text-on-surface'
-            }`}
-          >
-            Unread ({notifications.filter((n) => !n.read).length})
-          </button>
-        </div>
-
-        {/* List of items */}
-        <div className="flex-1 overflow-y-auto max-h-[380px] divide-y divide-outline-variant/30">
-          {displayedNotifications.length === 0 ? (
-            <div className="py-12 px-6 text-center text-on-surface-variant flex flex-col items-center justify-center">
-              <BellSlash size={40} weight="duotone" className="text-outline-variant/60 mb-2" />
-              <p className="text-sm font-semibold">All caught up! 🎉</p>
-              <p className="text-xs text-on-surface-variant/70 mt-1">No notifications to display.</p>
             </div>
-          ) : (
-            displayedNotifications.map((notif) => {
-              const { bg, color, IconComponent } = getIconConfig(notif.icon, notif.type);
-              return (
-                <div
-                  key={notif.id}
-                  onClick={() => handleItemClick(notif)}
-                  className={`notification-item-row p-4 flex gap-3 cursor-pointer relative ${
-                    !notif.read ? 'bg-primary/2' : ''
-                  }`}
-                >
-                  {/* Left Icon */}
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${bg}`}>
-                    <IconComponent size={18} weight="duotone" className={color} />
-                  </div>
-
-                  {/* Body Text */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start mb-0.5">
-                      <p className="text-xs font-extrabold text-on-surface truncate pr-2">
-                        {notif.title}
-                      </p>
-                      <span className="text-[10px] text-on-surface-variant/70 shrink-0 mt-0.5 font-medium">
-                        {formatRelativeTime(notif.time)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-on-surface-variant leading-normal wrap-break-word">
-                      {notif.description}
-                    </p>
-
-                    {/* Inline action buttons for pending appointments */}
-                    {notif.type === 'appointment_pending' && (
-                      <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={(e) => handleApprove(e, notif)}
-                          disabled={loadingId === notif.id}
-                          className="px-3 py-1 bg-primary text-white text-[10px] font-black tracking-wider uppercase rounded-lg hover:opacity-90 transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                        >
-                          {loadingId === notif.id ? (
-                            <CircleNotch size={12} weight="bold" className="animate-spin" />
-                          ) : (
-                            <Check size={12} weight="bold" />
-                          )}
-                          Approve
-                        </button>
-                        <button
-                          onClick={(e) => handleDecline(e, notif)}
-                          disabled={loadingId === notif.id}
-                          className="px-3 py-1 border border-outline text-on-surface-variant text-[10px] font-extrabold tracking-wider uppercase rounded-lg hover:bg-surface-container transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                        >
-                          Decline
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Unread Glow Indicator */}
-                  {!notif.read && (
-                    <div className="absolute right-4 bottom-4">
-                      <div className="notification-unread-dot" />
-                    </div>
-                  )}
-                </div>
-              );
-            })
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-outline-variant bg-surface-bright flex justify-center shrink-0">
-          <span className="text-[10px] text-on-surface-variant/70 font-semibold uppercase tracking-wider">
-            Dental Appointment Webhook Live
-          </span>
+        {/* Actions on right: Mark all read + Close button */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={markAllAsRead}
+            disabled={unreadCount === 0}
+            className="px-2.5 py-1 rounded-[10px] transition-colors cursor-pointer disabled:opacity-40 hover:bg-[#1A8A7A]/10"
+            style={{
+              color: '#1A8A7A',
+              fontSize: 12,
+              fontFamily: "'Work Sans', sans-serif",
+              fontWeight: '500',
+              lineHeight: '16px',
+            }}
+          >
+            Mark all read
+          </button>
+
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-[10px] text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+            aria-label="Close notifications"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M3 3L11 11M11 3L3 11" />
+            </svg>
+          </button>
         </div>
       </div>
-    </>
+
+      {/* ─── Notification List ─────────────────────────────────────────────────── */}
+      <div className="flex flex-col flex-1 max-h-[460px] overflow-y-auto">
+        {displayedNotifications.length === 0 ? (
+          <div className="py-12 px-6 text-center text-[#99A1AF] flex flex-col items-center justify-center">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" className="mb-2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            <p className="text-xs font-semibold text-[#1E2939]">All caught up!</p>
+            <p className="text-[11px] text-[#99A1AF] mt-0.5">No notifications to display.</p>
+          </div>
+        ) : (
+          displayedNotifications.map((notif) => {
+            const badge = renderNotificationBadge(notif.type, notif.title, notif.icon);
+            const isUnread = !notif.read;
+
+            return (
+              <div
+                key={notif.id}
+                onClick={() => handleItemClick(notif)}
+                className={`w-full flex items-start gap-3 transition-colors cursor-pointer hover:bg-[#F3F6FD]/70 ${
+                  isUnread ? 'bg-[#F7F9FF]' : 'bg-white'
+                }`}
+                style={{
+                  paddingLeft: 20,
+                  paddingRight: 20,
+                  paddingTop: 14,
+                  paddingBottom: 14,
+                  borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
+                }}
+              >
+                {/* Left Category Icon Container */}
+                <div className="pt-0.5 shrink-0">
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      background: badge.bg,
+                      borderRadius: 10,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {badge.icon}
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 flex flex-col min-w-0">
+                  {/* Title */}
+                  <div className="w-full flex justify-between items-start gap-2">
+                    <span
+                      style={{
+                        color: '#1E2939',
+                        fontSize: 12,
+                        fontFamily: "'Work Sans', sans-serif",
+                        fontWeight: isUnread ? '600' : '500',
+                        lineHeight: '16.5px',
+                        wordWrap: 'break-word',
+                      }}
+                    >
+                      {notif.title}
+                    </span>
+                  </div>
+
+                  {/* Description */}
+                  {notif.description && (
+                    <div
+                      style={{
+                        paddingTop: 2,
+                        color: '#99A1AF',
+                        fontSize: 12,
+                        fontFamily: "'Work Sans', sans-serif",
+                        fontWeight: '400',
+                        lineHeight: '16px',
+                        wordWrap: 'break-word',
+                      }}
+                    >
+                      {notif.description}
+                    </div>
+                  )}
+
+                  {/* Inline Approve/Decline for Pending Appointments */}
+                  {notif.type === 'appointment_pending' && (
+                    <div className="flex items-center gap-2 mt-2.5" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => handleApprove(e, notif)}
+                        disabled={loadingId === notif.id}
+                        className="px-2.5 py-1 bg-[#0E3F39] text-white text-[11px] font-semibold rounded-md hover:bg-[#1A5C54] transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        {loadingId === notif.id ? 'Approving...' : 'Approve'}
+                      </button>
+                      <button
+                        onClick={(e) => handleDecline(e, notif)}
+                        disabled={loadingId === notif.id}
+                        className="px-2.5 py-1 border border-slate-200 text-slate-700 text-[11px] font-medium rounded-md hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Timestamp */}
+                  <div
+                    style={{
+                      paddingTop: 6,
+                      color: '#99A1AF',
+                      fontSize: 12,
+                      fontFamily: "'Work Sans', sans-serif",
+                      fontWeight: '400',
+                      lineHeight: '16px',
+                      wordWrap: 'break-word',
+                    }}
+                  >
+                    {formatTimeDisplay(notif.time)}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ─── Footer ───────────────────────────────────────────────────────────── */}
+      <div
+        className="w-full flex items-center justify-center shrink-0"
+        style={{
+          paddingLeft: 20,
+          paddingRight: 20,
+          paddingTop: 12,
+          paddingBottom: 12,
+          borderTop: '1.33px solid #F3F4F6',
+        }}
+      >
+        <button
+          onClick={() => setFilterMode((prev) => (prev === 'all' ? 'history' : 'all'))}
+          className="text-center transition-colors cursor-pointer hover:text-[#1A8A7A]"
+          style={{
+            color: '#9CA3AF',
+            fontSize: 12,
+            fontFamily: "'Work Sans', sans-serif",
+            fontWeight: '500',
+            lineHeight: '16px',
+            wordWrap: 'break-word',
+          }}
+        >
+          {filterMode === 'history' ? 'Show recent notifications' : 'View notification history'}
+        </button>
+      </div>
+    </div>
   );
 }

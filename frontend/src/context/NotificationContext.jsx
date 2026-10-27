@@ -1,59 +1,82 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import {
+  getNotifications as apiGetNotifications,
+  markNotificationRead as apiMarkNotificationRead,
+  markAllNotificationsRead as apiMarkAllNotificationsRead,
+  clearNotifications as apiClearNotifications,
+} from '../api';
 
 const NotificationContext = createContext();
 
-
-const DEFAULT_NOTIFICATIONS = [
+const INITIAL_DEMO_NOTIFICATIONS = [
   {
-    id: 'mock-1',
-    title: 'New Facebook Booking Request',
-    description: 'Juan Dela Cruz requested Teeth Cleaning for today at 10:00 AM.',
-    time: new Date(Date.now() - 3 * 60 * 1000).toISOString(), // 3 mins ago
-    type: 'appointment_pending',
+    id: 'demo_1',
+    title: 'No-show: Haven Burke',
+    description: 'Appointment 9:00 AM not attended. Auto-flagged.',
+    time: new Date(Date.now() - 1000 * 60 * 42).toISOString(),
+    type: 'no_show',
     read: false,
-    icon: 'chat',
-    actionTab: 'overview',
+    icon: 'cancel',
+    actionTab: 'schedule',
   },
   {
-    id: 'mock-2',
-    title: 'Google Calendar Synced',
-    description: 'Clinic schedule has been synced with Google Calendar.',
-    time: new Date(Date.now() - 25 * 60 * 1000).toISOString(), // 25 mins ago
-    type: 'system',
+    id: 'demo_2',
+    title: "Patient escalation: 'Is extraction painful?' – needs response",
+    description: 'Patient asked about pain management on Messenger.',
+    time: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
+    type: 'chatbot_escalation',
+    read: false,
+    icon: 'chat',
+    actionTab: 'patients',
+  },
+  {
+    id: 'demo_3',
+    title: 'Billing inquiry escalated from chatbot – admin review needed',
+    description: 'Inquiry regarding HMO coverage and root canal pricing.',
+    time: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+    type: 'chatbot_escalation',
+    read: false,
+    icon: 'chat',
+    actionTab: 'patients',
+  },
+  {
+    id: 'demo_4',
+    title: 'Check-in: Juan dela Cruz',
+    description: 'Arrived 5 min early for 10:00 AM routine checkup.',
+    time: new Date(Date.now() - 1000 * 60 * 80).toISOString(),
+    type: 'check_in',
+    read: true,
+    icon: 'check_circle',
+    actionTab: 'schedule',
+  },
+  {
+    id: 'demo_5',
+    title: 'No-show: Pedro Reyes',
+    description: '3rd no-show this month. Patient flagged for review.',
+    time: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+    type: 'no_show',
+    read: true,
+    icon: 'cancel',
+    actionTab: 'patients',
+  },
+  {
+    id: 'demo_6',
+    title: 'Subscription Expiring Soon',
+    description: 'Your plan expires in 3 days. Renew to avoid interruption.',
+    time: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
+    type: 'subscription',
     read: true,
     icon: 'sync',
     actionTab: 'settings',
   },
-  {
-    id: 'mock-3',
-    title: 'Facebook Chatbot Connected',
-    description: 'Clinic Facebook Page connection verified and listening for webhooks.',
-    time: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-    type: 'system',
-    read: true,
-    icon: 'facebook',
-    actionTab: 'settings',
-  }
 ];
 
 export function NotificationProvider({ children }) {
-  const [notifications, setNotifications] = useState(() => {
-    try {
-      const saved = localStorage.getItem('clinic_notifications');
-      return saved ? JSON.parse(saved) : DEFAULT_NOTIFICATIONS;
-    } catch (e) {
-      console.error('Error parsing clinic_notifications:', e);
-      localStorage.removeItem('clinic_notifications');
-      return DEFAULT_NOTIFICATIONS;
-    }
-  });
-
+  const [notifications, setNotifications] = useState(INITIAL_DEMO_NOTIFICATIONS);
   const [toasts, setToasts] = useState([]);
-
-  // Sync notifications to localStorage
-  useEffect(() => {
-    localStorage.setItem('clinic_notifications', JSON.stringify(notifications));
-  }, [notifications]);
+  const [isLoading, setIsLoading] = useState(false);
+  const isFirstLoadRef = useRef(true);
+  const knownIdsRef = useRef(new Set());
 
   // Add toast alert to stack
   const showToast = useCallback((message, type = 'info', duration = 4000) => {
@@ -66,15 +89,86 @@ export function NotificationProvider({ children }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Add persistent notification
+  // Fetch notifications from backend
+  const fetchLiveNotifications = useCallback(async (isBackground = false) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    if (!isBackground) setIsLoading(true);
+
+    try {
+      const data = await apiGetNotifications();
+      if (data && Array.isArray(data.notifications)) {
+        // Detect new incoming pending appointments to alert staff in real-time
+        if (!isFirstLoadRef.current) {
+          const newPendings = data.notifications.filter(
+            (n) => n.type === 'appointment_pending' && !knownIdsRef.current.has(n.id)
+          );
+          newPendings.forEach((p) => {
+            showToast(`🔔 ${p.title}: ${p.description}`, 'warning', 6000);
+          });
+        }
+
+        // Update known IDs
+        data.notifications.forEach((n) => knownIdsRef.current.add(n.id));
+        isFirstLoadRef.current = false;
+
+        if (data.notifications.length > 0) {
+          setNotifications(data.notifications);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not sync notifications from backend:', err.message);
+    } finally {
+      if (!isBackground) setIsLoading(false);
+    }
+  }, [showToast]);
+
+  // Initial load and periodic polling
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetchLiveNotifications(false);
+    }
+
+    // Poll every 25 seconds for new appointment notifications
+    const interval = setInterval(() => {
+      const currentToken = localStorage.getItem('token');
+      if (currentToken) {
+        fetchLiveNotifications(true);
+      }
+    }, 25000);
+
+    // Also re-check when the user focuses the window
+    const handleFocus = () => {
+      const currentToken = localStorage.getItem('token');
+      if (currentToken) {
+        fetchLiveNotifications(true);
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [fetchLiveNotifications]);
+
+  // Update a single notification in local state
+  const updateNotification = useCallback((id, patch) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, ...patch } : n))
+    );
+  }, []);
+
+  // Add persistent notification locally and show toast
   const addNotification = useCallback((title, description, type = 'info', icon = 'notifications', actionTab = null, appointmentId = null) => {
     setNotifications((prev) => {
-      // Prevent duplicate notifications for the same appointment ID
-      if (appointmentId && prev.some(n => n.appointmentId === appointmentId)) {
+      if (appointmentId && prev.some((n) => n.appointmentId === appointmentId)) {
         return prev;
       }
 
-      const id = Math.random().toString(36).substring(2, 9);
+      const id = 'local_' + Math.random().toString(36).substring(2, 9);
       const newNotif = {
         id,
         title,
@@ -86,33 +180,49 @@ export function NotificationProvider({ children }) {
         actionTab,
         appointmentId,
       };
-      
-      // Auto-trigger a toast when a new notification comes in
+
       let toastType = 'info';
       if (type === 'appointment_approved' || type === 'success') toastType = 'success';
       if (type === 'appointment_cancelled' || type === 'error') toastType = 'error';
       if (type === 'appointment_pending' || type === 'warning') toastType = 'warning';
-      
-      showToast(`${title}: ${description}`, toastType);
 
+      showToast(`${title}: ${description}`, toastType);
       return [newNotif, ...prev];
     });
   }, [showToast]);
 
-  const markAsRead = useCallback((id) => {
+  // Mark single as read
+  const markAsRead = useCallback(async (id) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
+    try {
+      await apiMarkNotificationRead(id);
+    } catch (e) {
+      console.warn('Error marking notification read on server:', e);
+    }
   }, []);
 
-  const markAllAsRead = useCallback(() => {
+  // Mark all as read
+  const markAllAsRead = useCallback(async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     showToast('All notifications marked as read', 'success');
+    try {
+      await apiMarkAllNotificationsRead();
+    } catch (e) {
+      console.warn('Error marking all notifications read on server:', e);
+    }
   }, [showToast]);
 
-  const clearAll = useCallback(() => {
+  // Clear all
+  const clearAll = useCallback(async () => {
     setNotifications([]);
     showToast('Notifications history cleared', 'info');
+    try {
+      await apiClearNotifications();
+    } catch (e) {
+      console.warn('Error clearing notifications on server:', e);
+    }
   }, [showToast]);
 
   // Unread count
@@ -123,12 +233,15 @@ export function NotificationProvider({ children }) {
       value={{
         notifications,
         unreadCount,
+        isLoading,
         showToast,
         addNotification,
+        updateNotification,
         markAsRead,
         markAllAsRead,
         clearAll,
-        toasts
+        refreshNotifications: () => fetchLiveNotifications(true),
+        toasts,
       }}
     >
       {children}

@@ -37,13 +37,20 @@ export async function createAppointment(data) {
   return res.json();
 }
 
-export async function updateAppointmentStatus(id, status) {
+export async function updateAppointmentStatus(id, status, cancellationReason = null, extraPayload = {}) {
+  const payload = { status, ...extraPayload };
+  if (cancellationReason) {
+    payload.cancellation_reason = cancellationReason;
+  }
   const res = await fetch(`${BASE_URL}/appointments/${id}/status`, {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify({ status })
+    body: JSON.stringify(payload)
   });
-  if (!res.ok) throw new Error('Failed to update status.');
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Failed to update status.');
+  }
   return res.json();
 }
 
@@ -152,6 +159,42 @@ export async function deleteStaff(id) {
   if (!res.ok) throw new Error('Failed to delete staff member.');
   return res.json();
 }
+
+export async function getNotifications() {
+  const res = await fetch(`${BASE_URL}/notifications`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to fetch notifications.');
+  return res.json();
+}
+
+export async function markNotificationRead(id) {
+  const res = await fetch(`${BASE_URL}/notifications/${encodeURIComponent(id)}/read`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to mark notification as read.');
+  return res.json();
+}
+
+export async function markAllNotificationsRead() {
+  const res = await fetch(`${BASE_URL}/notifications/read-all`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to mark all notifications as read.');
+  return res.json();
+}
+
+export async function clearNotifications() {
+  const res = await fetch(`${BASE_URL}/notifications`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to clear notifications.');
+  return res.json();
+}
+
 
 
 

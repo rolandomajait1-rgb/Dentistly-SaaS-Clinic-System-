@@ -39,3 +39,17 @@ export async function createPrescription(patientId, data) {
   return res.json();
 }
 
+export async function createSoapNote(patientId, data) {
+  const res = await fetch(`${BASE_URL}/patients/${patientId}/soap-notes`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message || 'Failed to record SOAP note.');
+  }
+  return res.json();
+}
+
+

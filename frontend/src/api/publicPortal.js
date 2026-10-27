@@ -1,4 +1,18 @@
-const PUBLIC_BASE_URL = 'http://127.0.0.1:8000/api/public/clinics';
+const resolvePublicBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return `${import.meta.env.VITE_API_URL.replace(/\/+$/, '')}/api/public/clinics`;
+  }
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (window.location.port === '5173' || (hostname !== 'localhost' && hostname !== '127.0.0.1')) {
+      return '/api/public/clinics';
+    }
+    return `http://${hostname}:8000/api/public/clinics`;
+  }
+  return '/api/public/clinics';
+};
+
+const PUBLIC_BASE_URL = resolvePublicBaseUrl();
 
 export async function fetchPublicClinicInfo(slug) {
   const res = await fetch(`${PUBLIC_BASE_URL}/${slug}/info`, {
@@ -22,8 +36,10 @@ export async function fetchPublicClinicServices(slug) {
   return res.json();
 }
 
-export async function fetchPublicClinicSlots(slug) {
-  const res = await fetch(`${PUBLIC_BASE_URL}/${slug}/slots`, {
+export async function fetchPublicClinicSlots(slug, params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const url = `${PUBLIC_BASE_URL}/${slug}/slots${query ? `?${query}` : ''}`;
+  const res = await fetch(url, {
     headers: { 'Accept': 'application/json' }
   });
   if (!res.ok) {
@@ -75,3 +91,16 @@ export async function cancelPublicAppointment(slug, { reference_number, contact_
   }
   return data;
 }
+
+export async function endMessengerConversation(slug, senderId) {
+  const res = await fetch(`${PUBLIC_BASE_URL}/${slug}/end-conversation`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({ sender_id: senderId })
+  });
+  return res.json().catch(() => ({ success: true }));
+}
+

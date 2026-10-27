@@ -9,48 +9,69 @@ const NAV_ITEMS = [
   { id: 'settings',  label: 'Clinic Settings',     icon: assets.iconClinicSettings },
 ];
 
+const getIconStyle = (itemId, isActive) => {
+  if (isActive) {
+    if (itemId === 'overview') {
+      return {};
+    }
+    return {
+      filter: 'brightness(0) saturate(100%) invert(18%) sepia(35%) saturate(1212%) hue-rotate(124deg) brightness(94%) contrast(92%)',
+    };
+  } else {
+    if (itemId === 'overview') {
+      return {
+        filter: 'brightness(0) saturate(100%) invert(48%) sepia(10%) saturate(632%) hue-rotate(178deg) brightness(93%) contrast(88%)',
+      };
+    }
+    return {};
+  }
+};
+
 export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
   return (
     <aside
-      className="hidden md:flex flex-col h-full bg-white shrink-0 z-20"
+      className="hidden md:flex flex-col h-full bg-white shrink-0 border-r border-slate-100 select-none"
       style={{
-        width: 260,
+        width: 255,
         height: '100vh',
-        paddingTop: 20,
-        paddingBottom: 20,
-        boxShadow: '0px 1px 5px rgba(0, 0, 0, 0.24) inset',
+        paddingTop: 28,
+        paddingBottom: 28,
+        paddingLeft: 16,
+        paddingRight: 16,
       }}
     >
       {/* Brand Header */}
-      <div
-        className="px-6 py-2 flex items-center gap-2.5 mb-6"
-        style={{
-          height: 75,
-          borderRight: '0.67px rgba(255, 255, 255, 0.10) solid',
-        }}
-      >
-        <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 overflow-hidden shadow-[0px_1px_3px_rgba(0,0,0,0.30),0px_4px_8px_3px_rgba(0,0,0,0.15)] bg-white border border-slate-100">
-          <img src={assets.dashboardLogo || assets.pivodentLogo} alt="Pivodent" className="w-10 h-10 object-contain" />
+      <div className="flex items-center gap-3.5 px-1 mb-8">
+        <div className="w-13 h-13 rounded-[18px] bg-white flex items-center justify-center shrink-0 shadow-[0_8px_20px_rgba(0,0,0,0.07),0_2px_6px_rgba(0,0,0,0.04)] border border-slate-100/90">
+          <img
+            src={assets.dashboardLogo || assets.pivodentLogo}
+            alt="Pivodent"
+            className="w-8.5 h-8.5 object-contain"
+          />
         </div>
         <div className="flex flex-col justify-center">
           <div
             style={{
-              color: '#1A5C54',
+              background: 'linear-gradient(90deg, #1A5C54 0%, #00100E 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
               fontSize: 20,
               fontFamily: "'Work Sans', sans-serif",
               fontWeight: '700',
               lineHeight: '30px',
+              wordWrap: 'break-word',
+              letterSpacing: '-0.01em',
             }}
           >
             PIVODENT
           </div>
           <div
             style={{
-              color: '#0E3F39',
-              fontSize: 10,
-              fontFamily: "'Quattrocento', serif",
+              color: '#486D69',
+              fontSize: 12,
+              fontFamily: "'Quattrocento', Georgia, serif",
               fontWeight: '400',
-              lineHeight: '17px',
+              lineHeight: '16px',
             }}
           >
             Dental Clinic
@@ -59,7 +80,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
       </div>
 
       {/* Main Navigation */}
-      <nav className="flex-1 space-y-3.5 px-6 pt-1" aria-label="Main navigation">
+      <nav className="flex-1 space-y-4.5" aria-label="Main navigation">
         {NAV_ITEMS.map((item) => {
           const isActive = activeTab === item.id;
           return (
@@ -67,36 +88,42 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               aria-current={isActive ? 'page' : undefined}
-              className="w-full flex items-center gap-3 px-4 py-2.5 transition-all duration-150 cursor-pointer"
+              className={`w-full flex items-center gap-3.5 px-4 py-3 transition-all duration-150 cursor-pointer group ${
+                isActive ? '' : 'hover:bg-slate-50/70'
+              }`}
               style={
                 isActive
                   ? {
-                      background: 'white',
-                      boxShadow: '1px 2px 4px rgba(0, 0, 0, 0.30)',
-                      borderRadius: 5,
-                      outline: '1px white solid',
-                      outlineOffset: '-1px',
+                      background:
+                        'linear-gradient(#FFFFFF, #FFFFFF) padding-box, linear-gradient(90deg, #FFFFFF 0%, #0F3E38 100%) border-box',
+                      border: '1.5px solid transparent',
+                      borderRadius: 8,
+                      boxShadow: '0px 4px 14px rgba(15, 62, 56, 0.08), 0px 1px 3px rgba(0, 0, 0, 0.04)',
                     }
                   : {
-                      borderRadius: 10,
+                      background: 'transparent',
+                      border: '1.5px solid transparent',
+                      borderRadius: 8,
                     }
               }
             >
-              <div className="w-[17px] h-[17px] flex items-center justify-center shrink-0">
+              <div className="w-5 h-5 flex items-center justify-center shrink-0">
                 <img
                   src={item.icon}
                   alt={item.label}
-                  className="w-[17px] h-[17px] object-contain"
+                  className="w-4.5 h-4.5 object-contain transition-all"
+                  style={getIconStyle(item.id, isActive)}
                 />
               </div>
               <span
                 style={{
-                  color: isActive ? '#0E3F39' : '#6A7282',
-                  fontSize: 14,
+                  color: isActive ? '#0F3E38' : '#6A7282',
+                  fontSize: 14.5,
                   fontFamily: "'Work Sans', sans-serif",
-                  fontWeight: '500',
+                  fontWeight: isActive ? '600' : '500',
                   lineHeight: '20px',
                 }}
+                className={isActive ? '' : 'group-hover:text-[#0F3E38] transition-colors'}
               >
                 {item.label}
               </span>
@@ -106,23 +133,31 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
       </nav>
 
       {/* Footer / Sign Out Section */}
-      <div className="mt-auto px-6 pb-4">
+      <div className="mt-auto pt-6">
         <button
           onClick={onLogout}
-          className="w-full flex items-center gap-3 px-4 py-2.5 transition-all duration-150 cursor-pointer"
-          style={{ borderRadius: 10 }}
+          className="w-full flex items-center gap-3.5 px-4 py-3 transition-all duration-150 cursor-pointer group hover:bg-slate-50/70"
+          style={{
+            border: '1.5px solid transparent',
+            borderRadius: 8,
+          }}
         >
-          <div className="w-4 h-4 flex items-center justify-center shrink-0">
-            <img src={assets.iconSignOut} alt="Sign out" className="w-4 h-4 object-contain" />
+          <div className="w-5 h-5 flex items-center justify-center shrink-0">
+            <img
+              src={assets.iconSignOut}
+              alt="Sign out"
+              className="w-4.5 h-4.5 object-contain transition-opacity"
+            />
           </div>
           <span
             style={{
               color: '#6A7282',
-              fontSize: 14,
+              fontSize: 14.5,
               fontFamily: "'Work Sans', sans-serif",
               fontWeight: '500',
               lineHeight: '20px',
             }}
+            className="group-hover:text-[#0F3E38] transition-colors"
           >
             Sign out
           </span>

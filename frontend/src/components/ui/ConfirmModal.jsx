@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Warning, SignOut, Trash, Question, Check } from '@phosphor-icons/react';
+import { Warning, Trash, Question, Check } from '@phosphor-icons/react';
 
 export default function ConfirmModal({
   isOpen,
@@ -43,6 +43,49 @@ export default function ConfirmModal({
     }
   };
 
+  if (type === 'logout' || title?.toLowerCase().includes('log out')) {
+    return (
+      <AnimatePresence>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onCancel}
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs"
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.15 }}
+            className="relative w-full max-w-[460px] bg-white border border-slate-200/60 rounded-3xl p-8 sm:p-10 shadow-2xl flex flex-col items-center text-center z-10"
+          >
+            <h3 className="text-xl font-normal text-slate-800 font-sans mb-8">
+              {title || 'Are you sure you want to log out?'}
+            </h3>
+            <div className="flex items-center justify-center gap-5 w-full">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="w-36 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-sm font-semibold rounded-xl transition-all cursor-pointer"
+              >
+                {cancelText || 'No'}
+              </button>
+              <button
+                type="button"
+                onClick={onConfirm}
+                className="w-36 py-2.5 bg-[#0E3F39] hover:bg-[#14534B] text-white text-sm font-semibold rounded-xl transition-all cursor-pointer shadow-sm"
+              >
+                {confirmText || 'Yes'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </AnimatePresence>
+    );
+  }
+
   const { iconBg, btnBg, Icon } = getTypeStyles();
 
   return (
@@ -79,7 +122,7 @@ export default function ConfirmModal({
           </h3>
 
           {/* Message description */}
-          <p className="text-xs text-on-surface-variant/75 dark:text-slate-400 mt-2 font-semibold font-sans leading-relaxed max-w-[280px]">
+          <p className="text-xs text-on-surface-variant/75 dark:text-slate-400 mt-2 font-semibold font-sans leading-relaxed max-w-70">
             {message}
           </p>
 
