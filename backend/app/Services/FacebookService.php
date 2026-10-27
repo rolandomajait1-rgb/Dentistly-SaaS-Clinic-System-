@@ -9,10 +9,10 @@ use Exception;
 
 class FacebookService
 {
-    private $appId;
-    private $appSecret;
-    private $redirectUri;
-    private $apiVersion = 'v18.0';
+    private ?string $appId;
+    private ?string $appSecret;
+    private ?string $redirectUri;
+    private string $apiVersion = 'v18.0';
 
     public function __construct()
     {

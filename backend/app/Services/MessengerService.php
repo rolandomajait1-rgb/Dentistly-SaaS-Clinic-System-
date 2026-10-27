@@ -14,21 +14,52 @@ class MessengerService
     /**
      * Send text message to user
      */
-    public function sendTextMessage(string $recipientId, string $message, FbPageIntegration $integration): bool
+    public function sendTextMessage(string $recipientId, string $message, FbPageIntegration $integration, ?string $tag = null): bool
     {
         try {
-            $response = Http::post("{$this->baseUrl}/{$this->apiVersion}/me/messages", [
+            $payload = [
                 'recipient' => ['id' => $recipientId],
                 'message' => ['text' => $message],
                 'access_token' => $integration->page_access_token,
-            ]);
+            ];
+
+            if ($tag) {
+                $payload['messaging_type'] = 'MESSAGE_TAG';
+                $payload['tag'] = $tag;
+            }
+
+            $response = Http::timeout(5)
+                ->withoutVerifying()
+                ->post("{$this->baseUrl}/{$this->apiVersion}/me/messages", $payload);
 
             if ($response->successful()) {
                 Log::info('Message sent successfully', [
                     'recipient_id' => $recipientId,
                     'clinic_id' => $integration->clinic_id,
+                    'tag' => $tag,
                 ]);
                 return true;
+            }
+
+            // If sending with tag failed, retry once without tag (standard message)
+            if ($tag) {
+                Log::warning('Sending text message with tag failed, attempting fallback without tag', [
+                    'recipient_id' => $recipientId,
+                    'tag' => $tag,
+                    'response' => $response->json() ?? $response->body(),
+                ]);
+                unset($payload['messaging_type'], $payload['tag']);
+                $retryResponse = Http::timeout(5)
+                    ->withoutVerifying()
+                    ->post("{$this->baseUrl}/{$this->apiVersion}/me/messages", $payload);
+
+                if ($retryResponse->successful()) {
+                    Log::info('Text message sent successfully on fallback without tag', [
+                        'recipient_id' => $recipientId,
+                        'clinic_id' => $integration->clinic_id,
+                    ]);
+                    return true;
+                }
             }
 
             Log::error('Failed to send message', [
@@ -49,7 +80,7 @@ class MessengerService
     /**
      * Send message with quick replies (buttons)
      */
-    public function sendQuickReplies(string $recipientId, string $text, array $quickReplies, FbPageIntegration $integration): bool
+    public function sendQuickReplies(string $recipientId, string $text, array $quickReplies, FbPageIntegration $integration, ?string $tag = null): bool
     {
         try {
             // Messenger limits: max 13 quick replies, each title max 20 chars
@@ -61,24 +92,61 @@ class MessengerService
                 ];
             }, array_slice($quickReplies, 0, 13));
 
-            $response = Http::post("{$this->baseUrl}/{$this->apiVersion}/me/messages", [
+            $payload = [
                 'recipient' => ['id' => $recipientId],
                 'message' => [
                     'text' => mb_substr($text, 0, 2000),
                     'quick_replies' => $formattedReplies,
                 ],
                 'access_token' => $integration->page_access_token,
-            ]);
+            ];
 
-            if (!$response->successful()) {
-                Log::error('Failed to send quick replies', [
-                    'recipient_id' => $recipientId,
-                    'status' => $response->status(),
-                    'response' => $response->json() ?? $response->body(),
-                ]);
+            if ($tag) {
+                $payload['messaging_type'] = 'MESSAGE_TAG';
+                $payload['tag'] = $tag;
             }
 
-            return $response->successful();
+            $response = Http::timeout(5)
+                ->withoutVerifying()
+                ->post("{$this->baseUrl}/{$this->apiVersion}/me/messages", $payload);
+
+            if ($response->successful()) {
+                Log::info('Quick replies sent successfully', [
+                    'recipient_id' => $recipientId,
+                    'clinic_id' => $integration->clinic_id,
+                    'tag' => $tag,
+                ]);
+                return true;
+            }
+
+            // If sending with tag failed, retry once without tag (standard message)
+            if ($tag) {
+                Log::warning('Sending quick replies with tag failed, attempting fallback without tag', [
+                    'recipient_id' => $recipientId,
+                    'tag' => $tag,
+                    'response' => $response->json() ?? $response->body(),
+                ]);
+                unset($payload['messaging_type'], $payload['tag']);
+                $retryResponse = Http::timeout(5)
+                    ->withoutVerifying()
+                    ->post("{$this->baseUrl}/{$this->apiVersion}/me/messages", $payload);
+
+                if ($retryResponse->successful()) {
+                    Log::info('Quick replies sent successfully on fallback without tag', [
+                        'recipient_id' => $recipientId,
+                        'clinic_id' => $integration->clinic_id,
+                    ]);
+                    return true;
+                }
+            }
+
+            Log::error('Failed to send quick replies', [
+                'recipient_id' => $recipientId,
+                'status' => $response->status(),
+                'response' => $response->json() ?? $response->body(),
+            ]);
+
+            return false;
 
         } catch (\Exception $e) {
             Log::error('Exception sending quick replies', [
@@ -92,7 +160,7 @@ class MessengerService
     /**
      * Send message with buttons
      */
-    public function sendButtonMessage(string $recipientId, string $text, array $buttons, FbPageIntegration $integration): bool
+    public function sendButtonMessage(string $recipientId, string $text, array $buttons, FbPageIntegration $integration, ?string $tag = null): bool
     {
         try {
             // Messenger limits: max 3 buttons, each title max 20 chars
@@ -116,11 +184,11 @@ class MessengerService
             // Facebook button template limit: 'text' cannot exceed 640 characters.
             // If text is longer, send the full body text first, then send buttons with a brief prompt.
             if (mb_strlen($text) > 640) {
-                $this->sendTextMessage($recipientId, $text, $integration);
+                $this->sendTextMessage($recipientId, $text, $integration, $tag);
                 $text = 'Piliin ang opsyon sa ibaba / Please choose an option below:';
             }
 
-            $response = Http::post("{$this->baseUrl}/{$this->apiVersion}/me/messages", [
+            $payload = [
                 'recipient' => ['id' => $recipientId],
                 'message' => [
                     'attachment' => [
@@ -133,17 +201,54 @@ class MessengerService
                     ],
                 ],
                 'access_token' => $integration->page_access_token,
-            ]);
+            ];
 
-            if (!$response->successful()) {
-                Log::error('Failed to send button message', [
-                    'recipient_id' => $recipientId,
-                    'status' => $response->status(),
-                    'response' => $response->json() ?? $response->body(),
-                ]);
+            if ($tag) {
+                $payload['messaging_type'] = 'MESSAGE_TAG';
+                $payload['tag'] = $tag;
             }
 
-            return $response->successful();
+            $response = Http::timeout(5)
+                ->withoutVerifying()
+                ->post("{$this->baseUrl}/{$this->apiVersion}/me/messages", $payload);
+
+            if ($response->successful()) {
+                Log::info('Button message sent successfully', [
+                    'recipient_id' => $recipientId,
+                    'clinic_id' => $integration->clinic_id,
+                    'tag' => $tag,
+                ]);
+                return true;
+            }
+
+            // If sending with tag failed, retry once without tag (standard message)
+            if ($tag) {
+                Log::warning('Sending button message with tag failed, attempting fallback without tag', [
+                    'recipient_id' => $recipientId,
+                    'tag' => $tag,
+                    'response' => $response->json() ?? $response->body(),
+                ]);
+                unset($payload['messaging_type'], $payload['tag']);
+                $retryResponse = Http::timeout(5)
+                    ->withoutVerifying()
+                    ->post("{$this->baseUrl}/{$this->apiVersion}/me/messages", $payload);
+
+                if ($retryResponse->successful()) {
+                    Log::info('Button message sent successfully on fallback without tag', [
+                        'recipient_id' => $recipientId,
+                        'clinic_id' => $integration->clinic_id,
+                    ]);
+                    return true;
+                }
+            }
+
+            Log::error('Failed to send button message', [
+                'recipient_id' => $recipientId,
+                'status' => $response->status(),
+                'response' => $response->json() ?? $response->body(),
+            ]);
+
+            return false;
 
         } catch (\Exception $e) {
             Log::error('Exception sending button message', [
@@ -160,7 +265,9 @@ class MessengerService
     public function sendGenericTemplate(string $recipientId, array $elements, FbPageIntegration $integration): bool
     {
         try {
-            $response = Http::post("{$this->baseUrl}/{$this->apiVersion}/me/messages", [
+            $response = Http::timeout(5)
+                ->withoutVerifying()
+                ->post("{$this->baseUrl}/{$this->apiVersion}/me/messages", [
                 'recipient' => ['id' => $recipientId],
                 'message' => [
                     'attachment' => [
@@ -191,7 +298,9 @@ class MessengerService
     public function sendTypingOn(string $recipientId, FbPageIntegration $integration): bool
     {
         try {
-            $response = Http::post("{$this->baseUrl}/{$this->apiVersion}/me/messages", [
+            $response = Http::timeout(3)
+                ->withoutVerifying()
+                ->post("{$this->baseUrl}/{$this->apiVersion}/me/messages", [
                 'recipient' => ['id' => $recipientId],
                 'sender_action' => 'typing_on',
                 'access_token' => $integration->page_access_token,
@@ -210,7 +319,9 @@ class MessengerService
     public function markSeen(string $recipientId, FbPageIntegration $integration): bool
     {
         try {
-            $response = Http::post("{$this->baseUrl}/{$this->apiVersion}/me/messages", [
+            $response = Http::timeout(3)
+                ->withoutVerifying()
+                ->post("{$this->baseUrl}/{$this->apiVersion}/me/messages", [
                 'recipient' => ['id' => $recipientId],
                 'sender_action' => 'mark_seen',
                 'access_token' => $integration->page_access_token,
@@ -229,7 +340,9 @@ class MessengerService
     public function getUserProfile(string $userId, FbPageIntegration $integration): ?array
     {
         try {
-            $response = Http::get("{$this->baseUrl}/{$this->apiVersion}/{$userId}", [
+            $response = Http::timeout(5)
+                ->withoutVerifying()
+                ->get("{$this->baseUrl}/{$this->apiVersion}/{$userId}", [
                 'fields' => 'first_name,last_name,profile_pic',
                 'access_token' => $integration->page_access_token,
             ]);

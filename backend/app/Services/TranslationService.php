@@ -137,6 +137,18 @@ class TranslationService
             'en' => "🔒 DATA PRIVACY NOTICE",
             'tl' => "🔒 PAUNAWA SA PRIVACY NG DATA",
         ],
+        'dpa.initial_message' => [
+            'en' => "Welcome to {clinic}! 🦷👋\n\nBefore we start our conversation, please be advised that this automated assistant may collect and process your inquiries, personal details, and dental health information in accordance with the Philippine Data Privacy Act of 2012 (RA 10173).\n\nYour data is kept private and secure. You can review our Privacy Policy here: {url}\n\nDo you agree to proceed? 📄",
+            'tl' => "Maligayang pagdating sa {clinic}! 🦷👋\n\nBago natin simulan ang ating usapan, nais naming ipaalam na ang automated assistant na ito ay maaaring magproseso ng iyong mga katanungan, personal na impormasyon, at dental health data alinsunod sa Philippine Data Privacy Act of 2012 (RA 10173).\n\nAng iyong impormasyon ay pananatilihing pribado at ligtas. Maaari mong basahin ang aming Privacy Policy dito: {url}\n\nSumasang-ayon ka ba na magpatuloy? 📄",
+        ],
+        'dpa.initial_declined' => [
+            'en' => "❌ We respect your privacy. Under the Data Privacy Act, our automated assistant cannot continue without your consent.\n\nIf you change your mind, type 'start' or 'hi' anytime. You may also contact our clinic directly at: {contact}",
+            'tl' => "❌ Nirerespeto namin ang iyong privacy. Alinsunod sa Data Privacy Act, hindi maaaring magpatuloy ang aming automated assistant kung walang iyong pahintulot.\n\nKung magbago ang iyong isip, mag-type lang ng 'start' o 'kumusta' anumang oras. Maaari ka ring makipag-ugnayan sa clinic sa: {contact}",
+        ],
+        'dpa.initial_unrecognized' => [
+            'en' => "⚠️ Please confirm whether you agree to our Data Privacy Notice first before chatting with our assistant. Choose an option below:",
+            'tl' => "⚠️ Mangyaring kumpirmahin muna kung sumasang-ayon ka sa Paunawa sa Privacy ng Data bago makipag-usap sa aming assistant. Pumili sa ibaba:",
+        ],
         'dpa.message' => [
             'en' => "To proceed with booking an appointment at {clinic}, we need to collect and process your personal and health information (Name, Contact Number, Address, Age, Medical History, and Reason for Visit).\n\nThis data will be kept secure and private. You can read our Privacy Policy here: {url}\n\nDo you agree to proceed? 📄",
             'tl' => "Upang magpatuloy sa pag-book ng appointment sa {clinic}, kailangan naming kolektahin at iproseso ang iyong personal at health information (Pangalan, Contact Number, Address, Edad, Medical History, at Dahilan ng Pagbisita).\n\nAng data na ito ay papanatilihing secure at private. Maaari mong basahin ang aming Privacy Policy dito: {url}\n\nSumasang-ayon ka ba na magpatuloy? 📄",

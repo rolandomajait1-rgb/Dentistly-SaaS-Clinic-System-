@@ -111,15 +111,33 @@ class ChatbotService
                 ->where('fb_messenger_id', $senderId)
                 ->first();
 
+            $initialContext = [];
+            if ($patient) {
+                $initialContext['dpa_agreed'] = true;
+            }
+
             $session = ChatSession::create([
                 'clinic_id' => $clinic->id,
                 'patient_id' => $patient?->id,
                 'fb_messenger_id' => $senderId,
                 'session_id' => Str::uuid(),
                 'current_step' => 'welcome',
-                'context_data' => [],
+                'context_data' => $initialContext,
                 'last_interaction_at' => now(),
             ]);
+        }
+
+        // If existing session has no patient_id, check if patient was created/linked since session started
+        if (!$session->patient_id) {
+            $patient = Patient::where('clinic_id', $clinic->id)
+                ->where('fb_messenger_id', $senderId)
+                ->first();
+            if ($patient) {
+                $session->update([
+                    'patient_id' => $patient->id,
+                    'context_data' => array_merge($session->context_data ?? [], ['dpa_agreed' => true]),
+                ]);
+            }
         }
 
         return $session;
@@ -128,7 +146,7 @@ class ChatbotService
     /**
      * Process message based on current step
      */
-    protected function processMessage(ChatSession $session, string $message, $integration): void
+    protected function processMessage(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         $message = trim($message);
         $lower = strtolower($message);
@@ -146,7 +164,20 @@ class ChatbotService
         }
         
         $this->translator->setLanguage($session->getContext('language', 'en'));
-        
+
+        // 🔒 Enforce Data Privacy Act agreement before starting the conversation
+        if (!$session->hasAgreedToDpa() && !str_starts_with($session->current_step, 'booking_')) {
+            if ($session->getContext('dpa_notice_sent') && $session->current_step === 'initial_dpa_consent') {
+                $this->handleInitialDpaConsent($session, $message, $integration);
+                return;
+            }
+
+            $session->setContext('dpa_notice_sent', true);
+            $session->updateStep('initial_dpa_consent');
+            $this->sendInitialDpaNotice($session, $integration);
+            return;
+        }
+
         // ⭐ GLOBAL COMMANDS - Work from any state
         // Greetings always restart the flow cleanly
         $greetings = ['hi', 'hello', 'hey', 'start', 'get started', 'kumusta', 'kamusta'];
@@ -178,8 +209,10 @@ class ChatbotService
         }
         
         match ($session->current_step) {
+            'initial_dpa_consent' => $this->handleInitialDpaConsent($session, $message, $integration),
             'welcome' => $this->handleWelcome($session, $message, $integration),
             'main_menu' => $this->handleMainMenu($session, $message, $integration),
+            'booking_portal_shown' => $this->handleBookingPortalResponse($session, $message, $integration),
             'faq_menu' => $this->handleFaqMenu($session, $message, $integration),
             'booking_category_selection' => $this->handleCategorySelection($session, $message, $integration),
             'booking_service_selection' => $this->handleServiceSelection($session, $message, $integration),
@@ -201,16 +234,36 @@ class ChatbotService
     /**
      * Process postback (button clicks)
      */
-    protected function processPostback(ChatSession $session, string $payload, $integration): void
+    protected function processPostback(ChatSession $session, string $payload, FbPageIntegration $integration): void
     {
         // Parse payload
         $parts = explode(':', $payload);
         $action = $parts[0];
         $data = $parts[1] ?? null;
 
+        // Handle DPA quick replies / postbacks first
+        if ($action === 'DPA_AGREE' || $action === 'DPA_DECLINE') {
+            if ($session->current_step === 'booking_dpa_consent') {
+                $this->handleDpaConsent($session, $action, $integration);
+            } else {
+                $this->handleInitialDpaConsent($session, $action, $integration);
+            }
+            return;
+        }
+
+        // If not agreed to DPA yet, block all other postbacks and require consent first
+        if (!$session->hasAgreedToDpa() && !str_starts_with($session->current_step, 'booking_') && !in_array($action, ['END_CONVERSATION'])) {
+            $session->setContext('dpa_notice_sent', true);
+            $session->updateStep('initial_dpa_consent');
+            $this->sendInitialDpaNotice($session, $integration);
+            return;
+        }
+
         match ($action) {
+            'GET_STARTED', 'START' => $this->handleStartPostback($session, $integration),
             'MAIN_MENU' => $this->showMainMenu($session, $integration),
             'BOOK_APPOINTMENT' => $this->startBooking($session, $integration),
+            'BOOK_IN_CHAT' => $this->startInChatBooking($session, $integration),
             'VIEW_APPOINTMENTS' => $this->showAppointments($session, $integration),
             'VIEW_HISTORY' => $this->showHistory($session, $integration),
             'CANCEL_RESCHEDULE' => $this->showCancelReschedule($session, $integration),
@@ -218,6 +271,7 @@ class ChatbotService
             'VIEW_FAQS' => $this->showFaqCategories($session, $integration),
             'END_CONVERSATION' => $this->endConversation($session, $integration),
             'SHOW_FAQ_CAT' => $this->showFaqCategoryDetails($session, $data, $integration),
+            'SELECT_CATEGORY' => $this->handleCategorySelection($session, $data, $integration),
             'SELECT_SERVICE' => $this->selectService($session, $data, $integration),
             'SELECT_DATE' => $this->selectDate($session, $data, $integration),
             'SELECT_TIME' => $this->selectTime($session, $data, $integration),
@@ -230,13 +284,35 @@ class ChatbotService
     }
 
     /**
+     * Handle Get Started / Start postback
+     */
+    protected function handleStartPostback(ChatSession $session, FbPageIntegration $integration): void
+    {
+        if (!$session->hasAgreedToDpa()) {
+            $session->setContext('dpa_notice_sent', true);
+            $session->updateStep('initial_dpa_consent');
+            $this->sendInitialDpaNotice($session, $integration);
+            return;
+        }
+
+        $session->clearContext();
+        $this->sendStandardWelcome($session, $integration);
+    }
+
+    /**
      * Handle welcome message
      */
-    protected function handleWelcome(ChatSession $session, string $message, $integration): void
+    protected function handleWelcome(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         $lower = strtolower(trim($message));
         $commonGreetings = ['hi', 'hello', 'hey', 'get started', 'start', ''];
-        
+
+        // Guard: If patient is reporting trouble booking or broken link, offer chat booking & desk contact
+        if ($this->isBookingTroubleMessage($lower)) {
+            $this->handleBookingTrouble($session, $integration);
+            return;
+        }
+
         // 0. Direct Keyword Matching (Robust fallback even when Wit.ai is unconfigured or offline)
         if (
             str_contains($lower, 'book') ||
@@ -337,7 +413,7 @@ class ChatbotService
     /**
      * Send standard welcome message
      */
-    protected function sendStandardWelcome(ChatSession $session, $integration): void
+    protected function sendStandardWelcome(ChatSession $session, FbPageIntegration $integration): void
     {
         $clinic = $session->clinic;
         
@@ -380,7 +456,7 @@ class ChatbotService
     /**
      * Show main menu
      */
-    protected function showMainMenu(ChatSession $session, $integration): void
+    protected function showMainMenu(ChatSession $session, FbPageIntegration $integration): void
     {
         $session->updateStep('main_menu');
 
@@ -424,7 +500,7 @@ class ChatbotService
     /**
      * End conversation politely and clear session context
      */
-    protected function endConversation(ChatSession $session, $integration): void
+    protected function endConversation(ChatSession $session, FbPageIntegration $integration): void
     {
         $lang = $session->getContext('language', 'en');
         $this->translator->setLanguage($lang);
@@ -444,9 +520,15 @@ class ChatbotService
     /**
      * Handle main menu selection
      */
-    protected function handleMainMenu(ChatSession $session, string $message, $integration): void
+    protected function handleMainMenu(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         $messageLower = strtolower($message);
+
+        // Guard: If patient is reporting trouble booking or broken link, offer chat booking & desk contact
+        if ($this->isBookingTroubleMessage($messageLower)) {
+            $this->handleBookingTrouble($session, $integration);
+            return;
+        }
 
         if ($messageLower === '1' || str_contains($messageLower, 'book')) {
             $this->startBooking($session, $integration);
@@ -517,7 +599,7 @@ class ChatbotService
     /**
      * Handle unknown intent/message
      */
-    protected function handleUnknownIntent(ChatSession $session, $integration): void
+    protected function handleUnknownIntent(ChatSession $session, FbPageIntegration $integration): void
     {
         $clinic = $session->clinic;
         $notifSettings = $clinic->notification_settings ?? [];
@@ -540,10 +622,15 @@ class ChatbotService
     /**
      * Start booking process by directing the patient to the Clinic's Public Booking Portal
      */
-    protected function startBooking(ChatSession $session, $integration): void
+    protected function startBooking(ChatSession $session, FbPageIntegration $integration): void
     {
         $clinic = $session->clinic;
-        $bookingUrl = $clinic->getPublicBookingUrl();
+        $baseUrl = $clinic->getPublicBookingUrl();
+        $params = ['sender' => $session->fb_messenger_id];
+        if (!empty($integration->fb_page_id)) {
+            $params['page_id'] = $integration->fb_page_id;
+        }
+        $bookingUrl = $baseUrl . (str_contains($baseUrl, '?') ? '&' : '?') . http_build_query($params);
 
         $lang = $session->getContext('language', 'en');
         $this->translator->setLanguage($lang);
@@ -576,6 +663,10 @@ class ChatbotService
                 'url' => $bookingUrl,
             ],
             [
+                'title' => '💬 ' . ($isTagalog ? 'Book sa Chat' : 'Book in Chat'),
+                'payload' => 'BOOK_IN_CHAT',
+            ],
+            [
                 'title' => '📞 ' . ($isTagalog ? 'Tawagan Clinic' : 'Call Clinic Desk'),
                 'payload' => 'CONTACT_US',
             ]
@@ -589,8 +680,9 @@ class ChatbotService
         );
 
         $quickReplies = [
+            ['title' => '💬 Book in Chat', 'payload' => 'BOOK_IN_CHAT'],
             ['title' => '📋 Clinic FAQs', 'payload' => 'VIEW_FAQS'],
-            ['title' => '🦷 My Records', 'payload' => 'VIEW_HISTORY'],
+            ['title' => '👋 End Chat', 'payload' => 'END_CONVERSATION'],
             ['title' => '🏠 Main Menu', 'payload' => 'MAIN_MENU'],
         ];
 
@@ -601,18 +693,186 @@ class ChatbotService
             $integration
         );
 
-        $session->updateStep('welcome');
+        $session->updateStep('booking_portal_shown');
+    }
+
+    /**
+     * Check if a message expresses trouble booking or broken link
+     */
+    protected function isBookingTroubleMessage(string $lower): bool
+    {
+        $troublePhrases = [
+            "can't book", "cant book", "cannot book", "unable to book", "fail to book", "failed to book",
+            "di makapag-book", "di makapagbook", "hindi makapag-book", "hindi makapagbook",
+            "di ako makapag book", "hindi ako makapag book", "di makabook", "hindi makabook",
+            "broken link", "sirang link", "broken portal", "broken", "ayaw mag-open", "ayaw mag open",
+            "ayaw gumana", "not working", "error sa link", "link not working", "failed to open",
+            "cannot open", "cant open", "can't open", "ayaw mabuksan"
+        ];
+
+        foreach ($troublePhrases as $phrase) {
+            if (str_contains($lower, $phrase)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Gracefully handle patient experiencing booking trouble / broken link
+     */
+    protected function handleBookingTrouble(ChatSession $session, FbPageIntegration $integration): void
+    {
+        $clinic = $session->clinic;
+        $lang = $session->getContext('language', 'en');
+        $isTagalog = ($lang === 'tl');
+
+        $msg = $isTagalog
+            ? "⚠️ Paumanhin sa abala! Kung may problema sa pagbukas ng online portal, maaari kang mag-book nang direkta dito sa Messenger, o tawagan ang aming clinic desk:\n\n"
+            : "⚠️ We apologize for the inconvenience! If you are having trouble opening our online portal, you can book directly here in Messenger, or contact our clinic desk:\n\n";
+
+        $msg .= "📞 " . ($isTagalog ? "Telepono:" : "Phone:") . " " . ($clinic->contact_number ?? 'N/A') . "\n";
+        $msg .= "📍 " . ($isTagalog ? "Lokasyon:" : "Address:") . " " . ($clinic->address ?? 'N/A') . "\n\n";
+        $msg .= $isTagalog ? "Pumili ng opsyon sa ibaba:" : "Please choose an option below:";
+
+        $buttons = [
+            [
+                'title' => '💬 ' . ($isTagalog ? 'Book sa Chat' : 'Book in Chat'),
+                'payload' => 'BOOK_IN_CHAT',
+            ],
+            [
+                'title' => '📞 ' . ($isTagalog ? 'Tawagan Clinic' : 'Call Clinic Desk'),
+                'payload' => 'CONTACT_US',
+            ],
+            [
+                'title' => '🏠 Main Menu',
+                'payload' => 'MAIN_MENU',
+            ]
+        ];
+
+        $this->messenger->sendButtonMessage(
+            $session->fb_messenger_id,
+            $msg,
+            $buttons,
+            $integration
+        );
+    }
+
+    /**
+     * Handle user response when booking portal card is displayed
+     */
+    protected function handleBookingPortalResponse(ChatSession $session, string $message, FbPageIntegration $integration): void
+    {
+        $lower = strtolower(trim($message));
+
+        // Check for trouble phrases
+        if ($this->isBookingTroubleMessage($lower)) {
+            $this->handleBookingTrouble($session, $integration);
+            return;
+        }
+
+        // Wants to book directly in chat
+        if (str_contains($lower, 'chat') || str_contains($lower, 'dito') || $lower === '1') {
+            $this->startInChatBooking($session, $integration);
+            return;
+        }
+
+        // Wants to open portal again
+        if (str_contains($lower, 'portal') || str_contains($lower, 'link')) {
+            $baseUrl = $session->clinic->getPublicBookingUrl();
+            $params = ['sender' => $session->fb_messenger_id];
+            if (!empty($integration->fb_page_id)) {
+                $params['page_id'] = $integration->fb_page_id;
+            }
+            $bookingUrl = $baseUrl . (str_contains($baseUrl, '?') ? '&' : '?') . http_build_query($params);
+            $this->messenger->sendTextMessage(
+                $session->fb_messenger_id,
+                "🌐 Online Booking Portal:\n{$bookingUrl}",
+                $integration
+            );
+            return;
+        }
+
+        // Call / Contact clinic
+        if (str_contains($lower, 'call') || str_contains($lower, 'phone') || str_contains($lower, 'contact') || str_contains($lower, 'tawag')) {
+            $this->showContactInfo($session, $integration);
+            return;
+        }
+
+        // Main menu
+        if (str_contains($lower, 'menu') || str_contains($lower, 'home')) {
+            $this->showMainMenu($session, $integration);
+            return;
+        }
+
+        // If generic text, process via standard handleWelcome
+        $this->handleWelcome($session, $message, $integration);
+    }
+
+    /**
+     * Start the in-chat booking process
+     */
+    public function startInChatBooking(ChatSession $session, FbPageIntegration $integration): void
+    {
+        $clinic = $session->clinic;
+        $categories = DentalService::where('clinic_id', $clinic->id)
+            ->active()
+            ->whereNotNull('category')
+            ->where('category', '!=', '')
+            ->distinct()
+            ->pluck('category')
+            ->values()
+            ->toArray();
+
+        if (empty($categories)) {
+            $categories = ['General Dental Services'];
+        }
+
+        $session->setContext('booking.categories', $categories);
+        $session->updateStep('booking_category_selection');
+
+        $lang = $session->getContext('language', 'en');
+        $isTagalog = ($lang === 'tl');
+
+        $message = "🦷 " . ($isTagalog ? "Pumili ng Dental Service Category:" : "Please select a dental service category:") . "\n";
+        $message .= "━━━━━━━━━━━━━━\n\n";
+
+        foreach ($categories as $index => $cat) {
+            $message .= ($index + 1) . ". {$cat}\n";
+        }
+
+        $message .= "\n" . ($isTagalog ? "Pindutin ang category sa ibaba o i-type ang numero nito:" : "Tap a category below or type its number:");
+
+        $quickReplies = [];
+        foreach (array_slice($categories, 0, 10) as $index => $cat) {
+            $quickReplies[] = [
+                'title' => mb_substr(($index + 1) . '. ' . $cat, 0, 20),
+                'payload' => 'SELECT_CATEGORY:' . ($index + 1),
+            ];
+        }
+        $quickReplies[] = [
+            'title' => '🏠 Main Menu',
+            'payload' => 'MAIN_MENU',
+        ];
+
+        $this->messenger->sendQuickReplies(
+            $session->fb_messenger_id,
+            $message,
+            $quickReplies,
+            $integration
+        );
     }
 
     /**
      * Handle category selection
      */
-    protected function handleCategorySelection(ChatSession $session, string $message, $integration): void
+    protected function handleCategorySelection(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         $categories = $session->getContext('booking.categories', []);
 
         if (empty($categories)) {
-            $this->startBooking($session, $integration);
+            $this->startInChatBooking($session, $integration);
             return;
         }
 
@@ -646,7 +906,7 @@ class ChatbotService
     /**
      * Show services in selected category
      */
-    protected function showServicesInCategory(ChatSession $session, string $category, $integration): void
+    protected function showServicesInCategory(ChatSession $session, string $category, FbPageIntegration $integration): void
     {
         $session->updateStep('booking_service_selection');
         $session->setContext('booking.selected_category', $category);
@@ -697,7 +957,7 @@ class ChatbotService
     /**
      * Handle service selection
      */
-    protected function handleServiceSelection(ChatSession $session, string $message, $integration): void
+    protected function handleServiceSelection(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         // Check if user wants to go back
         if (in_array(strtolower(trim($message)), ['back', 'cancel'])) {
@@ -739,7 +999,7 @@ class ChatbotService
     /**
      * Select service
      */
-    protected function selectService(ChatSession $session, $serviceId, $integration): void
+    protected function selectService(ChatSession $session, int|string $serviceId, FbPageIntegration $integration): void
     {
         $service = DentalService::find($serviceId);
         
@@ -768,7 +1028,7 @@ class ChatbotService
     /**
      * Show available dates via Webview
      */
-    protected function showAvailableDates(ChatSession $session, $integration): void
+    protected function showAvailableDates(ChatSession $session, FbPageIntegration $integration): void
     {
         $message = $this->translator->trans('booking.awesome');
 
@@ -792,7 +1052,7 @@ class ChatbotService
     /**
      * Handle user texting during webview wait
      */
-    protected function handleWebviewWait(ChatSession $session, $integration): void
+    protected function handleWebviewWait(ChatSession $session, FbPageIntegration $integration): void
     {
         $this->messenger->sendTextMessage(
             $session->fb_messenger_id,
@@ -804,7 +1064,7 @@ class ChatbotService
     /**
      * Handle date selection
      */
-    protected function handleDateSelection(ChatSession $session, string $message, $integration): void
+    protected function handleDateSelection(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         $availableDates = $session->getContext('booking.available_dates', []);
 
@@ -835,7 +1095,7 @@ class ChatbotService
     /**
      * Select date
      */
-    protected function selectDate(ChatSession $session, $date, $integration): void
+    protected function selectDate(ChatSession $session, string $date, FbPageIntegration $integration): void
     {
         $session->setContext('booking.date', $date);
         $session->updateStep('booking_time_selection');
@@ -854,7 +1114,7 @@ class ChatbotService
     /**
      * Show available time slots
      */
-    protected function showAvailableTimeSlots(ChatSession $session, $integration): void
+    protected function showAvailableTimeSlots(ChatSession $session, FbPageIntegration $integration): void
     {
         $date = $session->getContext('booking.date');
 
@@ -898,7 +1158,7 @@ class ChatbotService
     /**
      * Handle time selection
      */
-    protected function handleTimeSelection(ChatSession $session, string $message, $integration): void
+    protected function handleTimeSelection(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         $availableTimes = $session->getContext('booking.available_times', []);
 
@@ -929,7 +1189,7 @@ class ChatbotService
     /**
      * Select time slot from Webview calendar
      */
-    public function selectTimeFromWebview(ChatSession $session, string $time, $integration): void
+    public function selectTimeFromWebview(ChatSession $session, string $time, FbPageIntegration $integration): void
     {
         $this->selectTime($session, $time, $integration);
     }
@@ -937,7 +1197,7 @@ class ChatbotService
     /**
      * Select time
      */
-    protected function selectTime(ChatSession $session, $time, $integration): void
+    protected function selectTime(ChatSession $session, string $time, FbPageIntegration $integration): void
     {
         $session->setContext('booking.time', $time);
 
@@ -973,15 +1233,114 @@ class ChatbotService
             return;
         }
 
+        // If patient already agreed to DPA (upfront before conversation started), proceed straight to patient info
+        if ($session->hasAgreedToDpa()) {
+            $session->updateStep('booking_form_name');
+            $this->messenger->sendTextMessage(
+                $session->fb_messenger_id,
+                "━━━━━━━━━━━━━━\n" . $this->translator->trans('form.title') . "\n━━━━━━━━━━━━━━\n\n" . $this->translator->trans('form.provide_info'),
+                $integration
+            );
+
+            $this->messenger->sendTextMessage(
+                $session->fb_messenger_id,
+                $this->translator->trans('form.full_name'),
+                $integration
+            );
+            return;
+        }
+
         // New patient — show DPA consent first
         $session->updateStep('booking_dpa_consent');
         $this->sendDpaNotice($session, $integration);
     }
 
     /**
+     * Send initial upfront DPA Notice before starting the conversation
+     */
+    protected function sendInitialDpaNotice(ChatSession $session, FbPageIntegration $integration): void
+    {
+        $clinic = $session->clinic;
+        $privacyUrl = url('/privacy-policy');
+
+        $lang = $session->getContext('language', 'en');
+        $this->translator->setLanguage($lang);
+
+        $message = "🔒 " . $this->translator->trans('dpa.title') . "\n";
+        $message .= "━━━━━━━━━━━━━━\n\n";
+        $message .= $this->translator->trans('dpa.initial_message', ['clinic' => $clinic->clinic_name, 'url' => $privacyUrl]);
+
+        $quickReplies = [
+            ['title' => $this->translator->trans('dpa.agree'), 'payload' => 'DPA_AGREE'],
+            ['title' => $this->translator->trans('dpa.decline'), 'payload' => 'DPA_DECLINE'],
+        ];
+
+        $this->messenger->sendQuickReplies(
+            $session->fb_messenger_id,
+            $message,
+            $quickReplies,
+            $integration
+        );
+    }
+
+    /**
+     * Handle initial upfront DPA Consent response
+     */
+    protected function handleInitialDpaConsent(ChatSession $session, string $message, FbPageIntegration $integration): void
+    {
+        $lower = strtolower(trim($message));
+
+        $agreed = $message === 'DPA_AGREE' ||
+                  str_contains($lower, 'agree') ||
+                  str_contains($lower, 'yes') ||
+                  str_contains($lower, 'oo') ||
+                  str_contains($lower, 'payag') ||
+                  str_contains($lower, 'sang-ayon') ||
+                  str_contains($lower, 'accept');
+
+        $declined = $message === 'DPA_DECLINE' ||
+                    str_contains($lower, 'decline') ||
+                    str_contains($lower, 'no') ||
+                    str_contains($lower, 'hindi') ||
+                    str_contains($lower, 'ayaw');
+
+        if ($agreed) {
+            $session->setContext('dpa_agreed', true);
+            $session->setContext('dpa_agreed_at', now()->toIso8601String());
+            $session->updateStep('main_menu');
+
+            $this->sendStandardWelcome($session, $integration);
+        } elseif ($declined) {
+            $clinic = $session->clinic;
+            $lang = $session->getContext('language', 'en');
+            $this->translator->setLanguage($lang);
+
+            $declinedMsg = $this->translator->trans('dpa.initial_declined', [
+                'contact' => $clinic->contact_number ?? 'our clinic desk',
+            ]);
+
+            $this->messenger->sendTextMessage(
+                $session->fb_messenger_id,
+                $declinedMsg,
+                $integration
+            );
+        } else {
+            $lang = $session->getContext('language', 'en');
+            $this->translator->setLanguage($lang);
+
+            $this->messenger->sendTextMessage(
+                $session->fb_messenger_id,
+                $this->translator->trans('dpa.initial_unrecognized'),
+                $integration
+            );
+            $this->sendInitialDpaNotice($session, $integration);
+        }
+    }
+
+    /**
      * Send DPA Notice with quick replies
      */
-    protected function sendDpaNotice(ChatSession $session, $integration): void
+    protected function sendDpaNotice(ChatSession $session, FbPageIntegration $integration): void
     {
         $clinic = $session->clinic;
         $privacyUrl = url('/privacy-policy');
@@ -1006,7 +1365,7 @@ class ChatbotService
     /**
      * Handle DPA Consent response
      */
-    protected function handleDpaConsent(ChatSession $session, string $message, $integration): void
+    protected function handleDpaConsent(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         $lower = strtolower(trim($message));
         
@@ -1022,6 +1381,8 @@ class ChatbotService
                     str_contains($lower, 'ayaw');
 
         if ($agreed) {
+            $session->setContext('dpa_agreed', true);
+            $session->setContext('dpa_agreed_at', now()->toIso8601String());
             $session->updateStep('booking_form_name');
             $this->messenger->sendTextMessage(
                 $session->fb_messenger_id,
@@ -1058,7 +1419,7 @@ class ChatbotService
     /**
      * Handle form: name
      */
-    protected function handleFormName(ChatSession $session, string $message, $integration): void
+    protected function handleFormName(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         if (strlen($message) < 2) {
             $this->messenger->sendTextMessage(
@@ -1082,7 +1443,7 @@ class ChatbotService
     /**
      * Handle form: contact
      */
-    protected function handleFormContact(ChatSession $session, string $message, $integration): void
+    protected function handleFormContact(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         // Validation for Philippine mobile numbers (09... or +639...)
         $cleaned = preg_replace('/[^0-9+]/', '', $message);
@@ -1109,7 +1470,7 @@ class ChatbotService
     /**
      * Handle form: address
      */
-    protected function handleFormAddress(ChatSession $session, string $message, $integration): void
+    protected function handleFormAddress(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         $session->setContext('booking.patient_address', $message);
         $session->updateStep('booking_form_age');
@@ -1124,7 +1485,7 @@ class ChatbotService
     /**
      * Handle form: age
      */
-    protected function handleFormAge(ChatSession $session, string $message, $integration): void
+    protected function handleFormAge(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         preg_match('/\d+/', $message, $matches);
         $age = isset($matches[0]) ? (int)$matches[0] : null;
@@ -1151,7 +1512,7 @@ class ChatbotService
     /**
      * Handle form: medical history
      */
-    protected function handleFormMedicalHistory(ChatSession $session, string $message, $integration): void
+    protected function handleFormMedicalHistory(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         $session->setContext('booking.patient_medical_history', $message);
         $session->updateStep('booking_form_reason');
@@ -1166,7 +1527,7 @@ class ChatbotService
     /**
      * Handle form: reason
      */
-    protected function handleFormReason(ChatSession $session, string $message, $integration): void
+    protected function handleFormReason(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         $session->setContext('booking.reason', $message);
         $session->updateStep('booking_confirmation');
@@ -1177,7 +1538,7 @@ class ChatbotService
     /**
      * Show booking summary
      */
-    protected function showBookingSummary(ChatSession $session, $integration): void
+    protected function showBookingSummary(ChatSession $session, FbPageIntegration $integration): void
     {
         $booking = $session->getContext('booking');
         
@@ -1222,7 +1583,7 @@ class ChatbotService
     /**
      * Handle booking confirmation
      */
-    protected function handleBookingConfirmation(ChatSession $session, string $message, $integration): void
+    protected function handleBookingConfirmation(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         $message = strtolower(trim($message));
 
@@ -1242,7 +1603,7 @@ class ChatbotService
     /**
      * Confirm and submit booking
      */
-    protected function confirmBooking(ChatSession $session, $integration): void
+    protected function confirmBooking(ChatSession $session, FbPageIntegration $integration): void
     {
         $booking = $session->getContext('booking');
         $patient = null;
@@ -1314,7 +1675,7 @@ class ChatbotService
                 ]);
             });
 
-            if (!$appointment) {
+            if (!$appointment || !$patient) {
                 return;
             }
 
@@ -1326,15 +1687,21 @@ class ChatbotService
             $successMessage .= "━━━━━━━━━━━━━━\n\n";
             $successMessage .= $this->translator->trans('success.date', ['date' => $formattedDate]) . "\n";
             $successMessage .= $this->translator->trans('success.time', ['time' => $formattedTime]) . "\n";
-            $successMessage .= $this->translator->trans('success.queue', ['number' => $appointment->queue_number]) . "\n";
             $successMessage .= $this->translator->trans('success.reference', ['ref' => $appointment->reference_number]) . "\n";
             $successMessage .= $this->translator->trans('success.status') . "\n\n";
             $successMessage .= "━━━━━━━━━━━━━━\n\n";
             $successMessage .= $this->translator->trans('success.message', ['time' => $formattedTime]);
 
-            $this->messenger->sendTextMessage(
+            $postBookingQuickReplies = [
+                ['title' => '📋 My Appointments', 'payload' => 'VIEW_APPOINTMENTS'],
+                ['title' => '🏠 Main Menu', 'payload' => 'MAIN_MENU'],
+                ['title' => '👋 End Chat', 'payload' => 'END_CONVERSATION'],
+            ];
+
+            $this->messenger->sendQuickReplies(
                 $session->fb_messenger_id,
                 $successMessage,
+                $postBookingQuickReplies,
                 $integration
             );
 
@@ -1377,7 +1744,7 @@ class ChatbotService
     /**
      * Cancel current booking
      */
-    protected function cancelCurrentBooking(ChatSession $session, $integration): void
+    protected function cancelCurrentBooking(ChatSession $session, FbPageIntegration $integration): void
     {
         $session->clearContext();
 
@@ -1393,7 +1760,7 @@ class ChatbotService
     /**
      * Show patient's appointments
      */
-    protected function showAppointments(ChatSession $session, $integration): void
+    protected function showAppointments(ChatSession $session, FbPageIntegration $integration): void
     {
         if (!$session->patient_id) {
             $this->messenger->sendTextMessage(
@@ -1427,10 +1794,10 @@ class ChatbotService
         $message .= "━━━━━━━━━━━━━━\n\n";
 
         foreach ($appointments as $index => $appointment) {
-            $statusEmoji = match($appointment->status) {
+            $statusEmoji = match(strtolower($appointment->status)) {
                 'pending' => '⏳',
-                'confirmed' => '✅',
-                'checked_in' => '👥',
+                'approved', 'confirmed' => '✅',
+                'serving', 'checked_in', 'in_progress' => '👥',
                 default => '📝',
             };
 
@@ -1441,13 +1808,7 @@ class ChatbotService
             $message .= ($index + 1) . ". {$statusEmoji} " . strtoupper($appointment->status) . "\n";
             $message .= "   Ref: {$appointment->reference_number}\n";
             $message .= "   Service: {$serviceName}\n";
-            $message .= "   Date: {$date}, {$time}\n";
-
-            if ($appointment->queue_number) {
-                $message .= "   Queue: #{$appointment->queue_number}\n";
-            }
-
-            $message .= "\n";
+            $message .= "   Date: {$date}, {$time}\n\n";
         }
 
         $message .= "━━━━━━━━━━━━━━";
@@ -1464,32 +1825,10 @@ class ChatbotService
     /**
      * Show patient history
      */
-    protected function showHistory(ChatSession $session, $integration): void
+    protected function showHistory(ChatSession $session, FbPageIntegration $integration): void
     {
-        if (!$session->patient_id) {
-            $this->messenger->sendTextMessage(
-                $session->fb_messenger_id,
-                $this->translator->trans('error.no_history_yet'),
-                $integration
-            );
-            $this->showMainMenu($session, $integration);
-            return;
-        }
-
-        $historyCount = PatientHistory::where('patient_id', $session->patient_id)->count();
-
-        if ($historyCount === 0) {
-            $this->messenger->sendTextMessage(
-                $session->fb_messenger_id,
-                $this->translator->trans('error.no_history_yet'),
-                $integration
-            );
-            $this->showMainMenu($session, $integration);
-            return;
-        }
-
-        $patient = Patient::find($session->patient_id);
-        $patientName = $patient ? $patient->full_name : 'Patient';
+        $patient = $session->patient_id ? Patient::find($session->patient_id) : null;
+        $patientName = $patient ? $patient->full_name : 'Valued Patient';
 
         // Send portal link as button message
         $message = "👋 " . $this->translator->trans('booking.welcome_back', ['name' => $patientName]) . "!\n\n"
@@ -1499,6 +1838,10 @@ class ChatbotService
             [
                 'title' => '🌐 Patient Portal',
                 'url' => url('/webview/patient/portal/' . $session->session_id),
+            ],
+            [
+                'title' => '🏠 Main Menu',
+                'payload' => 'MAIN_MENU',
             ]
         ];
 
@@ -1515,13 +1858,18 @@ class ChatbotService
     /**
      * Show website link
      */
-    protected function showWebsiteLink(ChatSession $session, $integration): void
+    protected function showWebsiteLink(ChatSession $session, FbPageIntegration $integration): void
     {
         $clinic = $session->clinic;
+        $baseUrl = $clinic->getPublicBookingUrl();
+        $params = ['sender' => $session->fb_messenger_id];
+        if (!empty($integration->fb_page_id)) {
+            $params['page_id'] = $integration->fb_page_id;
+        }
+        $bookingUrl = $baseUrl . (str_contains($baseUrl, '?') ? '&' : '?') . http_build_query($params);
 
-        $message = $this->translator->trans('booking.website_visit');
-        // Assuming a generic domain format if not stored in DB, or use a placeholder
-        $message .= "🌐 https://" . strtolower(str_replace(' ', '', $clinic->clinic_name)) . ".dentalportal.com";
+        $message = $this->translator->trans('booking.website_visit') . "\n";
+        $message .= "🌐 " . $bookingUrl;
 
         $this->messenger->sendTextMessage(
             $session->fb_messenger_id,
@@ -1535,7 +1883,7 @@ class ChatbotService
     /**
      * Show cancel/reschedule options
      */
-    protected function showCancelReschedule(ChatSession $session, $integration): void
+    protected function showCancelReschedule(ChatSession $session, FbPageIntegration $integration): void
     {
         if (!$session->patient_id) {
             $this->messenger->sendTextMessage(
@@ -1588,7 +1936,7 @@ class ChatbotService
     /**
      * Process appointment cancellation
      */
-    protected function processCancellation(ChatSession $session, $appointmentId, $integration): void
+    protected function processCancellation(ChatSession $session, int|string $appointmentId, FbPageIntegration $integration): void
     {
         $appointment = Appointment::where('id', $appointmentId)
             ->where('patient_id', $session->patient_id)
@@ -1631,7 +1979,7 @@ class ChatbotService
     /**
      * Show contact information
      */
-    protected function showContactInfo(ChatSession $session, $integration): void
+    protected function showContactInfo(ChatSession $session, FbPageIntegration $integration): void
     {
         $clinic = $session->clinic;
 
@@ -1685,7 +2033,7 @@ class ChatbotService
     /**
      * Show FAQ categories
      */
-    protected function showFaqCategories(ChatSession $session, $integration): void
+    protected function showFaqCategories(ChatSession $session, FbPageIntegration $integration): void
     {
         $session->updateStep('faq_menu');
 
@@ -1713,7 +2061,7 @@ class ChatbotService
     /**
      * Show FAQ category details
      */
-    protected function showFaqCategoryDetails(ChatSession $session, string $category, $integration): void
+    protected function showFaqCategoryDetails(ChatSession $session, string $category, FbPageIntegration $integration): void
     {
         $faqs = ClinicFaq::where('clinic_id', $session->clinic_id)
             ->where('category', $category)
@@ -1784,7 +2132,7 @@ class ChatbotService
     /**
      * Handle user message in FAQ menu state
      */
-    protected function handleFaqMenu(ChatSession $session, string $message, $integration): void
+    protected function handleFaqMenu(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         $lower = strtolower(trim($message));
 
@@ -1810,7 +2158,7 @@ class ChatbotService
     /**
      * Handle hybrid natural language FAQ fallback using direct keywords and Wit.ai NLP
      */
-    protected function handleFaqFallback(ChatSession $session, string $message, $integration): void
+    protected function handleFaqFallback(ChatSession $session, string $message, FbPageIntegration $integration): void
     {
         $lower = strtolower(trim($message));
 
@@ -1886,7 +2234,7 @@ class ChatbotService
     /**
      * Show single FAQ details from NLP intent routing
      */
-    protected function showFaqFromIntent(ChatSession $session, string $category, $integration): void
+    protected function showFaqFromIntent(ChatSession $session, string $category, FbPageIntegration $integration): void
     {
         $faq = ClinicFaq::where('clinic_id', $session->clinic_id)
             ->where('category', $category)
@@ -1914,7 +2262,7 @@ class ChatbotService
     /**
      * Handle price query with service name extraction
      */
-    protected function handlePriceQuery(ChatSession $session, string $message, ?array $witResponse, $integration): void
+    protected function handlePriceQuery(ChatSession $session, string $message, ?array $witResponse, FbPageIntegration $integration): void
     {
         $lower = strtolower($message);
         
@@ -1959,7 +2307,7 @@ class ChatbotService
     /**
      * Search for service and show price
      */
-    protected function searchAndShowServicePrice(ChatSession $session, string $searchTerm, $integration): void
+    protected function searchAndShowServicePrice(ChatSession $session, string $searchTerm, FbPageIntegration $integration): void
     {
         $services = DentalService::where('clinic_id', $session->clinic_id)
             ->where(function ($query) use ($searchTerm) {

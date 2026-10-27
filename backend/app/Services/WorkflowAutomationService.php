@@ -64,12 +64,51 @@ class WorkflowAutomationService
         }
 
         // 2. Process Messenger Workflow
-        $integration = $clinic->fbPageIntegration;
-        if ($integration && $integration->is_active && !empty($patient->fb_messenger_id) && !str_starts_with($patient->fb_messenger_id, 'walkin_') && !str_starts_with($patient->fb_messenger_id, 'web_')) {
+        $integration = $clinic->fbPageIntegration()->where('is_active', true)->latest()->first() ?? $clinic->fbPageIntegration;
+        $messengerEnabled = $notifSettings['messenger_enabled'] ?? true;
+        if ($messengerEnabled && $integration && $integration->is_active && !empty($patient->fb_messenger_id) && !str_starts_with($patient->fb_messenger_id, 'walkin_') && !str_starts_with($patient->fb_messenger_id, 'web_')) {
             $messengerText = $this->getMessengerMessage($eventType, $clinic, $patient, $appointment, $notifSettings, $extraData);
             if (!empty($messengerText)) {
                 try {
-                    $msgrSuccess = $this->messengerService->sendTextMessage($patient->fb_messenger_id, $messengerText, $integration);
+                    $tag = null;
+
+                    $quickReplies = match ($eventType) {
+                        'booking_created', 'appointment_approved', 'appointment_reminder', 'appointment_reminder_today' => [
+                            ['title' => '📋 My Appointments', 'payload' => 'VIEW_APPOINTMENTS'],
+                            ['title' => '📞 Contact Us', 'payload' => 'CONTACT_US'],
+                            ['title' => '👋 End Chat', 'payload' => 'END_CONVERSATION'],
+                            ['title' => '🏠 Main Menu', 'payload' => 'MAIN_MENU'],
+                        ],
+                        'appointment_cancelled' => [
+                            ['title' => '📅 Book Appointment', 'payload' => 'BOOK_APPOINTMENT'],
+                            ['title' => '📞 Contact Us', 'payload' => 'CONTACT_US'],
+                            ['title' => '👋 End Chat', 'payload' => 'END_CONVERSATION'],
+                            ['title' => '🏠 Main Menu', 'payload' => 'MAIN_MENU'],
+                        ],
+                        default => [
+                            ['title' => '📋 My Appointments', 'payload' => 'VIEW_APPOINTMENTS'],
+                            ['title' => '👋 End Chat', 'payload' => 'END_CONVERSATION'],
+                            ['title' => '🏠 Main Menu', 'payload' => 'MAIN_MENU'],
+                        ],
+                    };
+
+                    $msgrSuccess = $this->messengerService->sendQuickReplies(
+                        $patient->fb_messenger_id,
+                        $messengerText,
+                        $quickReplies,
+                        $integration,
+                        $tag
+                    );
+
+                    // Fallback to standard text message if quick replies format failed
+                    if (!$msgrSuccess) {
+                        $msgrSuccess = $this->messengerService->sendTextMessage(
+                            $patient->fb_messenger_id,
+                            $messengerText,
+                            $integration,
+                            null
+                        );
+                    }
                     
                     $notifTypeEnum = $this->mapEventTypeToNotificationEnum($eventType);
                     Notification::create([
@@ -79,12 +118,12 @@ class WorkflowAutomationService
                         'notification_type' => $notifTypeEnum,
                         'message' => $messengerText,
                         'channel' => 'messenger',
-                        'status' => 'sent',
-                        'sent_at' => now(),
+                        'status' => $msgrSuccess ? 'sent' : 'failed',
+                        'sent_at' => $msgrSuccess ? now() : null,
                     ]);
 
                     $results['messenger'] = [
-                        'sent' => true,
+                        'sent' => $msgrSuccess,
                         'message' => $messengerText
                     ];
                 } catch (\Exception $e) {
@@ -108,6 +147,8 @@ class WorkflowAutomationService
             'appointment_rescheduled' => 'reschedule',
             'appointment_completed' => 'follow_up',
             'appointment_reminder' => 'reminder_24h',
+            'appointment_reminder_today' => 'reminder_3h',
+            'appointment_serving' => 'queue_update',
             default => 'booking_confirmation',
         };
     }
@@ -253,11 +294,12 @@ class WorkflowAutomationService
 
         return match ($eventType) {
             'booking_created' => "📩 BOOKING RECEIVED!\n━━━━━━━━━━━━━━\n\nHi {$patient->full_name}, your booking request at {$clinic->clinic_name} for {$serviceName} on {$dateStr} at {$timeStr} has been received. Reference: {$ref}. We'll verify and approve it shortly!",
-            'appointment_approved' => "✅ APPOINTMENT CONFIRMED!\n━━━━━━━━━━━━━━\n\nYour appointment at {$clinic->clinic_name} has been approved! 😊\n\nReference: {$ref}\nService: {$serviceName}\nDate: {$dateStr}\nTime: {$timeStr}\n" . ($appointment?->queue_number ? "Queue Number: #{$appointment->queue_number}\n" : "") . "\n📍 Address: {$clinic->address}\nPlease arrive 10 mins early. See you soon!",
+            'appointment_approved' => "✅ APPOINTMENT CONFIRMED!\n━━━━━━━━━━━━━━\n\nYour appointment at {$clinic->clinic_name} has been approved! 😊\n\nReference: {$ref}\nService: {$serviceName}\nDate: {$dateStr}\nTime: {$timeStr}\n" . ($clinic->address ? "📍 Address: {$clinic->address}\n" : "") . ($clinic->contact_number ? "📞 Contact: {$clinic->contact_number}\n" : "") . "\nPlease arrive 10 mins early. See you soon!",
             'appointment_cancelled' => "❌ APPOINTMENT CANCELLED\n━━━━━━━━━━━━━━\n\nYour appointment (Ref: {$ref}) at {$clinic->clinic_name} has been cancelled.\n\n" . ($appointment?->cancellation_reason ? "Reason: {$appointment->cancellation_reason}\n\n" : "") . "If you have questions, call us at {$clinic->contact_number}.",
             'appointment_rescheduled' => "📅 APPOINTMENT RESCHEDULED\n━━━━━━━━━━━━━━\n\nYour appointment at {$clinic->clinic_name} has been updated to {$dateStr} at {$timeStr}. Reference: {$ref}.",
             'appointment_completed' => "🦷 THANK YOU FOR YOUR VISIT!\n━━━━━━━━━━━━━━\n\nThank you for visiting {$clinic->clinic_name} today for {$serviceName}! Have a great day!",
-            'appointment_reminder' => "🔔 APPOINTMENT REMINDER\n━━━━━━━━━━━━━━\n\nReminder: You have an appointment at {$clinic->clinic_name} tomorrow, {$dateStr} at {$timeStr} for {$serviceName}. Reference: {$ref}.",
+            'appointment_reminder' => "🔔 PAALALA: BUKAS NA ANG INYONG APPOINTMENT!\n━━━━━━━━━━━━━━\n\nHi {$patient->full_name},\n\nPaalala lang po na may dental appointment kayo bukas sa {$clinic->clinic_name}! 😊\n\nReference: {$ref}\nSerbisyo: {$serviceName}\nPetsa: {$dateStr} (Bukas)\nOras: {$timeStr}\n" . ($clinic->address ? "📍 Address: {$clinic->address}\n" : "") . ($clinic->contact_number ? "📞 Contact: {$clinic->contact_number}\n" : "") . "\nMangyaring pumunta 10 minuto bago ang inyong schedule. See you tomorrow!",
+            'appointment_reminder_today' => "⏰ PAALALA: MALAPIT NA ANG INYONG APPOINTMENT!\n━━━━━━━━━━━━━━\n\nHi {$patient->full_name},\n\nMalapit na po ang inyong appointment ngayong araw sa {$clinic->clinic_name}! 😊\n\nReference: {$ref}\nSerbisyo: {$serviceName}\nOras: {$timeStr}\n" . ($clinic->address ? "📍 Address: {$clinic->address}\n" : "") . ($clinic->contact_number ? "📞 Telepono: {$clinic->contact_number}\n" : "") . "\nMangyaring pumunta 10-15 minuto bago ang inyong schedule. Ingat po sa biyahe!",
             default => "Update regarding your appointment at {$clinic->clinic_name}.",
         };
     }
@@ -277,8 +319,6 @@ class WorkflowAutomationService
         $serviceName = $appointment?->service?->service_name ?? ($extraData['service_name'] ?? 'Dental Service');
         $ref = $appointment?->reference_number ?? ($extraData['reference'] ?? 'REF-' . strtoupper(substr(md5(time()), 0, 6)));
         $reason = $appointment?->cancellation_reason ?? ($extraData['reason'] ?? 'Schedule adjustment');
-        $queueNo = $appointment?->queue_number ? "#{$appointment->queue_number}" : ($extraData['queue_number'] ?? '#1');
-
         $replacements = [
             '{patient_name}' => $patient->full_name ?? 'Valued Patient',
             '{clinic_name}' => $clinic->clinic_name,
@@ -289,7 +329,7 @@ class WorkflowAutomationService
             '{reason}' => $reason ? "Reason: {$reason}." : "",
             '{clinic_phone}' => $clinic->contact_number ?? 'our clinic desk',
             '{clinic_address}' => $clinic->address ?? 'our clinic location',
-            '{queue_number}' => $queueNo,
+            '{queue_number}' => '',
         ];
 
         return str_replace(array_keys($replacements), array_values($replacements), $template);

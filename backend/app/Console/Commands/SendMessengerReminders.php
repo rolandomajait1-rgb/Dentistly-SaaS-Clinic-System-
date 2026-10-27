@@ -58,6 +58,16 @@ class SendMessengerReminders extends Command
                 continue;
             }
 
+            $clinicSettings = $notification->clinic->notification_settings ?? [];
+            if (isset($clinicSettings['messenger_enabled']) && !$clinicSettings['messenger_enabled']) {
+                $notification->update([
+                    'status' => 'skipped',
+                    'error_message' => 'Messenger is disabled in clinic settings',
+                ]);
+                $failedCount++;
+                continue;
+            }
+
             // Build the reminder message
             $message = "🔔 *DENTAL CLINIC REMINDER*\n";
             $message .= "━━━━━━━━━━━━━━\n\n";

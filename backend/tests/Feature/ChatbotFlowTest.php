@@ -91,10 +91,18 @@ class ChatbotFlowTest extends TestCase
         $response = $this->post(route('webhook.handle'), $payload);
         $response->assertStatus(200);
 
-        // Assert session is created and current step is 'main_menu'
+        // Assert session is created and current step is 'initial_dpa_consent'
         $session = ChatSession::where('fb_messenger_id', $this->senderId)->first();
         $this->assertNotNull($session);
+        $this->assertEquals('initial_dpa_consent', $session->current_step);
+
+        // Agree to Data Privacy Notice
+        $agreePayload = $this->textMessagePayload('I Agree');
+        $this->post(route('webhook.handle'), $agreePayload)->assertStatus(200);
+
+        $session->refresh();
         $this->assertEquals('main_menu', $session->current_step);
+        $this->assertTrue($session->hasAgreedToDpa());
 
         // 2. Click "Book Appointment" button (Postback: BOOK_APPOINTMENT)
         $payload = [
@@ -114,8 +122,8 @@ class ChatbotFlowTest extends TestCase
         $this->post(route('webhook.handle'), $payload)->assertStatus(200);
         
         $session->refresh();
-        // The chatbot sends the public portal invitation card and cleanly returns to welcome step
-        $this->assertEquals('welcome', $session->current_step);
+        // The chatbot sends the public portal invitation card and moves to booking_portal_shown step
+        $this->assertEquals('booking_portal_shown', $session->current_step);
     }
 
     /**
@@ -341,7 +349,17 @@ class ChatbotFlowTest extends TestCase
                 return true;
             });
 
-        // 3. POST the greeting message
+        // 3. Pre-create session with DPA agreement already granted
+        ChatSession::create([
+            'clinic_id' => $clinic->id,
+            'fb_messenger_id' => $this->senderId,
+            'session_id' => \Illuminate\Support\Str::uuid(),
+            'current_step' => 'welcome',
+            'context_data' => ['dpa_agreed' => true],
+            'last_interaction_at' => now(),
+        ]);
+
+        // POST the greeting message
         $payload = $this->textMessagePayload('hi');
         $response = $this->post(route('webhook.handle'), $payload);
         $response->assertStatus(200);
@@ -372,13 +390,13 @@ class ChatbotFlowTest extends TestCase
             ])
         ]);
 
-        // 2. We need a session already in main_menu
+        // 2. We need a session already in main_menu with DPA accepted
         $session = ChatSession::create([
             'clinic_id' => $clinic->id,
             'fb_messenger_id' => $this->senderId,
             'session_id' => \Illuminate\Support\Str::uuid(),
             'current_step' => 'main_menu',
-            'context_data' => [],
+            'context_data' => ['dpa_agreed' => true],
             'last_interaction_at' => now(),
         ]);
 
@@ -422,7 +440,7 @@ class ChatbotFlowTest extends TestCase
             'fb_messenger_id' => $this->senderId,
             'session_id' => \Illuminate\Support\Str::uuid(),
             'current_step' => 'main_menu',
-            'context_data' => ['some_booking_key' => 'some_val'],
+            'context_data' => ['some_booking_key' => 'some_val', 'dpa_agreed' => true],
             'last_interaction_at' => now(),
         ]);
 
@@ -430,10 +448,10 @@ class ChatbotFlowTest extends TestCase
         $response = $this->post(route('webhook.handle'), $payload);
         $response->assertStatus(200);
 
-        // Assert step is reset to welcome and context is cleared
+        // Assert step is reset to welcome and booking context is cleared while DPA consent is retained
         $session->refresh();
         $this->assertEquals('welcome', $session->current_step);
-        $this->assertEmpty($session->context_data);
+        $this->assertArrayNotHasKey('some_booking_key', $session->context_data);
 
         // 2. Test Quick Reply/Postback payload "END_CONVERSATION"
         // Reset step to main_menu and add context again
@@ -462,7 +480,186 @@ class ChatbotFlowTest extends TestCase
         // Assert step is reset to welcome and context is cleared
         $session->refresh();
         $this->assertEquals('welcome', $session->current_step);
-        $this->assertEmpty($session->context_data);
+        $this->assertArrayNotHasKey('another_key', $session->context_data);
+    }
+
+    public function test_message_echo_is_ignored()
+    {
+        $echoPayload = [
+            'object' => 'page',
+            'entry' => [
+                [
+                    'id' => $this->pageId,
+                    'messaging' => [
+                        [
+                            'sender' => ['id' => $this->pageId],
+                            'recipient' => ['id' => $this->senderId],
+                            'message' => [
+                                'is_echo' => true,
+                                'mid' => 'mid.echo.12345',
+                                'text' => 'Hello from bot',
+                            ],
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $response = $this->post(route('webhook.handle'), $echoPayload);
+        $response->assertStatus(200);
+
+        // Assert no session was created for the Page ID
+        $this->assertDatabaseMissing('chat_sessions', [
+            'fb_messenger_id' => $this->pageId,
+        ]);
+    }
+
+    public function test_duplicate_message_mid_is_deduplicated()
+    {
+        $payload = [
+            'object' => 'page',
+            'entry' => [
+                [
+                    'id' => $this->pageId,
+                    'messaging' => [
+                        [
+                            'sender' => ['id' => $this->senderId],
+                            'recipient' => ['id' => $this->pageId],
+                            'message' => [
+                                'mid' => 'mid.unique.test.999',
+                                'text' => 'Hello first time',
+                            ],
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        // First delivery
+        $res1 = $this->post(route('webhook.handle'), $payload);
+        $res1->assertStatus(200);
+
+        // Second delivery (Facebook retry)
+        $res2 = $this->post(route('webhook.handle'), $payload);
+        $res2->assertStatus(200);
+    }
+
+    public function test_booking_trouble_message_does_not_loop_portal_invitation()
+    {
+        $clinic = \App\Models\Clinic::first();
+        $session = ChatSession::create([
+            'clinic_id' => $clinic->id,
+            'fb_messenger_id' => $this->senderId,
+            'session_id' => (string) \Illuminate\Support\Str::uuid(),
+            'current_step' => 'booking_portal_shown',
+            'context_data' => [],
+            'last_interaction_at' => now(),
+        ]);
+
+        $payload = $this->textMessagePayload("I can't book, the link is broken");
+        $response = $this->post(route('webhook.handle'), $payload);
+        $response->assertStatus(200);
+    }
+
+    public function test_public_booking_url_uses_configured_public_domain()
+    {
+        $clinic = \App\Models\Clinic::first();
+        $url = $clinic->getPublicBookingUrl();
+
+        $this->assertStringStartsWith('https://', $url);
+        $this->assertStringContainsString('/book/', $url);
+        $this->assertStringNotContainsString('localhost', $url);
+    }
+
+    public function test_portal_booking_link_includes_sender_and_page_id(): void
+    {
+        $sentButtons = [];
+        $messengerMock = \Mockery::mock(\App\Services\MessengerService::class);
+        $messengerMock->shouldReceive('markSeen')->andReturn(true);
+        $messengerMock->shouldReceive('sendTypingOn')->andReturn(true);
+        $messengerMock->shouldReceive('sendQuickReplies')->andReturn(true);
+        $messengerMock->shouldReceive('sendButtonMessage')
+            ->andReturnUsing(function ($senderId, $message, $buttons, $integration) use (&$sentButtons) {
+                $sentButtons = $buttons;
+                return true;
+            });
+
+        $this->app->instance(\App\Services\MessengerService::class, $messengerMock);
+
+        $clinic = FbPageIntegration::where('fb_page_id', $this->pageId)->first()->clinic;
+        ChatSession::create([
+            'clinic_id' => $clinic->id,
+            'fb_messenger_id' => $this->senderId,
+            'session_id' => \Illuminate\Support\Str::uuid(),
+            'current_step' => 'main_menu',
+            'context_data' => ['dpa_agreed' => true],
+            'last_interaction_at' => now(),
+        ]);
+
+        $payload = [
+            'object' => 'page',
+            'entry' => [
+                [
+                    'id' => $this->pageId,
+                    'messaging' => [
+                        [
+                            'sender' => ['id' => $this->senderId],
+                            'recipient' => ['id' => $this->pageId],
+                            'postback' => ['payload' => 'BOOK_APPOINTMENT']
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $response = $this->post(route('webhook.handle'), $payload);
+        $response->assertStatus(200);
+
+        $this->assertNotEmpty($sentButtons);
+        $portalButton = collect($sentButtons)->firstWhere('title', '🌐 Buksan Portal') 
+            ?? collect($sentButtons)->firstWhere('title', '🌐 Open Portal');
+
+        $this->assertNotNull($portalButton);
+        $this->assertStringContainsString('sender=' . urlencode($this->senderId), $portalButton['url']);
+        $this->assertStringContainsString('page_id=' . urlencode($this->pageId), $portalButton['url']);
+    }
+
+    public function test_chatbot_enforces_upfront_data_privacy_act_consent(): void
+    {
+        // 1. Initial State: No session exists.
+        // User sends greeting "hi". It should create a session in initial_dpa_consent step.
+        $payload = $this->textMessagePayload('hi');
+        $response = $this->post(route('webhook.handle'), $payload);
+        $response->assertStatus(200);
+
+        $session = ChatSession::where('fb_messenger_id', $this->senderId)->first();
+        $this->assertNotNull($session);
+        $this->assertEquals('initial_dpa_consent', $session->current_step);
+        $this->assertFalse($session->hasAgreedToDpa());
+
+        // 2. User declines DPA
+        $declinePayload = $this->textMessagePayload('I Decline');
+        $this->post(route('webhook.handle'), $declinePayload)->assertStatus(200);
+
+        $session->refresh();
+        $this->assertFalse($session->hasAgreedToDpa());
+        $this->assertEquals('initial_dpa_consent', $session->current_step);
+
+        // 3. User reconsiders and agrees to DPA
+        $agreePayload = $this->textMessagePayload('I Agree');
+        $this->post(route('webhook.handle'), $agreePayload)->assertStatus(200);
+
+        $session->refresh();
+        $this->assertTrue($session->hasAgreedToDpa());
+        $this->assertEquals('main_menu', $session->current_step);
+
+        // 4. Global menu command retains consent
+        $menuPayload = $this->textMessagePayload('menu');
+        $this->post(route('webhook.handle'), $menuPayload)->assertStatus(200);
+
+        $session->refresh();
+        $this->assertTrue($session->hasAgreedToDpa());
+        $this->assertEquals('main_menu', $session->current_step);
     }
 
     protected function textMessagePayload(string $text): array

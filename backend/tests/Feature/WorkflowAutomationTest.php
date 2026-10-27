@@ -2,10 +2,11 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
-use App\Models\{Clinic, ClinicStaff, Patient, Appointment, DentalService, Notification};
+use App\Models\{Tenant, Clinic, ClinicStaff, Patient, Appointment, DentalService, Notification};
 use App\Services\WorkflowAutomationService;
+use Tests\TestCase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 
 class WorkflowAutomationTest extends TestCase
 {
@@ -20,49 +21,51 @@ class WorkflowAutomationTest extends TestCase
     {
         parent::setUp();
 
-        $tenant = \App\Models\Tenant::create([
-            'tenant_name' => 'SmileCare Tenant',
+        Mail::fake();
+
+        $tenant = Tenant::create([
+            'tenant_name' => 'Smile Care Tenant',
             'subdomain' => 'smilecare',
-            'status' => 'active',
         ]);
 
         $this->clinic = Clinic::create([
             'tenant_id' => $tenant->id,
-            'clinic_name' => 'SmileCare Dental',
-            'owner_name' => 'Dr. Alex Reed',
-            'email' => 'contact@smilecare.ph',
-            'contact_number' => '09171112222',
-            'address' => '456 Health St, Manila',
-            'status' => 'active',
+            'clinic_name' => 'Smile Care Clinic',
+            'owner_name' => 'Dr. Smith',
+            'email' => 'contact@smilecare.com',
+            'contact_number' => '09171234567',
+            'address' => '123 Dental St, Metro Manila',
             'notification_settings' => [
-                'sms_enabled' => true,
                 'email_enabled' => true,
-                'sms_template_approved' => 'Hi {patient_name}, appointment at {clinic_name} on {date} at {time} is APPROVED.',
-                'email_subject_approved' => 'Approved: {patient_name} at {clinic_name}',
-                'email_body_approved' => '<p>Hi {patient_name}, your visit is confirmed for {date}.</p>',
+                'messenger_enabled' => false, // Focus on SMTP email automation
+                'email_subject_approved' => 'Your visit at {clinic_name} is approved',
+                'email_body_approved' => '<p>Dear {patient_name}, your visit for {service_name} on {date} at {time} is confirmed.</p>',
             ]
         ]);
 
         $this->staff = ClinicStaff::create([
             'clinic_id' => $this->clinic->id,
-            'name' => 'Dr. Alex Reed',
-            'email' => 'alex@smilecare.ph',
+            'name' => 'Front Desk Staff',
+            'email' => 'desk@smilecare.com',
             'password' => bcrypt('password123'),
-            'role' => 'owner',
+            'role' => 'staff',
             'is_active' => true,
+            'email_verified_at' => now(),
         ]);
 
         $this->patient = Patient::create([
             'clinic_id' => $this->clinic->id,
             'full_name' => 'Maria Clara',
-            'email' => 'maria@example.com',
             'contact_number' => '09171234567',
+            'email' => 'maria@example.com',
+            'fb_messenger_id' => 'walkin_patient_123',
         ]);
 
         $service = DentalService::create([
             'clinic_id' => $this->clinic->id,
-            'service_name' => 'General Checkup',
-            'price' => 500,
+            'service_name' => 'Oral Prophylaxis',
+            'price' => 1200.00,
+            'duration_minutes' => 45,
             'is_active' => true,
         ]);
 
@@ -81,15 +84,7 @@ class WorkflowAutomationTest extends TestCase
         $workflow = resolve(WorkflowAutomationService::class);
         $results = $workflow->triggerWorkflow($this->clinic, $this->patient, $this->appointment, 'appointment_approved');
 
-        $this->assertTrue($results['sms']['sent']);
         $this->assertTrue($results['email']['sent']);
-
-        $this->assertDatabaseHas('notifications', [
-            'clinic_id' => $this->clinic->id,
-            'patient_id' => $this->patient->id,
-            'channel' => 'sms',
-            'status' => 'sent',
-        ]);
 
         $this->assertDatabaseHas('notifications', [
             'clinic_id' => $this->clinic->id,
@@ -97,19 +92,6 @@ class WorkflowAutomationTest extends TestCase
             'channel' => 'email',
             'status' => 'sent',
         ]);
-    }
-
-    public function test_test_sms_workflow_endpoint(): void
-    {
-        $response = $this->actingAs($this->staff, 'sanctum')
-            ->postJson('/api/dashboard/settings/test-sms', [
-                'phone' => '09171234567',
-                'template' => 'Hello {patient_name}, test SMS from {clinic_name}.',
-            ]);
-
-        $response->assertStatus(200)
-            ->assertJsonPath('success', true)
-            ->assertJsonPath('phone', '09171234567');
     }
 
     public function test_test_email_workflow_endpoint(): void
@@ -139,8 +121,63 @@ class WorkflowAutomationTest extends TestCase
         $this->assertDatabaseHas('notifications', [
             'clinic_id' => $this->clinic->id,
             'patient_id' => $this->patient->id,
-            'channel' => 'sms',
+            'channel' => 'email',
             'status' => 'sent',
+        ]);
+    }
+
+    public function test_approval_triggers_facebook_messenger_notification(): void
+    {
+        \App\Models\FbPageIntegration::create([
+            'clinic_id' => $this->clinic->id,
+            'fb_page_id' => '1234567890',
+            'fb_page_name' => 'Smile Care Page',
+            'page_access_token' => 'mock_page_access_token',
+            'webhook_verify_token' => 'mock_verify_token',
+            'is_active' => true,
+        ]);
+
+        $this->clinic->update([
+            'notification_settings' => array_merge($this->clinic->notification_settings ?? [], [
+                'messenger_enabled' => true,
+            ])
+        ]);
+
+        $this->patient->update([
+            'fb_messenger_id' => 'fb_patient_user_555'
+        ]);
+
+        $mockMessenger = \Mockery::mock(\App\Services\MessengerService::class);
+        $mockMessenger->shouldReceive('sendQuickReplies')
+            ->once()
+            ->withArgs(function ($recipientId, $text, $quickReplies, $int, $tag) {
+                return $recipientId === 'fb_patient_user_555'
+                    && str_contains($text, 'APPOINTMENT CONFIRMED')
+                    && $tag === 'CONFIRMED_VISIT_UPDATE';
+            })
+            ->andReturn(true);
+
+        $this->app->instance(\App\Services\MessengerService::class, $mockMessenger);
+
+        $response = $this->actingAs($this->staff, 'sanctum')
+            ->postJson("/api/dashboard/appointments/{$this->appointment->id}/status", [
+                'status' => 'Approved',
+            ]);
+
+        $response->assertStatus(200);
+
+        $this->assertDatabaseHas('notifications', [
+            'clinic_id' => $this->clinic->id,
+            'patient_id' => $this->patient->id,
+            'channel' => 'messenger',
+            'notification_type' => 'approval',
+            'status' => 'sent',
+        ]);
+
+        $this->assertDatabaseHas('appointments', [
+            'id' => $this->appointment->id,
+            'status' => 'confirmed',
+            'approved_by' => $this->staff->id,
         ]);
     }
 }

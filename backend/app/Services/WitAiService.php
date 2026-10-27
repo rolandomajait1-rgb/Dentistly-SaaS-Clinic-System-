@@ -26,7 +26,9 @@ class WitAiService
         }
 
         try {
-            $response = Http::withToken($this->token)
+            $response = Http::timeout(2)
+                ->withoutVerifying()
+                ->withToken($this->token)
                 ->get("https://api.wit.ai/message", [
                     'v' => $this->version,
                     'q' => $message,

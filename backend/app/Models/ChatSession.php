@@ -54,7 +54,7 @@ class ChatSession extends Model
     /**
      * Get context value
      */
-    public function getContext(string $key, $default = null)
+    public function getContext(string $key, mixed $default = null): mixed
     {
         return data_get($this->context_data, $key, $default);
     }
@@ -62,7 +62,7 @@ class ChatSession extends Model
     /**
      * Set context value
      */
-    public function setContext(string $key, $value): void
+    public function setContext(string $key, mixed $value): void
     {
         $contextData = $this->context_data ?? [];
         data_set($contextData, $key, $value);
@@ -74,14 +74,28 @@ class ChatSession extends Model
     }
 
     /**
-     * Clear context (keeps patient_id so returning users are still recognized)
+     * Clear context (keeps patient_id and dpa_agreed so users aren't forced to re-agree on menu restart)
      */
     public function clearContext(): void
     {
+        $dpaAgreed = $this->getContext('dpa_agreed', false);
+        $newContext = [];
+        if ($dpaAgreed) {
+            $newContext['dpa_agreed'] = true;
+        }
+
         $this->update([
-            'context_data' => [],
+            'context_data' => $newContext,
             'current_step' => 'main_menu',
         ]);
+    }
+
+    /**
+     * Check if session has agreed to Data Privacy Act
+     */
+    public function hasAgreedToDpa(): bool
+    {
+        return (bool) $this->getContext('dpa_agreed', false) || $this->patient_id !== null;
     }
 
     /**
