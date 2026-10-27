@@ -77,9 +77,10 @@ class PublicBookingApiTest extends TestCase
             ])
             ->assertJsonStructure([
                 'success',
-                'queue_number',
                 'reference_number',
-                'appointment_id'
+                'appointment_id',
+                'fb_page_id',
+                'fb_messenger_id',
             ]);
 
         // Assert patient created
@@ -138,5 +139,55 @@ class PublicBookingApiTest extends TestCase
             ->assertJson([
                 'error' => 'Double-booking error: This slot was just taken. Please choose another slot.'
             ]);
+    }
+
+    public function test_can_create_booking_with_messenger_sender_id_and_end_conversation(): void
+    {
+        $clinic = Clinic::first();
+        $service = DentalService::where('clinic_id', $clinic->id)->first();
+        $slot = CalendarSlot::where('clinic_id', $clinic->id)
+            ->where('status', 'available')
+            ->first();
+
+        $dateStr = $slot->slot_date instanceof Carbon 
+            ? $slot->slot_date->toDateString() 
+            : Carbon::parse($slot->slot_date)->toDateString();
+        $timeStr = Carbon::parse($slot->slot_time)->format('H:i');
+
+        $messengerSenderId = 'fb_user_998877';
+
+        $payload = [
+            'service_id' => $service->id,
+            'date' => $dateStr,
+            'time' => $timeStr,
+            'name' => 'Maria Clara',
+            'contact' => '09170001122',
+            'address' => 'Quezon City',
+            'age' => 25,
+            'reason' => 'Wisdom tooth consultation',
+            'sender_id' => $messengerSenderId,
+        ];
+
+        // 1. Submit public booking with sender_id
+        $response = $this->postJson("/api/public/clinics/happysmiles/bookings", $payload);
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'fb_messenger_id' => $messengerSenderId,
+            ]);
+
+        // Assert patient saved with fb_messenger_id
+        $this->assertDatabaseHas('patients', [
+            'clinic_id' => $clinic->id,
+            'full_name' => 'Maria Clara',
+            'fb_messenger_id' => $messengerSenderId,
+        ]);
+
+        // 2. Call end-conversation API from portal
+        $endResponse = $this->postJson("/api/public/clinics/happysmiles/end-conversation", [
+            'sender_id' => $messengerSenderId,
+        ]);
+        $endResponse->assertStatus(200)
+            ->assertJson(['success' => true]);
     }
 }

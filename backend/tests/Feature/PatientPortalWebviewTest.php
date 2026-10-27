@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\{Tenant, Clinic, ClinicStaff, Patient, ChatSession, PatientHistory, ToothChart, Prescription, Appointment, DentalService};
+use App\Models\{Tenant, Clinic, ClinicStaff, Patient, ChatSession, PatientHistory, Prescription, Appointment, DentalService};
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -127,15 +127,6 @@ class PatientPortalWebviewTest extends TestCase
             'items' => [['name' => 'Amoxicillin', 'dosage' => '500mg', 'quantity' => 21]],
         ]);
 
-        // Seed dummy tooth condition
-        ToothChart::create([
-            'clinic_id' => $this->clinicA->id,
-            'patient_id' => $this->patientA->id,
-            'tooth_number' => 18,
-            'condition' => 'decayed',
-            'notes' => 'Needs extraction',
-        ]);
-
         // Request patient portal URL
         $response = $this->get(route('webview.patient_portal', ['sessionId' => $this->sessionA->session_id]));
 
@@ -145,7 +136,6 @@ class PatientPortalWebviewTest extends TestCase
         $response->assertSee('Severely decayed molar');
         $response->assertSee('Amoxicillin');
         $response->assertSee('Dr. Santos');
-        $response->assertSee('18'); // Tooth number
     }
 
     /**

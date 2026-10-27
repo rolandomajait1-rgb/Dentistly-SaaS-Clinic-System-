@@ -258,128 +258,6 @@
             color: var(--gray-900);
         }
 
-        /* ── TOOTH CHART (TAB 2) ── */
-        .chart-legend {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            background: var(--white);
-            border-radius: var(--radius-md);
-            padding: 12px;
-            margin-bottom: 16px;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--gray-200);
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 10px;
-            font-weight: 600;
-        }
-        .legend-color {
-            width: 12px; height: 12px;
-            border-radius: 3px;
-        }
-        .legend-color.healthy { background: var(--success); }
-        .legend-color.decayed { background: var(--danger); }
-        .legend-color.filled { background: var(--info); }
-        .legend-color.missing { background: var(--gray-300); }
-        .legend-color.crowned { background: var(--warning); }
-
-        .chart-card {
-            background: var(--white);
-            border-radius: var(--radius-lg);
-            padding: 20px 14px;
-            box-shadow: var(--shadow-md);
-            border: 1px solid var(--gray-200);
-            margin-bottom: 16px;
-            text-align: center;
-        }
-        .chart-arch-title {
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--gray-500);
-            text-transform: uppercase;
-            margin-bottom: 14px;
-            letter-spacing: 0.05em;
-        }
-        .chart-grid {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            gap: 6px;
-            margin-bottom: 24px;
-        }
-        .tooth-btn {
-            background: var(--success-light);
-            border: 2px solid var(--success);
-            aspect-ratio: 1;
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-family: var(--font);
-            transition: all 0.2s ease;
-            position: relative;
-            min-height: 46px;
-        }
-        .tooth-btn:hover {
-            transform: scale(1.05);
-        }
-        .tooth-btn.selected {
-            box-shadow: 0 0 0 3px var(--primary);
-        }
-        .tooth-btn.decayed { background: var(--danger-light); border-color: var(--danger); }
-        .tooth-btn.filled { background: var(--info-light); border-color: var(--info); }
-        .tooth-btn.missing { background: var(--gray-100); border-color: var(--gray-300); }
-        .tooth-btn.crowned { background: var(--warning-light); border-color: var(--warning); }
-        
-        .tooth-num {
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--gray-900);
-        }
-        .tooth-btn.decayed .tooth-num { color: var(--danger); }
-        .tooth-btn.filled .tooth-num { color: var(--info); }
-        .tooth-btn.missing .tooth-num { color: var(--gray-500); }
-        .tooth-btn.crowned .tooth-num { color: var(--warning); }
-        
-        .tooth-label {
-            font-size: 8px;
-            font-weight: 500;
-            color: var(--gray-500);
-            margin-top: 1px;
-        }
-
-        .tooth-info-card {
-            background: var(--gray-100);
-            border-radius: var(--radius-md);
-            padding: 14px;
-            font-size: 13px;
-            text-align: left;
-            border: 1px solid var(--gray-200);
-            display: none;
-            animation: fadeIn 0.3s ease;
-        }
-        .tooth-info-card.show {
-            display: block;
-        }
-        .tooth-info-title {
-            font-weight: 700;
-            color: var(--gray-900);
-            margin-bottom: 4px;
-        }
-        .tooth-info-condition {
-            display: inline-block;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            padding: 2px 8px;
-            border-radius: 12px;
-            margin-bottom: 8px;
-        }
 
         /* ── PRESCRIPTIONS (TAB 3) ── */
         .prescription-card {
@@ -524,7 +402,6 @@
     <div class="tabs-container">
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('history')">📜 Timeline</button>
-            <button class="tab-btn" onclick="switchTab('chart')">🦷 Chart</button>
             <button class="tab-btn" onclick="switchTab('prescriptions')">💊 Reseta</button>
             <button class="tab-btn" onclick="switchTab('profile')">👤 Profile</button>
         </div>
@@ -590,58 +467,6 @@
                 @endif
             </div>
 
-            <!-- ── TAB 2: TOOTH CHART ── -->
-            <div id="tab-chart" class="tab-content">
-                <!-- Legend -->
-                <div class="chart-legend">
-                    <div class="legend-item"><span class="legend-color healthy"></span>Healthy</div>
-                    <div class="legend-item"><span class="legend-color decayed"></span>Decayed</div>
-                    <div class="legend-item"><span class="legend-color filled"></span>Filled</div>
-                    <div class="legend-item"><span class="legend-color missing"></span>Missing</div>
-                    <div class="legend-item"><span class="legend-color crowned"></span>Crowned</div>
-                </div>
-
-                <!-- Upper Arch Card -->
-                <div class="chart-card">
-                    <div class="chart-arch-title">Upper Teeth (Arko sa Taas)</div>
-                    <div class="chart-grid">
-                        @for($i = 1; $i <= 16; $i++)
-                            @php
-                                $tooth = $toothCharts->firstWhere('tooth_number', $i);
-                                $cond  = $tooth ? $tooth->condition : 'healthy';
-                                $notes = $tooth ? $tooth->notes : 'Healthy Tooth / Walang sira';
-                            @endphp
-                            <button class="tooth-btn {{ $cond }}" id="tooth-{{ $i }}" onclick="showToothInfo({{ $i }}, '{{ ucfirst($cond) }}', '{{ addslashes($notes) }}')">
-                                <span class="tooth-num">{{ $i }}</span>
-                                <span class="tooth-label">U</span>
-                            </button>
-                        @endfor
-                    </div>
-
-                    <!-- Lower Arch -->
-                    <div class="chart-arch-title">Lower Teeth (Arko sa Baba)</div>
-                    <div class="chart-grid">
-                        @for($i = 17; $i <= 32; $i++)
-                            @php
-                                $tooth = $toothCharts->firstWhere('tooth_number', $i);
-                                $cond  = $tooth ? $tooth->condition : 'healthy';
-                                $notes = $tooth ? $tooth->notes : 'Healthy Tooth / Walang sira';
-                            @endphp
-                            <button class="tooth-btn {{ $cond }}" id="tooth-{{ $i }}" onclick="showToothInfo({{ $i }}, '{{ ucfirst($cond) }}', '{{ addslashes($notes) }}')">
-                                <span class="tooth-num">{{ $i }}</span>
-                                <span class="tooth-label">L</span>
-                            </button>
-                        @endfor
-                    </div>
-
-                    <!-- Interactive Info Panel -->
-                    <div class="tooth-info-card" id="toothInfoPanel">
-                        <div class="tooth-info-title" id="infoTitle">Select a tooth to view details</div>
-                        <span class="tooth-info-condition" id="infoCondition"></span>
-                        <div id="infoNotes" style="font-size: 12px; color: var(--gray-500);"></div>
-                    </div>
-                </div>
-            </div>
 
             <!-- ── TAB 3: PRESCRIPTIONS ── -->
             <div id="tab-prescriptions" class="tab-content">
@@ -756,47 +581,6 @@
                 content.classList.remove('active');
             });
             document.getElementById('tab-' + tabName).classList.add('active');
-        }
-
-        // ── TOOTH CHART INTERACTION ──
-        function showToothInfo(toothNum, condition, notes) {
-            // Remove active highlight from all teeth
-            document.querySelectorAll('.tooth-btn').forEach(btn => {
-                btn.classList.remove('selected');
-            });
-            // Add highlight to clicked tooth
-            document.getElementById('tooth-' + toothNum).classList.add('selected');
-
-            // Populate Info Panel
-            document.getElementById('infoTitle').textContent = 'Tooth #' + toothNum;
-            
-            const condEl = document.getElementById('infoCondition');
-            condEl.textContent = condition;
-            condEl.className = 'tooth-info-condition';
-            
-            // Color conditions dynamically in info block
-            const lowerCond = condition.toLowerCase();
-            if (lowerCond === 'decayed') {
-                condEl.style.background = 'var(--danger-light)';
-                condEl.style.color = 'var(--danger)';
-            } else if (lowerCond === 'filled') {
-                condEl.style.background = 'var(--info-light)';
-                condEl.style.color = 'var(--info)';
-            } else if (lowerCond === 'missing') {
-                condEl.style.background = 'var(--gray-100)';
-                condEl.style.color = 'var(--gray-700)';
-            } else if (lowerCond === 'crowned') {
-                condEl.style.background = 'var(--warning-light)';
-                condEl.style.color = 'var(--warning)';
-            } else {
-                condEl.style.background = 'var(--success-light)';
-                condEl.style.color = 'var(--success)';
-            }
-
-            document.getElementById('infoNotes').textContent = notes;
-
-            // Display panel
-            document.getElementById('toothInfoPanel').classList.add('show');
         }
     </script>
 </body>

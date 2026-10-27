@@ -31,19 +31,31 @@ Route::prefix('public/clinics/{clinicSlug}')->group(function () {
     Route::get('/info', [PublicClinicController::class, 'info'])->name('api.public.info');
     Route::get('/services', [PublicClinicController::class, 'services'])->name('api.public.services');
     Route::get('/slots', [PublicClinicController::class, 'slots'])->name('api.public.slots');
-    Route::post('/bookings', [PublicClinicController::class, 'bookings'])->name('api.public.bookings');
-    Route::get('/appointments/lookup', [PublicClinicController::class, 'lookupAppointment'])->name('api.public.appointments.lookup');
-    Route::post('/appointments/cancel', [PublicClinicController::class, 'cancelBooking'])->name('api.public.appointments.cancel');
+    Route::post('/bookings', [PublicClinicController::class, 'bookings'])
+        ->middleware('throttle:public-booking')
+        ->name('api.public.bookings');
+    Route::get('/appointments/lookup', [PublicClinicController::class, 'lookupAppointment'])
+        ->middleware('throttle:public-lookup')
+        ->name('api.public.appointments.lookup');
+    Route::post('/appointments/cancel', [PublicClinicController::class, 'cancelBooking'])
+        ->middleware('throttle:public-booking')
+        ->name('api.public.appointments.cancel');
+    Route::post('/end-conversation', [PublicClinicController::class, 'endConversation'])
+        ->middleware('throttle:public-booking')
+        ->name('api.public.endConversation');
 });
 
 // Clinic Dashboard API
 Route::prefix('dashboard')->group(function () {
-    // Public auth routes
-    Route::post('/auth/login', [DashboardApiController::class, 'login']);
-    Route::post('/auth/register', [DashboardApiController::class, 'register']);
+    // Public auth routes with anti brute-force throttling
+    Route::post('/auth/login', [DashboardApiController::class, 'login'])->middleware('throttle:auth-strict');
+    Route::post('/auth/register', [DashboardApiController::class, 'register'])->middleware('throttle:auth-strict');
     Route::post('/auth/verify-email', [DashboardApiController::class, 'verifyEmail']);
     Route::post('/auth/resend-verification', [DashboardApiController::class, 'resendVerification']);
     Route::post('/auth/google-login', [DashboardApiController::class, 'googleLogin']);
+    Route::post('/auth/forgot-password', [DashboardApiController::class, 'forgotPassword'])->middleware('throttle:auth-strict');
+    Route::post('/auth/reset-password', [DashboardApiController::class, 'resetPassword'])->middleware('throttle:auth-strict');
+    Route::post('/auth/accept-invite', [DashboardApiController::class, 'acceptInvite'])->middleware('throttle:auth-strict');
     
     // Protected routes - require authentication
     Route::middleware('auth:sanctum')->group(function () {
@@ -58,6 +70,7 @@ Route::prefix('dashboard')->group(function () {
         Route::post('/patients', [DashboardApiController::class, 'createPatient']);
         Route::get('/patients/{id}/ehr', [DashboardApiController::class, 'getPatientEhr']);
         Route::post('/patients/{id}/prescriptions', [DashboardApiController::class, 'createPrescription']);
+        Route::post('/patients/{id}/soap-notes', [DashboardApiController::class, 'storeSoapNote']);
         Route::get('/settings', [DashboardApiController::class, 'getSettings']);
         Route::post('/settings', [DashboardApiController::class, 'updateSettings']);
         Route::post('/settings/test-email', [DashboardApiController::class, 'testEmailWorkflow']);
@@ -70,6 +83,12 @@ Route::prefix('dashboard')->group(function () {
         Route::get('/staff', [DashboardApiController::class, 'getStaff']);
         Route::post('/staff', [DashboardApiController::class, 'createStaff']);
         Route::delete('/staff/{id}', [DashboardApiController::class, 'deleteStaff']);
+
+        // Notifications routes
+        Route::get('/notifications', [DashboardApiController::class, 'getNotifications']);
+        Route::post('/notifications/read-all', [DashboardApiController::class, 'markAllNotificationsRead']);
+        Route::post('/notifications/{id}/read', [DashboardApiController::class, 'markNotificationRead']);
+        Route::delete('/notifications', [DashboardApiController::class, 'clearNotifications']);
 
         // Facebook Integration Routes
         Route::prefix('facebook')->group(function () {
@@ -86,7 +105,7 @@ Route::prefix('dashboard')->group(function () {
 
 // Superadmin Portal API Routes
 Route::prefix('superadmin')->group(function () {
-    Route::post('/auth/login', [SuperadminApiController::class, 'login']);
+    Route::post('/auth/login', [SuperadminApiController::class, 'login'])->middleware('throttle:auth-strict');
 
     Route::middleware(['auth:sanctum', 'superadmin'])->group(function () {
         Route::get('/stats', [SuperadminApiController::class, 'getStats']);

@@ -11,5 +11,8 @@ Artisan::command('inspire', function () {
 // Run automated messenger reminders every hour
 Schedule::command('chatbot:send-reminders')->hourly();
 
-// Run SaaS multi-channel (SMS/Email/Messenger) reminders daily at 8:00 AM
-Schedule::command('app:send-appointment-reminders')->dailyAt('08:00');
+// Run SaaS multi-channel (SMS/Email/Messenger) reminders hourly for 24h & same-day upcoming notices
+Schedule::command('app:send-appointment-reminders')->hourly();
+
+// Keep calendar slots rolling 30 days ahead daily
+Schedule::command('slots:generate')->dailyAt('00:01');

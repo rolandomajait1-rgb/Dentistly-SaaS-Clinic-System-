@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{CalendarSlot, ChatSession, Patient, PatientHistory, Prescription, ToothChart};
+use App\Models\{CalendarSlot, ChatSession, Patient, PatientHistory, Prescription};
 use App\Services\{ChatbotService, MessengerService, TranslationService};
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -22,9 +22,15 @@ class WebviewController extends Controller
         $session = ChatSession::where('session_id', $sessionId)->firstOrFail();
         $clinic  = $session->clinic;
 
-        // Fetch available slots for the next 14 days
+        // Fetch available slots for up to 180 days (allowing distant months like December)
         $startDate = Carbon::today()->addDay();
-        $endDate   = Carbon::today()->addDays(14);
+        $endDate   = Carbon::today()->addDays(180);
+
+        try {
+            app(\App\Http\Controllers\PublicClinicController::class)->ensureSlotsForClinic($clinic, $startDate, $endDate);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed ensuring slots in WebviewController: ' . $e->getMessage());
+        }
 
         $slots = CalendarSlot::where('clinic_id', $clinic->id)
             ->whereBetween('slot_date', [$startDate, $endDate])
@@ -109,12 +115,11 @@ class WebviewController extends Controller
         if (!$session->patient_id) {
             // Friendly fallback page for sessions with no recorded patient profile yet
             return view('webview.patient_portal', [
-                'clinic'   => $clinic,
-                'session'  => $session,
-                'patient'  => null,
-                'history'  => collect(),
+                'clinic'        => $clinic,
+                'session'       => $session,
+                'patient'       => null,
+                'history'       => collect(),
                 'prescriptions' => collect(),
-                'toothCharts'   => collect(),
             ]);
         }
 
@@ -134,18 +139,12 @@ class WebviewController extends Controller
             ->orderBy('prescription_date', 'desc')
             ->get();
 
-        $toothCharts = ToothChart::where('patient_id', $patient->id)
-            ->where('clinic_id', $clinic->id)
-            ->orderBy('tooth_number')
-            ->get();
-
         return view('webview.patient_portal', [
             'clinic'        => $clinic,
             'session'       => $session,
             'patient'       => $patient,
             'history'       => $history,
             'prescriptions' => $prescriptions,
-            'toothCharts'   => $toothCharts,
         ]);
     }
 }

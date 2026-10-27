@@ -10,7 +10,8 @@ use App\Http\Controllers\Clinic\{
     ServiceController,
     SettingController,
     IntegrationController,
-    StaffController
+    StaffController,
+    NotificationController
 };
 use Illuminate\Http\Request;
 
@@ -23,6 +24,9 @@ class DashboardApiController extends Controller
     public function verifyEmail(Request $request) { return resolve(AuthController::class)->verifyEmail($request); }
     public function resendVerification(Request $request) { return resolve(AuthController::class)->resendVerification($request); }
     public function googleLogin(Request $request) { return resolve(AuthController::class)->googleLogin($request); }
+    public function forgotPassword(Request $request) { return resolve(AuthController::class)->forgotPassword($request); }
+    public function resetPassword(Request $request) { return resolve(AuthController::class)->resetPassword($request); }
+    public function acceptInvite(Request $request) { return resolve(AuthController::class)->acceptInvite($request); }
 
     // Appointments & Walk-In delegations
     public function getOverview(Request $request) { return resolve(AppointmentController::class)->getOverview($request); }
@@ -37,6 +41,7 @@ class DashboardApiController extends Controller
     public function createPatient(Request $request) { return resolve(PatientController::class)->createPatient($request); }
     public function getPatientEhr(Request $request, int $id) { return resolve(PatientController::class)->getPatientEhr($request, $id); }
     public function createPrescription(Request $request, int $id) { return resolve(PrescriptionController::class)->createPrescription($request, $id); }
+    public function storeSoapNote(Request $request, int $id) { return resolve(PatientController::class)->storeSoapNote($request, $id); }
     public function updateToothChart(Request $request, int $id) {
         return response()->json(['success' => true, 'message' => 'Tooth chart legacy call noted.']);
     }
@@ -65,4 +70,10 @@ class DashboardApiController extends Controller
     public function getFacebookPageDetails(Request $request) { return resolve(IntegrationController::class)->getFacebookPageDetails($request); }
     public function validateFacebookToken(Request $request) { return resolve(IntegrationController::class)->validateFacebookToken($request); }
     public function testFacebookWebhook(Request $request) { return resolve(IntegrationController::class)->testFacebookWebhook($request); }
+
+    // Notifications delegations
+    public function getNotifications(Request $request) { return resolve(NotificationController::class)->getNotifications($request); }
+    public function markNotificationRead(Request $request, string $id) { return resolve(NotificationController::class)->markAsRead($request, $id); }
+    public function markAllNotificationsRead(Request $request) { return resolve(NotificationController::class)->markAllAsRead($request); }
+    public function clearNotifications(Request $request) { return resolve(NotificationController::class)->clearAll($request); }
 }
