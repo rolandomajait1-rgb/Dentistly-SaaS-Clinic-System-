@@ -750,7 +750,7 @@ export function AppContent() {
         {/* ── Top App Bar ── */}
         <header
           className="flex justify-between items-center w-full px-4 md:px-7 shrink-0 z-40 bg-white"
-          style={{ height: 60, borderBottom: '1px rgba(0, 0, 0, 0.08) solid' }}
+          style={{ height: 70, borderBottom: '1px rgba(0, 0, 0, 0.08) solid' }}
         >
           {/* Mobile menu toggle & title (hidden on desktop) */}
           <div className="flex items-center gap-2 sm:gap-3 md:hidden min-w-0">
