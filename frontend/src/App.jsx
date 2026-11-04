@@ -749,29 +749,69 @@ export function AppContent() {
 
         {/* ── Top App Bar ── */}
         <header
-          className="flex justify-between items-center w-full px-4 md:px-8 shrink-0 z-40 bg-white"
-          style={{ height: 76, borderBottom: '1px rgba(0, 0, 0, 0.10) solid' }}
+          className="flex justify-between items-center w-full px-4 md:px-7 shrink-0 z-40 bg-white"
+          style={{ height: 60, borderBottom: '1px rgba(0, 0, 0, 0.08) solid' }}
         >
           {/* Mobile menu toggle & title (hidden on desktop) */}
           <div className="flex items-center gap-2 sm:gap-3 md:hidden min-w-0">
             {activeTab === 'patients' && selectedPatient ? (
               <button 
                 onClick={() => setSelectedPatient(null)}
-                className="p-2 -ml-1 text-[#0E3F39] hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0"
+                className="p-1.5 -ml-1 text-[#0E3F39] hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0"
                 aria-label="Back to patients"
               >
-                <span className="material-symbols-outlined">arrow_back_ios_new</span>
+                <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
               </button>
             ) : (
               <button 
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="p-2 -ml-1 text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0"
+                className="p-1.5 -ml-1 text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0"
                 aria-label="Open mobile menu"
               >
-                <span className="material-symbols-outlined">menu</span>
+                <span className="material-symbols-outlined text-[22px]">menu</span>
               </button>
             )}
             <div className="flex flex-col min-w-0">
+              <span
+                style={{
+                  color: '#99A1AF',
+                  fontSize: 10,
+                  fontFamily: "'Work Sans', sans-serif",
+                  fontWeight: '500',
+                  textTransform: 'uppercase',
+                  lineHeight: '12px',
+                }}
+              >
+                {roleConfig.headerLabel}
+              </span>
+              <span
+                className="truncate"
+                style={{
+                  color: '#0E3F39',
+                  fontSize: 15,
+                  fontFamily: "'Work Sans', sans-serif",
+                  fontWeight: '600',
+                  lineHeight: '20px',
+                }}
+              >
+                {activeTab === 'patients' && selectedPatient ? 'Patient Information' : getPageHeaderTitle()}
+              </span>
+            </div>
+          </div>
+
+          {/* Page Title (desktop) */}
+          <div className="hidden md:flex items-center gap-2">
+            {activeTab === 'patients' && selectedPatient && (
+              <button
+                type="button"
+                onClick={() => setSelectedPatient(null)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-[#0E3F39] hover:bg-slate-100 transition-colors cursor-pointer -ml-1.5"
+                title="Back to Patients"
+              >
+                <span className="material-symbols-outlined text-[16px]">arrow_back_ios_new</span>
+              </button>
+            )}
+            <div className="flex flex-col">
               <span
                 style={{
                   color: '#99A1AF',
@@ -784,53 +824,13 @@ export function AppContent() {
               >
                 {roleConfig.headerLabel}
               </span>
-              <span
-                className="truncate"
+              <h2
                 style={{
                   color: '#0E3F39',
                   fontSize: 16,
                   fontFamily: "'Work Sans', sans-serif",
                   fontWeight: '600',
-                  lineHeight: '24px',
-                }}
-              >
-                {activeTab === 'patients' && selectedPatient ? 'Patient Information' : getPageHeaderTitle()}
-              </span>
-            </div>
-          </div>
-
-          {/* Page Title (desktop) */}
-          <div className="hidden md:flex items-center gap-2.5">
-            {activeTab === 'patients' && selectedPatient && (
-              <button
-                type="button"
-                onClick={() => setSelectedPatient(null)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-[#0E3F39] hover:bg-slate-100 transition-colors cursor-pointer -ml-2"
-                title="Back to Patients"
-              >
-                <span className="material-symbols-outlined text-[18px]">arrow_back_ios_new</span>
-              </button>
-            )}
-            <div className="flex flex-col">
-              <span
-                style={{
-                  color: '#99A1AF',
-                  fontSize: 12,
-                  fontFamily: "'Work Sans', sans-serif",
-                  fontWeight: '500',
-                  textTransform: 'uppercase',
-                  lineHeight: '16px',
-                }}
-              >
-                {roleConfig.headerLabel}
-              </span>
-              <h2
-                style={{
-                  color: '#0E3F39',
-                  fontSize: 18,
-                  fontFamily: "'Work Sans', sans-serif",
-                  fontWeight: '600',
-                  lineHeight: '28px',
+                  lineHeight: '22px',
                 }}
               >
                 {activeTab === 'patients' && selectedPatient ? 'Patient Information' : getPageHeaderTitle()}
@@ -839,19 +839,19 @@ export function AppContent() {
           </div>
 
           {/* Trailing Actions */}
-          <div className="flex items-center gap-2.5 sm:gap-5 ml-auto shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 ml-auto shrink-0">
             {/* Notification Bell */}
             <div className="relative">
               <button 
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="notification-bell-btn p-2 hover:bg-slate-50 rounded-full transition-colors relative cursor-pointer flex items-center justify-center"
+                className="notification-bell-btn p-1.5 hover:bg-slate-50 rounded-full transition-colors relative cursor-pointer flex items-center justify-center"
                 aria-label="Notifications"
               >
-                <img src={assets.iconBell} alt="Notifications" className="w-[18px] h-[18px] object-contain" />
+                <img src={assets.iconBell} alt="Notifications" className="w-[17px] h-[17px] object-contain" />
                 {/* Dynamic unread count badge */}
                 {unreadCount > 0 && (
                   <span
-                    className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-[#E05252] text-white text-[10px] font-extrabold rounded-full flex items-center justify-center shadow-sm pointer-events-none"
+                    className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 bg-[#E05252] text-white text-[9px] font-extrabold rounded-full flex items-center justify-center shadow-xs pointer-events-none"
                     style={{ lineHeight: '1' }}
                   >
                     {unreadCount > 9 ? '9+' : unreadCount}
@@ -871,13 +871,13 @@ export function AppContent() {
               <button
                 type="button"
                 onClick={() => setShowAccountDropdown(!showAccountDropdown)}
-                className="flex items-center gap-2.5 p-1 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer text-left focus:outline-none"
+                className="flex items-center gap-2 p-1 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer text-left focus:outline-none"
                 aria-label="Account Settings"
               >
                 <div
                   style={{
-                    width: 32,
-                    height: 32,
+                    width: 30,
+                    height: 30,
                     background: '#1A8A7A',
                     borderRadius: '50%',
                     display: 'flex',
@@ -888,10 +888,10 @@ export function AppContent() {
                   <span
                     style={{
                       color: 'white',
-                      fontSize: 12,
+                      fontSize: 11,
                       fontFamily: "'Work Sans', sans-serif",
                       fontWeight: '700',
-                      lineHeight: '16px',
+                      lineHeight: '14px',
                     }}
                   >
                     {user?.name ? user.name.replace(/^Dr\.\s*/i, '').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : 'AD'}
@@ -901,10 +901,10 @@ export function AppContent() {
                   <span
                     style={{
                       color: '#1E2939',
-                      fontSize: 14,
+                      fontSize: 13,
                       fontFamily: "'Work Sans', sans-serif",
                       fontWeight: '600',
-                      lineHeight: '20px',
+                      lineHeight: '18px',
                     }}
                   >
                     {roleConfig.pillLabel}
@@ -912,10 +912,10 @@ export function AppContent() {
                   <span
                     style={{
                       color: '#99A1AF',
-                      fontSize: 12,
+                      fontSize: 11,
                       fontFamily: "'Work Sans', sans-serif",
                       fontWeight: '400',
-                      lineHeight: '16px',
+                      lineHeight: '14px',
                     }}
                   >
                     {user?.email || 'admin@pivodent.com'}

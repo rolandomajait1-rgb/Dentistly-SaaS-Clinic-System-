@@ -16,7 +16,7 @@ const DEFAULT_SERVICE_MIX = [
   { name: 'Surgical',    color: '#B91C1C', count: 1, keywords: ['extract', 'bunot', 'wisdom', 'surg', 'implant', 'odontectomy'] },
 ];
 
-export default function DashboardOverview({ setActiveTab, clinic, user, onUserUpdate }) {
+export default function DashboardOverview({ setActiveTab, clinic, user }) {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
@@ -217,21 +217,21 @@ export default function DashboardOverview({ setActiveTab, clinic, user, onUserUp
   const planName = overviewData.clinic?.plan || clinic?.subscription?.plan?.plan_name;
 
   return (
-    <div className="w-full flex flex-col gap-5 p-4 md:p-6" style={{ fontFamily: "'Work Sans', sans-serif" }}>
+    <div className="w-full flex flex-col gap-4 p-4 md:px-7 md:py-4" style={{ fontFamily: "'Work Sans', sans-serif" }}>
       {/* ── TOP BANNER: CLINIC CONTEXT, ROLE PREVIEW SWITCHER & QUICK ACTIONS ── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between pb-3 border-b border-[#0E3F39]/10 gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2.5 border-b border-[#0E3F39]/10 gap-2.5">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl md:text-2xl font-bold text-[#0E3F39] tracking-tight">
+            <h1 className="text-lg md:text-xl font-bold text-[#0E3F39] tracking-tight">
               {clinicDisplayName}
             </h1>
             {planName && (
-              <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-[#1A8A7A]/10 text-[#1A8A7A]">
+              <span className="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-[#1A8A7A]/10 text-[#1A8A7A]">
                 {planName}
               </span>
             )}
           </div>
-          <p className="text-xs md:text-sm text-[#5A7A76] mt-0.5">
+          <p className="text-xs text-[#5A7A76] mt-0.5">
             Welcome back, <span className="font-semibold text-[#1E2939]">{user?.name || 'Doctor'}</span>! Today is{' '}
             {new Date().toLocaleDateString('en-US', {
               weekday: 'long',
@@ -243,16 +243,16 @@ export default function DashboardOverview({ setActiveTab, clinic, user, onUserUp
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setActiveTab && setActiveTab('schedule')}
-            className="px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-[#0E3F39] hover:bg-[#1A8A7A] transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#0E3F39] hover:bg-[#1A8A7A] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
           >
             <span>+ Book Appointment</span>
           </button>
           <button
             onClick={() => setActiveTab && setActiveTab('patients')}
-            className="px-3.5 py-2 rounded-lg text-xs font-semibold text-[#0E3F39] bg-white border border-[#0E3F39]/20 hover:bg-[#F3F4F6] transition-colors cursor-pointer"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#0E3F39] bg-white border border-[#0E3F39]/20 hover:bg-[#F3F4F6] transition-colors cursor-pointer"
           >
             Patient Directory
           </button>
