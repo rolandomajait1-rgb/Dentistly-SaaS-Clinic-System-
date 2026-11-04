@@ -11,7 +11,8 @@ use App\Http\Controllers\Clinic\{
     SettingController,
     IntegrationController,
     StaffController,
-    NotificationController
+    NotificationController,
+    SubscriptionController
 };
 use Illuminate\Http\Request;
 
@@ -49,6 +50,7 @@ class DashboardApiController extends Controller
     // Staff & Users delegations
     public function getStaff(Request $request) { return resolve(StaffController::class)->getStaff($request); }
     public function createStaff(Request $request) { return resolve(StaffController::class)->createStaff($request); }
+    public function updateStaff(Request $request, int $id) { return resolve(StaffController::class)->updateStaff($request, $id); }
     public function deleteStaff(Request $request, int $id) { return resolve(StaffController::class)->deleteStaff($request, $id); }
 
     // Dental Services delegations
@@ -76,4 +78,8 @@ class DashboardApiController extends Controller
     public function markNotificationRead(Request $request, string $id) { return resolve(NotificationController::class)->markAsRead($request, $id); }
     public function markAllNotificationsRead(Request $request) { return resolve(NotificationController::class)->markAllAsRead($request); }
     public function clearNotifications(Request $request) { return resolve(NotificationController::class)->clearAll($request); }
+
+    // Subscription & Billing delegations
+    public function getSubscription(Request $request) { return resolve(SubscriptionController::class)->getSubscription($request); }
+    public function changePlan(Request $request) { return resolve(SubscriptionController::class)->changePlan($request); }
 }

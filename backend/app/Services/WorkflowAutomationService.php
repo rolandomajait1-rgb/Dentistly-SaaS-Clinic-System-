@@ -70,7 +70,10 @@ class WorkflowAutomationService
             $messengerText = $this->getMessengerMessage($eventType, $clinic, $patient, $appointment, $notifSettings, $extraData);
             if (!empty($messengerText)) {
                 try {
-                    $tag = null;
+                    $tag = match ($eventType) {
+                        'appointment_approved', 'appointment_rescheduled', 'appointment_reminder', 'appointment_reminder_today', 'appointment_cancelled' => 'CONFIRMED_VISIT_UPDATE',
+                        default => null,
+                    };
 
                     $quickReplies = match ($eventType) {
                         'booking_created', 'appointment_approved', 'appointment_reminder', 'appointment_reminder_today' => [

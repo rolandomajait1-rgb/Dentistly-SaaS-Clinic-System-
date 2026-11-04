@@ -82,6 +82,7 @@ Route::prefix('dashboard')->group(function () {
         // Staff & Users routes
         Route::get('/staff', [DashboardApiController::class, 'getStaff']);
         Route::post('/staff', [DashboardApiController::class, 'createStaff']);
+        Route::put('/staff/{id}', [DashboardApiController::class, 'updateStaff']);
         Route::delete('/staff/{id}', [DashboardApiController::class, 'deleteStaff']);
 
         // Notifications routes
@@ -100,6 +101,10 @@ Route::prefix('dashboard')->group(function () {
             Route::post('/validate-token', [DashboardApiController::class, 'validateFacebookToken']);
             Route::post('/test-webhook', [DashboardApiController::class, 'testFacebookWebhook']);
         });
+
+        // Subscription & Plan routes
+        Route::get('/subscription', [DashboardApiController::class, 'getSubscription']);
+        Route::post('/subscription/change-plan', [DashboardApiController::class, 'changePlan']);
     });
 });
 

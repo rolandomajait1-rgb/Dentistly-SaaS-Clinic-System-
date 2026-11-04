@@ -27,6 +27,7 @@ class IntegrationController extends Controller
 
             return response()->json([
                 'auth_url' => $authUrl,
+                'url' => $authUrl,
                 'state' => $state
             ]);
         } catch (\Exception $e) {

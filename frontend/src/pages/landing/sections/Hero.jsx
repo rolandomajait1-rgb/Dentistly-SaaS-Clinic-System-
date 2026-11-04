@@ -48,7 +48,7 @@ export default function Hero({ onLogin, onGetStarted }) {
   };
 
   return (
-    <section className="min-h-screen pt-32 md:pt-[130px] pb-20 md:pb-24 relative overflow-hidden flex items-center">
+    <section className="min-h-screen pt-32 md:pt-32.5 pb-20 md:pb-24 relative overflow-hidden flex items-center">
       {/* Layer 1: Base gradient */}
       <div className="absolute inset-0 -z-30 bg-linear-to-br from-[#e8f5f1] via-[#f0f7ff] to-[#eef0ff] dark:from-[#071210] dark:via-[#060c1a] dark:to-[#080b1a]" />
       
@@ -63,17 +63,17 @@ export default function Hero({ onLogin, onGetStarted }) {
 
       {/* Layer 4: Ambient glow orbs */}
       <motion.div
-        className="absolute -top-32 -right-32 w-[800px] h-[800px] rounded-full pointer-events-none -z-10 bg-radial from-primary/18 via-teal-500/10 to-transparent"
+        className="absolute -top-32 -right-32 w-200 h-200 rounded-full pointer-events-none -z-10 bg-radial from-primary/18 via-teal-500/10 to-transparent"
         animate={{ scale: [1, 1.1, 1], opacity: [0.7, 1, 0.7] }}
         transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
       />
       <motion.div
-        className="absolute -bottom-20 -left-20 w-[600px] h-[600px] rounded-full pointer-events-none -z-10 bg-radial from-indigo-500/12 via-purple-500/6 to-transparent"
+        className="absolute -bottom-20 -left-20 w-150 h-150 rounded-full pointer-events-none -z-10 bg-radial from-indigo-500/12 via-purple-500/6 to-transparent"
         animate={{ scale: [1.1, 1, 1.1], opacity: [0.5, 0.8, 0.5] }}
         transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
       />
       <motion.div
-        className="absolute top-1/3 left-1/3 w-[500px] h-[500px] rounded-full pointer-events-none -z-10 bg-radial from-teal-500/8 to-transparent"
+        className="absolute top-1/3 left-1/3 w-125 h-125 rounded-full pointer-events-none -z-10 bg-radial from-teal-500/8 to-transparent"
         animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0.7, 0.4] }}
         transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
       />
@@ -81,7 +81,7 @@ export default function Hero({ onLogin, onGetStarted }) {
       {/* Layer 5: Corner accent */}
       <div className="absolute top-0 right-0 w-1/2 h-full bg-linear-to-bl from-primary/5 via-transparent to-transparent -z-10 rounded-bl-[180px]" />
 
-      <div className="max-w-[1280px] mx-auto px-6 w-full relative z-10">
+      <div className="max-w-7xl mx-auto px-6 w-full relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
 
           {/* Copy Column */}
@@ -92,11 +92,11 @@ export default function Hero({ onLogin, onGetStarted }) {
             variants={STAGGER_CONTAINER_VARIANTS}
           >
 
-            <motion.h1 variants={STAGGER_ITEM_VARIANTS} className="text-[40px] sm:text-[48px] md:text-[58px] lg:text-[64px] font-black text-primary mb-4 leading-[1.08] tracking-tight max-w-[580px]">
+            <motion.h1 variants={STAGGER_ITEM_VARIANTS} className="text-[40px] sm:text-[48px] md:text-[58px] lg:text-[64px] font-black text-primary mb-4 leading-[1.08] tracking-tight max-w-145">
               Stop Losing Patients to <span className="font-serif italic font-normal text-primary">Phone Calls</span> &amp; <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-teal-600 to-emerald-500">Manual Booking.</span>
             </motion.h1>
 
-            <motion.p variants={STAGGER_ITEM_VARIANTS} className="text-[17px] text-on-surface-variant/90 mb-6 max-w-[480px] leading-relaxed font-medium">
+            <motion.p variants={STAGGER_ITEM_VARIANTS} className="text-[17px] text-on-surface-variant/90 mb-6 max-w-120 leading-relaxed font-medium">
               Pivodent automates your clinic from end to end: chatbot booking, EHR, and email reminders. <strong className="text-primary font-bold">Most clinics go live in under 30 minutes.</strong>
             </motion.p>
             
@@ -174,7 +174,7 @@ export default function Hero({ onLogin, onGetStarted }) {
             {/* macOS Browser Mockup with 3D Tilt */}
             <div 
               ref={cardRef}
-              className="w-full max-w-[680px] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 shadow-2xl overflow-hidden flex flex-col relative z-10 transition-all duration-300 transform-gpu"
+              className="w-full max-w-170 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 shadow-2xl overflow-hidden flex flex-col relative z-10 transition-all duration-300 transform-gpu"
               style={{ 
                 transform: 'perspective(1000px) rotateX(1deg) rotateY(-8deg) rotateZ(1deg)',
                 transformStyle: 'preserve-3d'
@@ -191,7 +191,7 @@ export default function Hero({ onLogin, onGetStarted }) {
                 </div>
                 {/* Address bar mockup */}
                 <div className="col-span-6 flex justify-center">
-                  <div className="bg-slate-200/60 dark:bg-slate-850/80 text-slate-500 dark:text-slate-400 text-[10px] font-bold px-6 py-1 rounded-full border border-slate-300/20 max-w-[240px] w-full truncate tracking-wide flex items-center justify-center gap-2 font-sans shadow-inner">
+                  <div className="bg-slate-200/60 dark:bg-slate-850/80 text-slate-500 dark:text-slate-400 text-[10px] font-bold px-6 py-1 rounded-full border border-slate-300/20 max-w-60 w-full truncate tracking-wide flex items-center justify-center gap-2 font-sans shadow-inner">
                     <span className="material-symbols-outlined text-[11px] text-slate-400">lock</span>
                     pivodent.ph/dashboard
                   </div>

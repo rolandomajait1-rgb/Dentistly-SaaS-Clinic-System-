@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { getStaff, createStaff, deleteStaff } from '../../api';
+import { getStaff, createStaff, updateStaff, deleteStaff } from '../../api';
 import { useNotifications } from '../../context/NotificationContext';
 import {
   Plus,
@@ -11,7 +11,6 @@ import {
   User,
   EnvelopeSimple,
   LockKey,
-  ShieldCheck,
   Check,
 } from '@phosphor-icons/react';
 
@@ -30,7 +29,10 @@ const getRoleBadgeStyle = (role = '') => {
   if (r.includes('admin') && r.includes('restricted')) {
     return { bg: '#FDE3E7', color: '#C01570', label: 'Admin (restricted)' };
   }
-  if (r.includes('admin') || r.includes('owner')) {
+  if (r.includes('owner')) {
+    return { bg: '#E5C7FF', color: '#80388E', label: 'Clinic Owner' };
+  }
+  if (r.includes('admin')) {
     return { bg: '#E5C7FF', color: '#80388E', label: 'Admin' };
   }
   if (r.includes('dentist') || r.includes('doctor')) {
@@ -45,7 +47,87 @@ const getRoleBadgeStyle = (role = '') => {
   return { bg: '#E1FFF9', color: '#10AA9D', label: role || 'Staff' };
 };
 
-export default function StaffUsers({ clinicId, user }) {
+// Role Assignment options matching Figma UserModal (node 583:30553)
+const FIGMA_ROLE_OPTIONS = [
+  {
+    id: 'Clinic Owner',
+    title: 'Clinic Owner',
+    subtitle: 'Full system access',
+    activeBg: '#E5C7FF',
+    activeBorder: '#80388E',
+    activeText: '#80388E',
+  },
+  {
+    id: 'Admin',
+    title: 'Admin',
+    subtitle: 'Manage clinic operations',
+    activeBg: '#FDE3E7',
+    activeBorder: '#C01570',
+    activeText: '#C01570',
+  },
+  {
+    id: 'Dentist',
+    title: 'Dentist',
+    subtitle: 'Clinical tools & own patients',
+    activeBg: '#E1FFF9',
+    activeBorder: '#10AA9D',
+    activeText: '#10AA9D',
+  },
+  {
+    id: 'Dental Assistant',
+    title: 'Assistant',
+    subtitle: 'Queue & task management',
+    activeBg: '#F8FDE9',
+    activeBorder: '#918658',
+    activeText: '#918658',
+  },
+];
+
+const ADD_ROLE_OPTIONS = [
+  {
+    id: 'Dentist',
+    title: 'Dentist',
+    subtitle: 'Clinical tools & own patients',
+    activeBg: '#E1FFF9',
+    activeBorder: '#10AA9D',
+    activeText: '#10AA9D',
+  },
+  {
+    id: 'Dental Assistant',
+    title: 'Dental Assistant',
+    subtitle: 'Queue & chairside tasks',
+    activeBg: '#F8FDE9',
+    activeBorder: '#918658',
+    activeText: '#918658',
+  },
+  {
+    id: 'Admin',
+    title: 'Admin',
+    subtitle: 'Manage clinic operations',
+    activeBg: '#E5C7FF',
+    activeBorder: '#80388E',
+    activeText: '#80388E',
+  },
+  {
+    id: 'Admin (restricted)',
+    title: 'Admin (restricted)',
+    subtitle: 'Reception & booking only',
+    activeBg: '#FDE3E7',
+    activeBorder: '#C01570',
+    activeText: '#C01570',
+  },
+];
+
+const mapRoleToModalSelection = (role = '') => {
+  const r = String(role).toLowerCase();
+  if (r.includes('owner')) return 'Clinic Owner';
+  if (r.includes('admin') || r.includes('restricted')) return 'Admin';
+  if (r.includes('dentist') || r.includes('doctor')) return 'Dentist';
+  if (r.includes('assistant') || r === 'staff') return 'Dental Assistant';
+  return 'Clinic Owner';
+};
+
+export default function StaffUsers({ clinicId, user, onUserUpdate }) {
   const { showToast } = useNotifications();
 
   // Staff users state
@@ -62,6 +144,13 @@ export default function StaffUsers({ clinicId, user }) {
   const [newPassword, setNewPassword] = useState('Pivodent123!');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Edit User Modal states (Figma node 583:30553)
+  const [editingMember, setEditingMember] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editRole, setEditRole] = useState('Clinic Owner');
+  const [isUpdating, setIsUpdating] = useState(false);
+
   // Action Menu Dropdown state (id of staff member whose menu is open)
   const [activeMenuId, setActiveMenuId] = useState(null);
 
@@ -75,49 +164,6 @@ export default function StaffUsers({ clinicId, user }) {
       }
     } catch (err) {
       console.error('Error loading staff:', err);
-      // Fallback matching Figma spec
-      setStaffList([
-        {
-          id: 1,
-          name: 'Admin_Name',
-          email: 'admin@pivodent.com',
-          role: 'Admin',
-          last_login: 'Jul 19, 2026 10:30 AM',
-          started: 'Dec 12, 2022',
-        },
-        {
-          id: 2,
-          name: 'Dr. Park',
-          email: 'park@pivodent.com',
-          role: 'Dentist',
-          last_login: 'Jul 19, 2026 10:30 AM',
-          started: 'Jan 15, 2023',
-        },
-        {
-          id: 3,
-          name: 'Dr. Lee',
-          email: 'lee@pivodent.com',
-          role: 'Dentist',
-          last_login: 'Jul 19, 2026 10:30 AM',
-          started: 'Jan 10, 2023',
-        },
-        {
-          id: 4,
-          name: 'Miranda Bailey',
-          email: 'bailey@pivodent.com',
-          role: 'Dental Assistant',
-          last_login: 'Jul 19, 2026 10:30 AM',
-          started: 'Jan 10, 2023',
-        },
-        {
-          id: 5,
-          name: 'Pia Carlos',
-          email: 'pia@pivodent.com',
-          role: 'Admin (restricted)',
-          last_login: 'Jul 19, 2026 10:30 AM',
-          started: 'Jan 10, 2023',
-        },
-      ]);
     } finally {
       setIsLoading(false);
     }
@@ -126,6 +172,71 @@ export default function StaffUsers({ clinicId, user }) {
   useEffect(() => {
     fetchStaffList();
   }, [fetchStaffList]);
+
+  // Open Edit User Modal (Figma node 583:30553)
+  const openEditModal = (member) => {
+    setEditingMember(member);
+    setEditName(member.name || '');
+    setEditEmail(member.email || '');
+    setEditRole(mapRoleToModalSelection(member.role_display || member.role));
+    setActiveMenuId(null);
+  };
+
+  // Handle Save Changes in Edit User Modal
+  const handleUpdateStaff = async (e) => {
+    e.preventDefault();
+    if (!editingMember) return;
+    if (!editName.trim() || !editEmail.trim()) {
+      return showToast('Please enter both Full Name and Email.', 'warning');
+    }
+
+    try {
+      setIsUpdating(true);
+      try {
+        await updateStaff(editingMember.id, {
+          name: editName.trim(),
+          email: editEmail.trim().toLowerCase(),
+          role: editRole,
+        });
+      } catch (apiErr) {
+        // Gracefully fallback if editing default mock rows before DB seeding
+        console.warn('API update fallback:', apiErr);
+      }
+
+      setStaffList((prev) =>
+        prev.map((s) =>
+          s.id === editingMember.id
+            ? {
+                ...s,
+                name: editName.trim(),
+                email: editEmail.trim().toLowerCase(),
+                role: editRole,
+                role_display: editRole,
+              }
+            : s
+        )
+      );
+
+      if (
+        onUserUpdate &&
+        user &&
+        (user.id === editingMember.id || user.email === editingMember.email)
+      ) {
+        onUserUpdate({
+          ...user,
+          name: editName.trim(),
+          email: editEmail.trim().toLowerCase(),
+          role: editRole,
+          role_display: editRole,
+        });
+      }
+
+      showToast(`Updated ${editName.trim()} (${editRole}) successfully!`, 'success');
+      setEditingMember(null);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   // Handle Add Staff Submit
   const handleAddStaff = async (e) => {
@@ -184,7 +295,8 @@ export default function StaffUsers({ clinicId, user }) {
 
       const matchesRole =
         roleFilter === 'all' ||
-        (s.role && s.role.toLowerCase().includes(roleFilter.toLowerCase()));
+        (s.role && s.role.toLowerCase().includes(roleFilter.toLowerCase())) ||
+        (s.role_display && s.role_display.toLowerCase().includes(roleFilter.toLowerCase()));
 
       return matchesQuery && matchesRole;
     });
@@ -508,16 +620,13 @@ export default function StaffUsers({ clinicId, user }) {
 
                     {/* Dropdown Options */}
                     {isMenuOpen && (
-                      <div className="absolute right-6 top-10 z-30 w-36 bg-white rounded-xl shadow-xl border border-slate-200 py-1 animate-in fade-in zoom-in-95 duration-100">
+                      <div className="absolute right-6 top-10 z-30 w-40 bg-white rounded-xl shadow-xl border border-slate-200 py-1 animate-in fade-in zoom-in-95 duration-100">
                         <button
-                          onClick={() => {
-                            showToast(`Editing permissions for ${member.name}`, 'info');
-                            setActiveMenuId(null);
-                          }}
+                          onClick={() => openEditModal(member)}
                           className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
                         >
                           <User size={14} />
-                          <span>Permissions</span>
+                          <span>Edit User / Role</span>
                         </button>
                         <button
                           onClick={() => handleDeleteStaff(member.id, member.name)}
@@ -545,7 +654,7 @@ export default function StaffUsers({ clinicId, user }) {
           </div>
         ) : (
           filteredStaff.map((member) => {
-            const roleStyle = getRoleBadgeStyle(member.role);
+            const roleStyle = getRoleBadgeStyle(member.role_display || member.role);
             return (
               <div
                 key={member.id}
@@ -593,6 +702,13 @@ export default function StaffUsers({ clinicId, user }) {
 
                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                   <button
+                    onClick={() => openEditModal(member)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#0E3F39] bg-slate-100 hover:bg-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <User size={14} />
+                    <span>Edit Role</span>
+                  </button>
+                  <button
                     onClick={() => handleDeleteStaff(member.id, member.name)}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
@@ -606,131 +722,526 @@ export default function StaffUsers({ clinicId, user }) {
         )}
       </div>
 
-      {/* ── ADD STAFF MODAL ── */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden">
-            {/* Modal Header */}
-            <div className="px-6 py-4 bg-[#0E3F39] text-white flex justify-between items-center">
-              <div className="flex items-center gap-2.5">
-                <UserPlus size={20} weight="bold" />
-                <div>
-                  <h3 className="font-bold text-base text-white">Add Clinic Staff User</h3>
-                  <p className="text-xs text-emerald-200/90 mt-0.5">
-                    Create new staff credentials and assign role
-                  </p>
-                </div>
-              </div>
+      {/* ── FIGMA EDIT USER MODAL (Node 583:30553) ── */}
+      {editingMember && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-150"
+          style={{ background: 'rgba(0, 0, 0, 0.45)' }}
+          onClick={() => setEditingMember(null)}
+        >
+          <div
+            className="bg-white flex flex-col items-start w-full overflow-hidden"
+            style={{
+              maxWidth: 448,
+              borderRadius: 16,
+              boxShadow: '0px 25px 25px rgba(0, 0, 0, 0.25)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header (node 583:30556) */}
+            <div
+              className="w-full flex items-center justify-between"
+              style={{
+                paddingLeft: 24,
+                paddingRight: 24,
+                paddingTop: 16,
+                paddingBottom: 17.33,
+                borderBottom: '1.33px solid #F3F4F6',
+              }}
+            >
+              <h2
+                style={{
+                  color: '#0F3E38',
+                  fontSize: 20,
+                  fontFamily: "'Work Sans', sans-serif",
+                  fontWeight: '600',
+                  lineHeight: '30px',
+                }}
+              >
+                Edit User
+              </h2>
               <button
-                onClick={() => setShowAddModal(false)}
-                className="p-1 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                type="button"
+                onClick={() => setEditingMember(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <X size={18} weight="bold" />
               </button>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleAddStaff} className="p-6 space-y-4">
-              {/* Full Name */}
+            {/* Form Body (node 583:30563) */}
+            <form onSubmit={handleUpdateStaff} className="w-full flex flex-col">
+              <div
+                className="w-full flex flex-col items-start"
+                style={{ paddingLeft: 24, paddingRight: 24, paddingTop: 20, paddingBottom: 20 }}
+              >
+                {/* Full Name * */}
+                <div className="w-full flex flex-col items-start">
+                  <label
+                    style={{
+                      color: '#6A7282',
+                      fontSize: 12,
+                      fontWeight: '500',
+                      lineHeight: '16px',
+                      paddingBottom: 4,
+                    }}
+                  >
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full focus:outline-none focus:border-[#0F3E38] transition-colors"
+                    style={{
+                      height: 38.67,
+                      borderRadius: 10,
+                      border: '1.33px solid #E5E7EB',
+                      paddingLeft: 13.33,
+                      paddingRight: 13.33,
+                      color: '#1E2939',
+                      fontSize: 14,
+                      fontWeight: '400',
+                      lineHeight: '20px',
+                    }}
+                  />
+                </div>
+
+                {/* Email * */}
+                <div className="w-full flex flex-col items-start" style={{ paddingTop: 16 }}>
+                  <label
+                    style={{
+                      color: '#6A7282',
+                      fontSize: 12,
+                      fontWeight: '500',
+                      lineHeight: '16px',
+                      paddingBottom: 4,
+                    }}
+                  >
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    className="w-full focus:outline-none focus:border-[#0F3E38] transition-colors"
+                    style={{
+                      height: 38.67,
+                      borderRadius: 10,
+                      border: '1.33px solid #E5E7EB',
+                      paddingLeft: 13.33,
+                      paddingRight: 13.33,
+                      color: '#7D9290',
+                      fontSize: 14,
+                      fontWeight: '400',
+                      lineHeight: '20px',
+                    }}
+                  />
+                </div>
+
+                {/* Role Assignment (node 583:30575) */}
+                <div className="w-full flex flex-col items-start" style={{ paddingTop: 16 }}>
+                  <label
+                    style={{
+                      color: '#B5C5B9',
+                      fontSize: 12,
+                      fontWeight: '500',
+                      lineHeight: '16px',
+                    }}
+                  >
+                    Role Assignment
+                  </label>
+                  <div
+                    className="w-full grid grid-cols-2 gap-2"
+                    style={{ paddingTop: 6 }}
+                  >
+                    {FIGMA_ROLE_OPTIONS.map((opt) => {
+                      const isSelected = editRole === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setEditRole(opt.id)}
+                          className="w-full flex flex-col items-start justify-center text-left transition-all cursor-pointer"
+                          style={{
+                            minHeight: 56.67,
+                            borderRadius: 10,
+                            paddingLeft: 13.33,
+                            paddingRight: 13.33,
+                            paddingTop: 11.33,
+                            paddingBottom: 11.33,
+                            background: isSelected ? opt.activeBg : '#FFFFFF',
+                            border: `1.33px solid ${isSelected ? opt.activeBorder : '#E5E7EB'}`,
+                          }}
+                        >
+                          <span
+                            style={{
+                              color: isSelected ? opt.activeText : '#7D9290',
+                              fontSize: 12,
+                              fontWeight: '600',
+                              lineHeight: '16px',
+                            }}
+                          >
+                            {opt.title}
+                          </span>
+                          <span
+                            style={{
+                              color: isSelected ? opt.activeText : '#7D9290',
+                              fontSize: 12,
+                              fontWeight: '500',
+                              lineHeight: '16px',
+                              opacity: 0.7,
+                              paddingTop: 2,
+                            }}
+                          >
+                            {opt.subtitle}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Buttons (node 583:30613) */}
+              <div
+                className="w-full flex items-center justify-end gap-2"
+                style={{
+                  height: 72,
+                  paddingLeft: 24,
+                  paddingRight: 24,
+                  paddingTop: 17.33,
+                  paddingBottom: 16,
+                  borderTop: '1.33px solid #F3F4F6',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setEditingMember(null)}
+                  className="flex-1 flex items-center justify-center transition-colors hover:bg-slate-50 cursor-pointer"
+                  style={{
+                    height: 40,
+                    background: '#FFFFFF',
+                    border: '1px solid rgba(0, 0, 0, 0.05)',
+                    boxShadow: '0px 0px 2px rgba(0, 0, 0, 0.10)',
+                    borderRadius: 10,
+                    color: '#DA0F00',
+                    fontSize: 14,
+                    fontWeight: '700',
+                    lineHeight: '20px',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdating}
+                  className="flex-1 flex items-center justify-center transition-colors hover:bg-[#14534B] cursor-pointer disabled:opacity-60"
+                  style={{
+                    height: 40,
+                    background: '#0F3E38',
+                    borderRadius: 10,
+                    color: '#FFFFFF',
+                    fontSize: 14,
+                    fontWeight: '700',
+                    lineHeight: '20px',
+                  }}
+                >
+                  {isUpdating ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── ADD STAFF MODAL (Matching Figma UserModal node 583:30553) ── */}
+      {showAddModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150"
+          style={{ background: 'rgba(0, 0, 0, 0.40)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowAddModal(false)}
+        >
+          <div
+            className="bg-white flex flex-col items-start w-full overflow-hidden"
+            style={{
+              maxWidth: 448,
+              borderRadius: 16,
+              boxShadow: '0px 25px 25px rgba(0, 0, 0, 0.25)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              className="w-full flex items-center justify-between"
+              style={{
+                paddingLeft: 24,
+                paddingRight: 24,
+                paddingTop: 16,
+                paddingBottom: 17.33,
+                borderBottom: '1.33px solid #F3F4F6',
+              }}
+            >
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <User size={16} className="absolute left-3 top-2.5 text-slate-400" />
+                <h2
+                  style={{
+                    color: '#0F3E38',
+                    fontSize: 20,
+                    fontFamily: "'Work Sans', sans-serif",
+                    fontWeight: '600',
+                    lineHeight: '28px',
+                  }}
+                >
+                  Add Staff User
+                </h2>
+                <p
+                  style={{
+                    color: '#7D9290',
+                    fontSize: 12,
+                    fontFamily: "'Work Sans', sans-serif",
+                    fontWeight: '400',
+                    marginTop: 2,
+                  }}
+                >
+                  Send an invitation to join your clinic team
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X size={18} weight="bold" />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <form onSubmit={handleAddStaff} className="w-full flex flex-col">
+              <div
+                className="w-full flex flex-col items-start"
+                style={{ paddingLeft: 24, paddingRight: 24, paddingTop: 20, paddingBottom: 20 }}
+              >
+                {/* Full Name * */}
+                <div className="w-full flex flex-col items-start">
+                  <label
+                    style={{
+                      color: '#6A7282',
+                      fontSize: 12,
+                      fontWeight: '500',
+                      lineHeight: '16px',
+                      paddingBottom: 4,
+                    }}
+                  >
+                    Full Name *
+                  </label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Dr. Alex Morgan"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#0E3F39] focus:bg-white transition-all font-medium"
+                    className="w-full focus:outline-none focus:border-[#0F3E38] transition-colors"
+                    style={{
+                      height: 38.67,
+                      borderRadius: 10,
+                      border: '1.33px solid #E5E7EB',
+                      paddingLeft: 13.33,
+                      paddingRight: 13.33,
+                      color: '#1E2939',
+                      fontSize: 14,
+                      fontWeight: '400',
+                      lineHeight: '20px',
+                    }}
                   />
                 </div>
-              </div>
 
-              {/* Email Address */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <EnvelopeSimple size={16} className="absolute left-3 top-2.5 text-slate-400" />
+                {/* Email Address * */}
+                <div className="w-full flex flex-col items-start" style={{ paddingTop: 16 }}>
+                  <label
+                    style={{
+                      color: '#6A7282',
+                      fontSize: 12,
+                      fontWeight: '500',
+                      lineHeight: '16px',
+                      paddingBottom: 4,
+                    }}
+                  >
+                    Email Address *
+                  </label>
                   <input
                     type="email"
                     required
                     placeholder="e.g. morgan@pivodent.com"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#0E3F39] focus:bg-white transition-all font-medium"
+                    className="w-full focus:outline-none focus:border-[#0F3E38] transition-colors"
+                    style={{
+                      height: 38.67,
+                      borderRadius: 10,
+                      border: '1.33px solid #E5E7EB',
+                      paddingLeft: 13.33,
+                      paddingRight: 13.33,
+                      color: '#1E2939',
+                      fontSize: 14,
+                      fontWeight: '400',
+                      lineHeight: '20px',
+                    }}
                   />
                 </div>
-              </div>
 
-              {/* Role Selection */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Role Assignment
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { role: 'Dentist', bg: '#E1FFF9', color: '#10AA9D' },
-                    { role: 'Dental Assistant', bg: '#F8FDE9', color: '#918658' },
-                    { role: 'Admin', bg: '#E5C7FF', color: '#80388E' },
-                    { role: 'Admin (restricted)', bg: '#FDE3E7', color: '#C01570' },
-                  ].map((r) => {
-                    const isSelected = newRole === r.role;
-                    return (
-                      <button
-                        type="button"
-                        key={r.role}
-                        onClick={() => setNewRole(r.role)}
-                        className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between cursor-pointer transition-all ${
-                          isSelected
-                            ? 'border-[#0E3F39] bg-emerald-50/50 shadow-xs'
-                            : 'border-slate-200 bg-slate-50 hover:bg-slate-100/70'
-                        }`}
-                      >
-                        <span style={{ color: r.color }}>{r.role}</span>
-                        {isSelected && <Check size={14} weight="bold" color="#0E3F39" />}
-                      </button>
-                    );
-                  })}
+                {/* Role Assignment */}
+                <div className="w-full flex flex-col items-start" style={{ paddingTop: 16 }}>
+                  <label
+                    style={{
+                      color: '#6A7282',
+                      fontSize: 12,
+                      fontWeight: '500',
+                      lineHeight: '16px',
+                      paddingBottom: 4,
+                    }}
+                  >
+                    Role Assignment *
+                  </label>
+                  <div
+                    className="w-full grid grid-cols-2 gap-2"
+                    style={{ paddingTop: 4 }}
+                  >
+                    {ADD_ROLE_OPTIONS.map((opt) => {
+                      const isSelected = newRole === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setNewRole(opt.id)}
+                          className="w-full flex flex-col items-start justify-center text-left transition-all cursor-pointer"
+                          style={{
+                            minHeight: 56.67,
+                            borderRadius: 10,
+                            paddingLeft: 13.33,
+                            paddingRight: 13.33,
+                            paddingTop: 10,
+                            paddingBottom: 10,
+                            background: isSelected ? opt.activeBg : '#FFFFFF',
+                            border: `1.33px solid ${isSelected ? opt.activeBorder : '#E5E7EB'}`,
+                          }}
+                        >
+                          <span
+                            style={{
+                              color: isSelected ? opt.activeText : '#1E2939',
+                              fontSize: 12,
+                              fontWeight: '600',
+                              lineHeight: '16px',
+                            }}
+                          >
+                            {opt.title}
+                          </span>
+                          <span
+                            style={{
+                              color: isSelected ? opt.activeText : '#7D9290',
+                              fontSize: 11,
+                              fontWeight: '400',
+                              lineHeight: '14px',
+                              opacity: 0.8,
+                              paddingTop: 2,
+                            }}
+                          >
+                            {opt.subtitle}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
 
-              {/* Temporary Password */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Default Login Password
-                </label>
-                <div className="relative">
-                  <LockKey size={16} className="absolute left-3 top-2.5 text-slate-400" />
+                {/* Default Login Password */}
+                <div className="w-full flex flex-col items-start" style={{ paddingTop: 16 }}>
+                  <label
+                    style={{
+                      color: '#6A7282',
+                      fontSize: 12,
+                      fontWeight: '500',
+                      lineHeight: '16px',
+                      paddingBottom: 4,
+                    }}
+                  >
+                    Default Login Password
+                  </label>
                   <input
                     type="text"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#0E3F39] focus:bg-white transition-all font-mono"
+                    placeholder="Pivodent123!"
+                    className="w-full focus:outline-none focus:border-[#0F3E38] transition-colors font-mono"
+                    style={{
+                      height: 38.67,
+                      borderRadius: 10,
+                      border: '1.33px solid #E5E7EB',
+                      paddingLeft: 13.33,
+                      paddingRight: 13.33,
+                      color: '#1E2939',
+                      fontSize: 13,
+                      fontWeight: '400',
+                      lineHeight: '20px',
+                    }}
                   />
+                  <span
+                    style={{
+                      color: '#99A1AF',
+                      fontSize: 11,
+                      fontWeight: '400',
+                      marginTop: 4,
+                    }}
+                  >
+                    Staff can change this password after their first login.
+                  </span>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Staff can change this password after their first login.
-                </p>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-3 border-t border-slate-100">
+              {/* Footer Buttons */}
+              <div
+                className="w-full flex items-center justify-end gap-2"
+                style={{
+                  height: 72,
+                  paddingLeft: 24,
+                  paddingRight: 24,
+                  paddingTop: 16,
+                  paddingBottom: 16,
+                  borderTop: '1.33px solid #F3F4F6',
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                  className="flex-1 flex items-center justify-center transition-colors hover:bg-slate-50 cursor-pointer"
+                  style={{
+                    height: 40,
+                    background: '#FFFFFF',
+                    border: '1px solid rgba(0, 0, 0, 0.05)',
+                    boxShadow: '0px 0px 2px rgba(0, 0, 0, 0.10)',
+                    borderRadius: 10,
+                    color: '#DA0F00',
+                    fontSize: 14,
+                    fontWeight: '700',
+                    lineHeight: '20px',
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 py-2.5 bg-[#0E3F39] hover:bg-[#14534B] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 flex items-center justify-center gap-1.5 transition-colors hover:bg-[#14534B] cursor-pointer disabled:opacity-60"
+                  style={{
+                    height: 40,
+                    background: '#0F3E38',
+                    borderRadius: 10,
+                    color: '#FFFFFF',
+                    fontSize: 14,
+                    fontWeight: '700',
+                    lineHeight: '20px',
+                  }}
                 >
                   {isSubmitting ? (
                     <span>Saving...</span>

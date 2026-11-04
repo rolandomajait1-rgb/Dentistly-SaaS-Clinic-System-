@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getQueue, getServices, createAppointment, updateAppointmentStatus } from '../../api';
-import LateArrivalModal, { isAppointmentLate } from '../../components/ui/LateArrivalModal';
+import LateArrivalModal, { isAppointmentLate } from '../../components/appointments/LateArrivalModal';
 import {
   UsersThree,
   UserFocus,

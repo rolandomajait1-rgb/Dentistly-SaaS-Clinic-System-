@@ -1,0 +1,20 @@
+export { default as ChatbotDemo } from './ChatbotDemo';
+export { default as CTABanner } from './CTABanner';
+export { default as EmailAutomation } from './EmailAutomation';
+export { default as FAQ } from './FAQ';
+export { default as Footer } from './Footer';
+export { default as Hero } from './Hero';
+export { default as Integrations } from './Integrations';
+export { default as LiveNotifications } from './LiveNotifications';
+export { default as Modules } from './Modules';
+export { default as Navbar } from './Navbar';
+export { default as PainPoints } from './PainPoints';
+export { default as PatientRecord } from './PatientRecord';
+export { default as Pricing } from './Pricing';
+export { default as Security } from './Security';
+export { default as SocialProof } from './SocialProof';
+export { default as Stats } from './Stats';
+export { default as TrustBadges } from './TrustBadges';
+export { default as UnifiedBackground } from './UnifiedBackground';
+export { default as UseCases } from './UseCases';
+

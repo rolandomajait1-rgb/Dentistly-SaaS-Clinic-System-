@@ -7,6 +7,7 @@ import PatientRecords from './pages/dashboard/PatientRecords';
 import ReportsAnalytics from './pages/dashboard/ReportsAnalytics';
 import StaffUsers from './pages/dashboard/StaffUsers';
 import ClinicSettings from './pages/dashboard/settings/ClinicSettings';
+import SubscriptionBilling from './pages/dashboard/SubscriptionBilling';
 import LandingPage from './pages/landing/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -18,6 +19,8 @@ import { NotificationProvider, useNotifications } from './context/NotificationCo
 import NotificationCenter from './components/layout/NotificationCenter';
 import ConfirmModal from './components/ui/ConfirmModal';
 import assets from './assets';
+import { getRoleConfig } from './utils/permissions';
+import { CreditCard, SignOut } from '@phosphor-icons/react';
 
 
 const NAV_ITEMS = [
@@ -106,6 +109,8 @@ export function AppContent() {
     }
     return 'overview';
   });
+  const [settingsResetKey, setSettingsResetKey] = useState(0);
+  const [showAccountDropdown, setShowAccountDropdown] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -122,6 +127,21 @@ export function AppContent() {
       return false;
     }
   });
+
+  const roleConfig = getRoleConfig(user);
+  const visibleNavItems = NAV_ITEMS.filter((item) => roleConfig.allowedTabs.includes(item.id));
+
+  // Redirect to overview if the current activeTab is restricted for the user's role
+  useEffect(() => {
+    if (activeTab !== 'queue' && activeTab !== 'subscription' && !roleConfig.allowedTabs.includes(activeTab)) {
+      setActiveTab('overview');
+    }
+  }, [activeTab, roleConfig.allowedTabs]);
+
+  const handleUserUpdate = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  };
 
   const handleLoginSuccess = (data) => {
     setUser(data.user);
@@ -193,7 +213,12 @@ export function AppContent() {
   };
 
   const renderTabContent = () => {
-    switch (activeTab) {
+    const safeTab =
+      activeTab === 'queue' || activeTab === 'subscription' || roleConfig.allowedTabs.includes(activeTab)
+        ? activeTab
+        : 'overview';
+
+    switch (safeTab) {
       case 'overview':
         return (
           <DashboardOverview 
@@ -201,6 +226,7 @@ export function AppContent() {
             clinic={clinic}
             setActiveTab={setActiveTab}
             user={user}
+            onUserUpdate={handleUserUpdate}
           />
         );
       case 'schedule':
@@ -237,11 +263,13 @@ export function AppContent() {
           <StaffUsers 
             clinicId={clinic?.id} 
             user={user}
+            onUserUpdate={handleUserUpdate}
           />
         );
       case 'settings':
         return (
           <ClinicSettings 
+            key={settingsResetKey}
             clinicId={clinic?.id}
             onClinicUpdate={(updatedClinic) => {
               setClinic(updatedClinic);
@@ -252,6 +280,10 @@ export function AppContent() {
               setShowWizard(true);
             }}
           />
+        );
+      case 'subscription':
+        return (
+          <SubscriptionBilling />
         );
       default:
         return (
@@ -270,7 +302,8 @@ export function AppContent() {
       case 'patients': return 'Patients';
       case 'reports': return 'Reports & Analytics';
       case 'staff': return 'Users';
-      case 'settings': return 'Clinic Profile & API Config';
+      case 'settings': return 'Clinic Profile & Business info';
+      case 'subscription': return 'Subscription';
       default: return 'Dashboard';
     }
   };
@@ -618,6 +651,9 @@ export function AppContent() {
         activeTab={activeTab}
         setActiveTab={(tab) => {
           setSelectedPatient(null);
+          if (tab === 'settings') {
+            setSettingsResetKey((prev) => prev + 1);
+          }
           setActiveTab(tab);
         }}
         onLogout={triggerLogout}
@@ -663,13 +699,16 @@ export function AppContent() {
               </div>
 
               <nav className="flex-1 space-y-0.5 px-3 pt-2">
-                {NAV_ITEMS.map((item) => {
+                {visibleNavItems.map((item) => {
                   const isActive = activeTab === item.id;
                   return (
                     <button
                       key={item.id}
                       onClick={() => {
                         setSelectedPatient(null);
+                        if (item.id === 'settings') {
+                          setSettingsResetKey((prev) => prev + 1);
+                        }
                         setActiveTab(item.id);
                         setIsMobileMenuOpen(false);
                       }}
@@ -743,7 +782,7 @@ export function AppContent() {
                   lineHeight: '14px',
                 }}
               >
-                clinic owner
+                {roleConfig.headerLabel}
               </span>
               <span
                 className="truncate"
@@ -783,7 +822,7 @@ export function AppContent() {
                   lineHeight: '16px',
                 }}
               >
-                clinic owner
+                {roleConfig.headerLabel}
               </span>
               <h2
                 style={{
@@ -827,55 +866,106 @@ export function AppContent() {
               />
             </div>
 
-            {/* User Avatar Pill */}
-            <div className="flex items-center gap-2.5 select-none">
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  background: '#1A8A7A',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
+            {/* User Avatar Pill & Account Dropdown */}
+            <div className="relative select-none">
+              <button
+                type="button"
+                onClick={() => setShowAccountDropdown(!showAccountDropdown)}
+                className="flex items-center gap-2.5 p-1 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer text-left focus:outline-none"
+                aria-label="Account Settings"
               >
-                <span
+                <div
                   style={{
-                    color: 'white',
-                    fontSize: 12,
-                    fontFamily: "'Work Sans', sans-serif",
-                    fontWeight: '700',
-                    lineHeight: '16px',
+                    width: 32,
+                    height: 32,
+                    background: '#1A8A7A',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
-                  {user?.name ? user.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : 'AD'}
-                </span>
-              </div>
-              <div className="hidden sm:flex flex-col items-start leading-none">
-                <span
-                  style={{
-                    color: '#1E2939',
-                    fontSize: 14,
-                    fontFamily: "'Work Sans', sans-serif",
-                    fontWeight: '600',
-                    lineHeight: '20px',
-                  }}
-                >
-                  {user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Owner'}
-                </span>
-                <span
-                  style={{
-                    color: '#99A1AF',
-                    fontSize: 12,
-                    fontFamily: "'Work Sans', sans-serif",
-                    fontWeight: '400',
-                    lineHeight: '16px',
-                  }}
-                >
-                  {user?.email || 'admin@pivodent.com'}
-                </span>
-              </div>
+                  <span
+                    style={{
+                      color: 'white',
+                      fontSize: 12,
+                      fontFamily: "'Work Sans', sans-serif",
+                      fontWeight: '700',
+                      lineHeight: '16px',
+                    }}
+                  >
+                    {user?.name ? user.name.replace(/^Dr\.\s*/i, '').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : 'AD'}
+                  </span>
+                </div>
+                <div className="hidden sm:flex flex-col items-start leading-none">
+                  <span
+                    style={{
+                      color: '#1E2939',
+                      fontSize: 14,
+                      fontFamily: "'Work Sans', sans-serif",
+                      fontWeight: '600',
+                      lineHeight: '20px',
+                    }}
+                  >
+                    {roleConfig.pillLabel}
+                  </span>
+                  <span
+                    style={{
+                      color: '#99A1AF',
+                      fontSize: 12,
+                      fontFamily: "'Work Sans', sans-serif",
+                      fontWeight: '400',
+                      lineHeight: '16px',
+                    }}
+                  >
+                    {user?.email || 'admin@pivodent.com'}
+                  </span>
+                </div>
+              </button>
+
+              {/* Account Dropdown Menu */}
+              {showAccountDropdown && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setShowAccountDropdown(false)} 
+                  />
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-[0_12px_36px_rgba(0,0,0,0.12)] border border-slate-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 font-['Work_Sans']">
+                    {/* User Info Header */}
+                    <div className="px-4 py-2 border-b border-slate-100">
+                      <p className="text-xs font-semibold text-slate-800 truncate">{user?.name || 'Clinic Account'}</p>
+                      <p className="text-[11px] text-slate-400 truncate">{user?.email || 'admin@pivodent.com'}</p>
+                    </div>
+
+                    {/* Subscription Link (Figma Node 787:19634) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAccountDropdown(false);
+                        setSelectedPatient(null);
+                        setActiveTab('subscription');
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium text-slate-700 hover:text-[#0E3F39] hover:bg-[#F0F4F3] transition-colors cursor-pointer text-left"
+                    >
+                      <CreditCard size={16} className="text-[#0E3F39]" />
+                      <span>Subscription &amp; Plans</span>
+                    </button>
+
+                    {/* Sign out */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAccountDropdown(false);
+                        triggerLogout();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer text-left border-t border-slate-100"
+                    >
+                      <SignOut size={16} className="text-rose-500" />
+                      <span>Sign out</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>

@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getSettings, updateSettings, getServices, addService, deleteService, updateService } from '../../../api';
-import FacebookIntegration from './FacebookIntegration';
-import EmailIntegration from './EmailIntegration';
+import { FacebookIntegration, EmailIntegration } from './components';
 import { useNotifications } from '../../../context/NotificationContext';
 import {
   FloppyDisk,
@@ -17,7 +16,6 @@ import {
   CalendarCheck,
   CalendarBlank,
   Tag,
-  SlidersHorizontal,
   Sparkle,
   UploadSimple
 } from '@phosphor-icons/react';
@@ -58,14 +56,17 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
   const fileInputRef = useRef(null);
 
   // Active Sub-Tab: general, commu, schedule, cancel, services
+  // If returning from Facebook OAuth (has code & state in URL), open 'commu', otherwise default to 'general'
   const [activeSubTab, setActiveSubTab] = useState(() => {
-    const saved = localStorage.getItem('active_settings_subtab');
-    return saved || 'general';
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('code') && params.has('state')) {
+      return 'commu';
+    }
+    return 'general';
   });
 
   const handleSubTabChange = (tabId) => {
     setActiveSubTab(tabId);
-    localStorage.setItem('active_settings_subtab', tabId);
   };
 
   // Base Clinic States (Tab 1: General Info)
@@ -83,8 +84,8 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
   const [messengerEnabled, setMessengerEnabled] = useState(true);
   const [messengerHandle, setMessengerHandle] = useState('');
 
-  const [emailEnabled, setEmailEnabled] = useState(false);
-  const [emailFromName, setEmailFromName] = useState('');
+  const [emailEnabled, setEmailEnabled] = useState(true);
+  const [emailFromName, setEmailFromName] = useState('pivodent');
   const [emailFromAddress, setEmailFromAddress] = useState('');
   const [emailReplyTo, setEmailReplyTo] = useState('');
   const [emailFooter, setEmailFooter] = useState('');
@@ -401,138 +402,116 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
   }
 
   return (
-    <div className="w-full min-h-full bg-[#F0F4F3] px-4 md:px-6 pt-3 md:pt-4 pb-8 flex flex-col gap-3 font-['Work_Sans',sans-serif]">
+    <div className="w-full min-h-full bg-[#F0F4F3] px-4 md:px-6 pt-3 md:pt-4 pb-16 md:pb-20 flex flex-col gap-3 font-['Work_Sans',sans-serif]">
       
-      {/* BEGIN: HorizontalTabNavigation */}
-      <nav aria-label="Settings Categories" className="w-full bg-white rounded-xl p-1.5 border border-slate-200/90 shadow-xs grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5" data-purpose="sub-navigation-tabs">
-        {/* Active Tab: General Info */}
+      {/* BEGIN: HorizontalTabNavigation matching Figma 1:1 */}
+      <nav aria-label="Settings Categories" className="self-stretch h-14 p-1.5 bg-white rounded-lg shadow-[0px_1px_2px_0px_rgba(15,41,64,0.04)] outline-1 -outline-offset-1 outline-slate-200 grid grid-cols-5 gap-1.5 items-center" data-purpose="sub-navigation-tabs">
+        {/* Tab 1: General Info */}
         <button
           type="button"
           onClick={() => handleSubTabChange('general')}
-          className={`group w-full flex items-center justify-center gap-2 px-2.5 py-2.5 rounded-lg font-semibold text-[13px] sm:text-sm tracking-normal transition-all duration-150 cursor-pointer ${
+          className={`w-full h-11 px-2 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeSubTab === 'general'
-              ? 'bg-[#0E3F39] border border-[#0E3F39] text-white shadow-xs'
-              : 'text-slate-600 hover:text-white hover:bg-[#0E3F39] border border-transparent'
+              ? "bg-linear-to-r from-primary from-[23.56%] to-black text-white shadow-xs"
+              : "bg-white hover:bg-slate-50 text-slate-600"
           }`}
         >
-          <Info size={17} weight={activeSubTab === 'general' ? 'bold' : 'regular'} className={activeSubTab === 'general' ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
-          <span className="whitespace-nowrap">General Info</span>
+          <Info size={18} weight={activeSubTab === 'general' ? 'bold' : 'regular'} className="shrink-0" />
+          <span className={`text-sm font-semibold font-['Inter'] leading-normal truncate ${activeSubTab === 'general' ? 'text-white' : 'text-slate-600'}`}>
+            General Info
+          </span>
         </button>
 
-        {/* Communication Channels */}
+        {/* Tab 2: Communication Channels */}
         <button
           type="button"
           onClick={() => handleSubTabChange('commu')}
-          className={`group w-full flex items-center justify-center gap-2 px-2.5 py-2.5 rounded-lg font-semibold text-[13px] sm:text-sm tracking-normal transition-all duration-150 cursor-pointer ${
+          className={`w-full h-11 px-2 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeSubTab === 'commu'
-              ? 'bg-[#0E3F39] border border-[#0E3F39] text-white shadow-xs'
-              : 'text-slate-600 hover:text-white hover:bg-[#0E3F39] border border-transparent'
+              ? "bg-linear-to-r from-primary from-[23.56%] to-black text-white shadow-xs"
+              : "bg-white hover:bg-slate-50 text-slate-600"
           }`}
         >
-          <ChatCircleText size={17} weight={activeSubTab === 'commu' ? 'bold' : 'regular'} className={activeSubTab === 'commu' ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
-          <span className="whitespace-nowrap">Communication Channels</span>
+          <ChatCircleText size={18} weight={activeSubTab === 'commu' ? 'bold' : 'regular'} className="shrink-0" />
+          <span className={`text-sm font-semibold font-['Inter'] leading-normal truncate ${activeSubTab === 'commu' ? 'text-white' : 'text-slate-600'}`}>
+            Communication Channels
+          </span>
         </button>
 
-        {/* Schedule & Booking Rules */}
+        {/* Tab 3: Schedule & Booking Rules */}
         <button
           type="button"
           onClick={() => handleSubTabChange('schedule')}
-          className={`group w-full flex items-center justify-center gap-2 px-2.5 py-2.5 rounded-lg font-semibold text-[13px] sm:text-sm tracking-normal transition-all duration-150 cursor-pointer ${
+          className={`w-full h-11 px-2 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeSubTab === 'schedule'
-              ? 'bg-[#0E3F39] border border-[#0E3F39] text-white shadow-xs'
-              : 'text-slate-600 hover:text-white hover:bg-[#0E3F39] border border-transparent'
+              ? "bg-linear-to-r from-primary from-[23.56%] to-black text-white shadow-xs"
+              : "bg-white hover:bg-slate-50 text-slate-600"
           }`}
         >
-          <CalendarCheck size={17} weight={activeSubTab === 'schedule' ? 'bold' : 'regular'} className={activeSubTab === 'schedule' ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
-          <span className="whitespace-nowrap">Schedule &amp; Booking Rules</span>
+          <CalendarCheck size={18} weight={activeSubTab === 'schedule' ? 'bold' : 'regular'} className="shrink-0" />
+          <span className={`text-sm font-semibold font-['Inter'] leading-normal truncate ${activeSubTab === 'schedule' ? 'text-white' : 'text-slate-600'}`}>
+            Schedule &amp; Booking Rules
+          </span>
         </button>
 
-        {/* Cancellation & No-show */}
+        {/* Tab 4: Cancellation & No-show */}
         <button
           type="button"
           onClick={() => handleSubTabChange('cancel')}
-          className={`group w-full flex items-center justify-center gap-2 px-2.5 py-2.5 rounded-lg font-semibold text-[13px] sm:text-sm tracking-normal transition-all duration-150 cursor-pointer ${
+          className={`w-full h-11 px-2 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeSubTab === 'cancel'
-              ? 'bg-[#0E3F39] border border-[#0E3F39] text-white shadow-xs'
-              : 'text-slate-600 hover:text-white hover:bg-[#0E3F39] border border-transparent'
+              ? "bg-linear-to-r from-primary from-[23.56%] to-black text-white shadow-xs"
+              : "bg-white hover:bg-slate-50 text-slate-600"
           }`}
         >
-          <CalendarBlank size={17} weight={activeSubTab === 'cancel' ? 'bold' : 'regular'} className={activeSubTab === 'cancel' ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
-          <span className="whitespace-nowrap">Cancellation &amp; No-show</span>
+          <CalendarBlank size={18} weight={activeSubTab === 'cancel' ? 'bold' : 'regular'} className="shrink-0" />
+          <span className={`text-sm font-semibold font-['Inter'] leading-normal truncate ${activeSubTab === 'cancel' ? 'text-white' : 'text-slate-600'}`}>
+            Cancellation &amp; No-show
+          </span>
         </button>
 
-        {/* Services & Pricing */}
+        {/* Tab 5: Services & Pricing */}
         <button
           type="button"
           onClick={() => handleSubTabChange('services')}
-          className={`group w-full flex items-center justify-center gap-2 px-2.5 py-2.5 rounded-lg font-semibold text-[13px] sm:text-sm tracking-normal transition-all duration-150 cursor-pointer ${
+          className={`w-full h-11 px-2 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeSubTab === 'services'
-              ? 'bg-[#0E3F39] border border-[#0E3F39] text-white shadow-xs'
-              : 'text-slate-600 hover:text-white hover:bg-[#0E3F39] border border-transparent'
+              ? "bg-linear-to-r from-primary from-[23.56%] to-black text-white shadow-xs"
+              : "bg-white hover:bg-slate-50 text-slate-600"
           }`}
         >
-          <Tag size={17} weight={activeSubTab === 'services' ? 'bold' : 'regular'} className={activeSubTab === 'services' ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
-          <span className="whitespace-nowrap">Services &amp; Pricing</span>
+          <Tag size={18} weight={activeSubTab === 'services' ? 'bold' : 'regular'} className="shrink-0" />
+          <span className={`text-sm font-semibold font-['Inter'] leading-normal truncate ${activeSubTab === 'services' ? 'text-white' : 'text-slate-600'}`}>
+            Services &amp; Pricing
+          </span>
         </button>
       </nav>
       {/* END: HorizontalTabNavigation */}
 
-      {/* BEGIN: Action Bar / Settings Header (Compact) */}
-      <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white px-4 py-2 rounded-lg border border-slate-200/90 shadow-2xs">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-md bg-[#0E3F39]/10 border border-[#0E3F39]/20 flex items-center justify-center text-[#0E3F39] shrink-0 shadow-2xs">
-            <SlidersHorizontal size={14} weight="bold" />
+      {/* BEGIN: Action Bar / Settings Header (matching Figma 1:1) */}
+      {activeSubTab === 'commu' && (
+        <div className="self-stretch h-11 px-3.5 bg-white rounded-xl shadow-[0px_1px_2px_0px_rgba(15,41,64,0.04)] outline-1 -outline-offset-1 outline-slate-200 flex justify-between items-center overflow-hidden">
+          <div className="flex justify-start items-center gap-2.5">
+            <div className="size-5 relative overflow-hidden flex items-center justify-center">
+              <ChatCircleText size={18} weight="bold" className="text-slate-700" />
+            </div>
+            <div className="text-slate-900 text-sm font-bold font-['Work_Sans'] leading-tight">
+              Patient Communication Channels
+            </div>
           </div>
-          <div>
-            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block leading-none">Settings Panel</span>
-            <h3 className="text-xs font-bold text-slate-800 leading-tight mt-0.5">
-              {activeSubTab === 'general' && 'General Information & Branding'}
-              {activeSubTab === 'commu' && 'Patient Communication Channels'}
-              {activeSubTab === 'schedule' && 'Schedule & Booking Rules'}
-              {activeSubTab === 'cancel' && 'Cancellation & No-show Policies'}
-              {activeSubTab === 'services' && 'Treatment Services & Pricing Catalog'}
-            </h3>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+
           {onLaunchWizard && (
             <button
               type="button"
               onClick={onLaunchWizard}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-md transition-all shadow-2xs cursor-pointer"
+              className="h-10 px-3 bg-white rounded-lg shadow-[0px_1px_2px_0px_rgba(15,41,64,0.05)] outline-1 -outline-offset-1 outline-slate-200 flex justify-center items-center gap-1.5 overflow-hidden text-slate-700 text-xs font-semibold font-['Inter'] leading-none hover:bg-slate-50 transition-colors cursor-pointer"
             >
-              <Sparkle size={13} weight="fill" className="text-teal-600" />
-              Setup Wizard
-            </button>
-          )}
-
-          {/* Save Button for other tabs */}
-          {activeSubTab !== 'general' && (
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold text-white transition-all shadow-2xs cursor-pointer ${
-                saveSuccess
-                  ? 'bg-emerald-600'
-                  : 'bg-[#0E3F39] hover:bg-[#14534B] active:scale-98'
-              } disabled:opacity-50`}
-            >
-              {saveSuccess ? (
-                <>
-                  <Check size={13} weight="bold" />
-                  Saved!
-                </>
-              ) : (
-                <>
-                  <FloppyDisk size={13} weight="bold" />
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </>
-              )}
+              <Sparkle size={13} weight="fill" className="text-emerald-700" />
+              <span>Setup Wizard</span>
             </button>
           )}
         </div>
-      </div>
+      )}
       {/* END: Action Bar / Settings Header */}
 
       {/* ========================================================================= */}
@@ -701,41 +680,6 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
                     required
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-[#1E293B] text-xs font-medium focus:border-[#1A8A7A] focus:ring-1 focus:ring-[#1A8A7A] focus:outline-none placeholder:text-slate-400 shadow-xs transition-all resize-none"
                   />
-                </div>
-              </div>
-
-              {/* Form Bottom Actions */}
-              <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <span className="text-[11px] text-[#6A7282] font-medium">
-                  {clinicData?.updated_at
-                    ? `Last modified ${new Date(clinicData.updated_at).toLocaleDateString()} at ${new Date(clinicData.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                    : 'Ready to save changes'}
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleDiscardChanges}
-                    className="px-3.5 py-1.5 text-xs font-semibold text-[#475569] hover:text-[#0E3F39] bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 cursor-pointer"
-                  >
-                    Discard Changes
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="px-4 py-2 text-xs font-semibold text-white bg-[#0E3F39] hover:bg-[#14534B] active:scale-98 rounded-lg transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  >
-                    {saveSuccess ? (
-                      <>
-                        <CheckCircle size={16} weight="bold" />
-                        Saved!
-                      </>
-                    ) : (
-                      <>
-                        <FloppyDisk size={16} weight="bold" />
-                        {isSaving ? 'Saving...' : 'Save Changes'}
-                      </>
-                    )}
-                  </button>
                 </div>
               </div>
             </form>
@@ -1756,6 +1700,44 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
             </div>
           )}
 
+      {/* ========================================================================= */}
+      {/* UNIVERSAL BOTTOM ACTION BAR (Matching General Info, Always at the Bottom) */}
+      {/* ========================================================================= */}
+      <div className="self-stretch min-h-10 pt-4 pb-8 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <span className="text-[#64748B] text-[13px] font-normal font-['Work_Sans'] leading-normal">
+          {clinicData?.updated_at
+            ? `Last modified ${new Date(clinicData.updated_at).toLocaleDateString()} at ${new Date(clinicData.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+            : 'Last modified 9/28/2026 at 01:27 PM'}
+        </span>
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={handleDiscardChanges}
+            className="w-32 h-8.5 text-xs font-semibold text-[#475569] hover:text-[#0E3F39] bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 cursor-pointer flex justify-center items-center shadow-xs"
+          >
+            Discard Changes
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="w-32 h-8.5 text-xs font-semibold text-white bg-linear-to-r from-emerald-900 from-24% to-black active:scale-98 rounded-lg transition-all shadow-xs inline-flex justify-center items-center gap-1.5 cursor-pointer disabled:opacity-50"
+          >
+            {saveSuccess ? (
+              <>
+                <CheckCircle size={14} weight="bold" />
+                <span>Saved!</span>
+              </>
+            ) : (
+              <>
+                <FloppyDisk size={14} weight="bold" />
+                <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
       {/* Hidden File Input for Logo */}
       <input
         type="file"
@@ -1790,4 +1772,3 @@ export default function ClinicSettings({ onClinicUpdate, onLaunchWizard }) {
     </div>
   );
 }
-

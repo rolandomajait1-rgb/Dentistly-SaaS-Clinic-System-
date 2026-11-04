@@ -1,21 +1,21 @@
-// Hero Section Images (from herosection_images)
-import heroAppointments from './herosection_images/Appointments.png';
-import heroDashboard    from './herosection_images/Dashboard.png';
-import heroDashboardio  from './herosection_images/Dashboardio.png';
-import heroPatients     from './herosection_images/Patients.png';
-import heroPatientsdev  from './herosection_images/Patientsdev.png';
-import heroReports      from './herosection_images/Reports.png';
-import heroStaffUsers   from './herosection_images/Staff & Users.png';
+// Hero Section Images (from hero)
+import heroAppointments from './hero/Appointments.png';
+import heroDashboard    from './hero/Dashboard.png';
+import heroDashboardio  from './hero/Dashboardio.png';
+import heroPatients     from './hero/Patients.png';
+import heroPatientsdev  from './hero/Patientsdev.png';
+import heroReports      from './hero/Reports.png';
+import heroStaffUsers   from './hero/Staff & Users.png';
 
-// Logos (from pivodent_logo & footer)
-import pivodentLogo from './pivodent_logo/Group 3.svg';
+// Logos (from logos & footer)
+import pivodentLogo from './logos/Group 3.svg';
 import pivodentLogoWhite from './footer/pivodent_white.svg';
-import pivodentText from './pivodent_logo/Pivodent.svg';
-import pivodentIcon from './pivodent_logo/6.svg';
+import pivodentText from './logos/Pivodent.svg';
+import pivodentIcon from './logos/6.svg';
 
-// Phone Design Assets
-import phoneIconContainer from './phone_design/Icon Container.svg';
-import phoneChatbotLogo   from './phone_design/chabot logo.svg';
+// Phone Design Assets (from phone)
+import phoneIconContainer from './phone/Icon Container.svg';
+import phoneChatbotLogo   from './phone/chabot logo.svg';
 
 // Footer & CTA Banner Assets (from footer)
 import footerRectangle   from './footer/Rectangle.png';
@@ -26,31 +26,43 @@ import footerChat        from './footer/Group.svg';
 import footerMeta        from './footer/images 2.svg';
 import footerSocialGrid  from './footer/Social Media Icons.svg';
 
-// Auth / Login and Sign up Assets (from log in and sign up)
-import authRectangle         from './log in and sign up/Rectangle2.png';
-import authBody              from './log in and sign up/Body.png';
-import authContainerGradient from './log in and sign up/Container.svg';
-import authLogoBadge         from './log in and sign up/Container_margin.svg';
-import authPivodentLogo      from './log in and sign up/Image (Pivodent).svg';
-import authSuccessModalBg    from './log in and sign up/SuccessModal.svg';
+// Auth / Login and Sign up Assets (from auth)
+import authRectangle         from './auth/Rectangle2.png';
+import authBody              from './auth/Body.png';
+import authContainerGradient from './auth/Container.svg';
+import authLogoBadge         from './auth/Container_margin.svg';
+import authPivodentLogo      from './auth/Image (Pivodent).svg';
+import authSuccessModalBg    from './auth/SuccessModal.svg';
 
-// Dashboard Icons (from dashboard icons/Clinic Owner)
-import dashboardLogo          from './dashboard icons/Clinic Owner/Pivodent 2.png';
-import iconArrowRight         from './dashboard icons/Clinic Owner/Icon.svg';
-import iconAlertMsg           from './dashboard icons/Clinic Owner/Icon-1.svg';
-import iconAppointmentsToday  from './dashboard icons/Clinic Owner/Icon-2.svg';
-import iconClinicSettings     from './dashboard icons/Clinic Owner/Icon-3.svg';
-import iconRevenue            from './dashboard icons/Clinic Owner/Icon-4.svg';
-import iconNoShows            from './dashboard icons/Clinic Owner/Icon-5.svg';
-import iconBell               from './dashboard icons/Clinic Owner/Icon-6.svg';
-import iconNewPatients        from './dashboard icons/Clinic Owner/Icon-7.svg';
-import iconSignOut            from './dashboard icons/Clinic Owner/Icon-8.svg';
-import iconDashboardActive    from './dashboard icons/Clinic Owner/Icon-9.svg';
-import iconReports            from './dashboard icons/Clinic Owner/Icon-10.svg';
-import iconPatients           from './dashboard icons/Clinic Owner/Icon-11.svg';
-import iconCancellation       from './dashboard icons/Clinic Owner/Icon-12.svg';
-import iconStaffUsers         from './dashboard icons/Clinic Owner/Icon-13.svg';
-import iconAppointments       from './dashboard icons/Clinic Owner/Icon-14.svg';
+// Dashboard Icons (from dashboard/clinic-owner)
+import dashboardLogo          from './dashboard/clinic-owner/Pivodent 2.png';
+import iconArrowRight         from './dashboard/clinic-owner/Icon.svg';
+import iconAlertMsg           from './dashboard/clinic-owner/Icon-1.svg';
+import iconAppointmentsToday  from './dashboard/clinic-owner/Icon-2.svg';
+import iconClinicSettings     from './dashboard/clinic-owner/Icon-3.svg';
+import iconRevenue            from './dashboard/clinic-owner/Icon-4.svg';
+import iconNoShows            from './dashboard/clinic-owner/Icon-5.svg';
+import iconBell               from './dashboard/clinic-owner/Icon-6.svg';
+import iconNewPatients        from './dashboard/clinic-owner/Icon-7.svg';
+import iconSignOut            from './dashboard/clinic-owner/Icon-8.svg';
+import iconDashboardActive    from './dashboard/clinic-owner/Icon-9.svg';
+import iconReports            from './dashboard/clinic-owner/Icon-10.svg';
+import iconPatients           from './dashboard/clinic-owner/Icon-11.svg';
+import iconCancellation       from './dashboard/clinic-owner/Icon-12.svg';
+import iconStaffUsers         from './dashboard/clinic-owner/Icon-13.svg';
+import iconAppointments       from './dashboard/clinic-owner/Icon-14.svg';
+import iconDentistPatients    from './dashboard/clinic-owner/Icon-DentistPatients.svg';
+import iconDentistCompleted   from './dashboard/clinic-owner/Icon-DentistCompleted.svg';
+import iconDentistServiceMix  from './dashboard/clinic-owner/Icon-DentistServiceMix.svg';
+import iconSubUsers           from './dashboard/clinic-owner/Icon-Users.svg';
+import iconSubPatientsCount   from './dashboard/clinic-owner/Icon-PatientsCount.svg';
+import iconSubRetention       from './dashboard/clinic-owner/Icon-Retention.svg';
+import iconSubCalendarCard    from './dashboard/clinic-owner/Icon-CalendarCard.svg';
+import iconSubChevronDown     from './dashboard/clinic-owner/Icon-ChevronDown.svg';
+import iconSubCheckSmall      from './dashboard/clinic-owner/Icon-CheckSmall.svg';
+import iconSubArrowRightSmall from './dashboard/clinic-owner/Icon-ArrowRightSmall.svg';
+import iconSubCrossGray       from './dashboard/clinic-owner/Icon-CrossGray.svg';
+import iconSubCheckGreen      from './dashboard/clinic-owner/Icon-CheckGreen.svg';
 
 export default {
   // Dashboard Icons
@@ -70,6 +82,18 @@ export default {
   iconCancellation,
   iconStaffUsers,
   iconAppointments,
+  iconDentistPatients,
+  iconDentistCompleted,
+  iconDentistServiceMix,
+  iconSubUsers,
+  iconSubPatientsCount,
+  iconSubRetention,
+  iconSubCalendarCard,
+  iconSubChevronDown,
+  iconSubCheckSmall,
+  iconSubArrowRightSmall,
+  iconSubCrossGray,
+  iconSubCheckGreen,
 
   // Auth Assets
   authBg: authRectangle,

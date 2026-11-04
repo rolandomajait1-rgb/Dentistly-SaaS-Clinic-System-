@@ -151,6 +151,19 @@ export async function createStaff(data) {
   return res.json();
 }
 
+export async function updateStaff(id, data) {
+  const res = await fetch(`${BASE_URL}/staff/${id}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Failed to update staff member.');
+  }
+  return res.json();
+}
+
 export async function deleteStaff(id) {
   const res = await fetch(`${BASE_URL}/staff/${id}`, {
     method: 'DELETE',
@@ -195,6 +208,23 @@ export async function clearNotifications() {
   return res.json();
 }
 
+export async function getSubscription() {
+  const res = await fetch(`${BASE_URL}/subscription`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to fetch subscription data.');
+  return res.json();
+}
 
-
-
+export async function changeSubscriptionPlan(plan_code) {
+  const res = await fetch(`${BASE_URL}/subscription/change-plan`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ plan_code })
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to update subscription plan.');
+  }
+  return res.json();
+}

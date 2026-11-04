@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getAppointments, getServices, createAppointment, updateAppointmentStatus } from '../../api';
 import { useNotifications } from '../../context/NotificationContext';
-import AppointmentDetailsModal from '../../components/ui/AppointmentDetailsModal';
-import CancelAppointmentModal from '../../components/ui/CancelAppointmentModal';
-import LateArrivalModal, { isAppointmentLate } from '../../components/ui/LateArrivalModal';
+import AppointmentDetailsModal from '../../components/appointments/AppointmentDetailsModal';
+import CancelAppointmentModal from '../../components/appointments/CancelAppointmentModal';
+import LateArrivalModal, { isAppointmentLate } from '../../components/appointments/LateArrivalModal';
 import {
   CaretLeft,
   CaretRight,

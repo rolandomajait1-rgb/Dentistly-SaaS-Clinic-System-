@@ -87,8 +87,9 @@ class StaffController extends Controller
         }
 
         $formatted = $staff->map(function ($s) {
-            $roleDisplay = match (strtolower($s->role)) {
-                'owner', 'admin' => 'Admin',
+            $roleDisplay = $s->permissions['role_title'] ?? match (strtolower($s->role)) {
+                'owner', 'clinic owner' => 'Clinic Owner',
+                'admin' => 'Admin',
                 'doctor', 'dentist' => 'Dentist',
                 'assistant', 'dental assistant' => 'Dental Assistant',
                 'restricted', 'admin (restricted)' => 'Admin (restricted)',
@@ -99,7 +100,7 @@ class StaffController extends Controller
                 'id' => $s->id,
                 'name' => $s->name,
                 'email' => $s->email,
-                'role' => $s->role,
+                'role' => $roleDisplay,
                 'role_display' => $roleDisplay,
                 'last_login' => $s->updated_at ? $s->updated_at->format('M d, Y h:i A') : 'Jul 19, 2026 10:30 AM',
                 'started' => $s->created_at ? $s->created_at->format('M d, Y') : 'Jan 10, 2023',
@@ -153,10 +154,15 @@ class StaffController extends Controller
 
         // Map role to standard DB enum if needed
         $dbRole = match (strtolower($validated['role'])) {
+            'clinic owner', 'owner' => 'owner',
             'dentist', 'doctor' => 'doctor',
-            'admin', 'owner' => 'admin',
+            'admin', 'admin (restricted)', 'restricted' => 'admin',
             default => 'staff',
         };
+
+        $permissions = [
+            'role_title' => $validated['role'],
+        ];
 
         // Check if email already exists
         $existing = ClinicStaff::where('email', $validated['email'])->first();
@@ -176,6 +182,7 @@ class StaffController extends Controller
             'email'             => $validated['email'],
             'password'          => Hash::make($validated['password'] ?? Str::random(16)),
             'role'              => $dbRole,
+            'permissions'       => $permissions,
             'is_active'         => true,
             'invite_token'      => $inviteToken,
             'invite_expires_at' => $inviteExpiresAt,
@@ -221,6 +228,72 @@ class StaffController extends Controller
                 'invite_pending' => true,
             ]
         ], 201);
+    }
+
+    /**
+     * Update an existing staff user's profile and role
+     */
+    public function updateStaff(Request $request, int $id)
+    {
+        $clinicId = $request->user()->clinic_id;
+        if (!$clinicId) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized: User has no associated clinic.'], 403);
+        }
+
+        $validated = $request->validate([
+            'name'        => 'required|string|max:255',
+            'email'       => 'required|email|max:255',
+            'role'        => 'required|string',
+            'is_active'   => 'nullable|boolean',
+            'permissions' => 'nullable|array',
+        ]);
+
+        $staff = ClinicStaff::where('id', $id)->where('clinic_id', $clinicId)->first();
+        if ($staff) {
+            $dbRole = match (strtolower($validated['role'])) {
+                'clinic owner', 'owner' => 'owner',
+                'dentist', 'doctor'     => 'doctor',
+                'admin', 'admin (restricted)', 'restricted' => 'admin',
+                default                 => 'staff',
+            };
+
+            $permissions = is_array($staff->permissions) ? $staff->permissions : [];
+            $permissions['role_title'] = $validated['role'];
+
+            $updateData = [
+                'name'        => $validated['name'],
+                'email'       => $validated['email'],
+                'role'        => $dbRole,
+                'permissions' => $permissions,
+            ];
+
+            if ($request->has('is_active')) {
+                $updateData['is_active'] = $request->boolean('is_active');
+            }
+
+            $staff->update($updateData);
+
+            AuditLogger::log(
+                $clinicId,
+                'update_staff',
+                'ClinicStaff',
+                $staff->id,
+                ['name' => $staff->name, 'email' => $staff->email, 'role' => $staff->role],
+                $request
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Staff member updated successfully.',
+            'staff' => [
+                'id'           => $id,
+                'name'         => $validated['name'],
+                'email'        => $validated['email'],
+                'role'         => $validated['role'],
+                'role_display' => $validated['role'],
+            ],
+        ]);
     }
 
     /**

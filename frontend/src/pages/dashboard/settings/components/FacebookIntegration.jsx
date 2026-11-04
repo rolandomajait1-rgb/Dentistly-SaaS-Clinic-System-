@@ -5,8 +5,8 @@ import {
   PaperPlaneRight
 } from '@phosphor-icons/react';
 
-import ConfirmModal from '../../../components/ui/ConfirmModal';
-import { useNotifications } from '../../../context/NotificationContext';
+import ConfirmModal from '../../../../components/ui/ConfirmModal';
+import { useNotifications } from '../../../../context/NotificationContext';
 
 // Official Meta Facebook SVG Icon
 export const FacebookIcon = ({ size = 24, className = '' }) => (
@@ -115,7 +115,7 @@ const FacebookIntegration = ({
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
 
   // Preview / Live Test States
-  const clinicDisplayName = clinicData?.clinic_name || 'our dental clinic';
+  const clinicDisplayName = clinicData?.clinic_name || 'pivodent';
   const [testInput, setTestInput] = useState('');
   const [simMessages, setSimMessages] = useState([
     { sender: 'user', text: 'Hi! Can I book teeth cleaning for tomorrow?' },
@@ -154,34 +154,27 @@ const FacebookIntegration = ({
     }
   }, [isConnected, fetchPageDetails]);
 
-  // Auto-scroll chat preview
-  useEffect(() => {
-    if (chatScrollRef.current) {
-      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-    }
-  }, [simMessages, simIsTyping]);
-
   const handleStartConnection = async () => {
     setLoading(true);
     try {
-      localStorage.setItem('oauth_provider', 'facebook');
       const res = await fetch(`${BASE_URL}/dashboard/facebook/auth-url`, {
         headers: getHeaders()
       });
-      if (!res.ok) throw new Error('Failed to get authorization URL');
-
+      if (!res.ok) throw new Error('Failed to retrieve authorization URL');
       const data = await res.json();
-      window.location.href = data.auth_url;
+
+      localStorage.setItem('oauth_provider', 'facebook');
+      const targetUrl = data.auth_url || data.url;
+      if (!targetUrl) throw new Error('Authorization URL not returned from server');
+      window.location.href = targetUrl;
     } catch (err) {
-      showToast(err.message || 'Connection failed', 'error');
+      showToast(err.message || 'Error initiating connection', 'error');
       setLoading(false);
     }
   };
 
   const handlePageSelect = async (page) => {
-    setSelectedPage(page);
     setLoading(true);
-
     try {
       const res = await fetch(`${BASE_URL}/dashboard/facebook/connect`, {
         method: 'POST',
@@ -189,7 +182,7 @@ const FacebookIntegration = ({
         body: JSON.stringify({
           page_id: page.id,
           page_name: page.name,
-          page_access_token: page.access_token,
+          access_token: page.access_token
         })
       });
 
@@ -268,7 +261,10 @@ const FacebookIntegration = ({
           body: JSON.stringify({ code, state })
         });
 
-        if (!res.ok) throw new Error('OAuth callback failed');
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || errData.message || 'OAuth callback failed');
+        }
 
         const data = await res.json();
         setPages(data.pages || []);
@@ -318,65 +314,66 @@ const FacebookIntegration = ({
   const activePageName =
     selectedPage?.name ||
     clinicData?.fb_page_integration?.fb_page_name ||
-    clinicData?.clinic_name ||
-    'Dental Clinic Page';
+    'Roland-Z';
 
   const activePageId =
     selectedPage?.id ||
     clinicData?.fb_page_integration?.fb_page_id ||
-    '';
+    '280666824134570';
 
   return (
-    <div className="w-full bg-white dark:bg-[#131f1e] rounded-xl p-5 border border-[#E2E8F0] dark:border-[#223331] shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col gap-4 transition-all font-['Work_Sans',sans-serif]">
-      {/* Header */}
-      <div className="w-full flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-[#1b2b29]">
-        <div className="flex items-center gap-2.5">
-          <FacebookIcon size={24} />
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#0E3F39] dark:text-[#85d5c9]">
+    <div className="w-full p-5 bg-gradient-to-r from-white from-11% to-blue-200/40 rounded-2xl shadow-[0px_1px_2px_0px_rgba(15,41,64,0.04)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col justify-start items-start gap-4 overflow-hidden transition-all font-['Work_Sans',sans-serif]">
+      {/* Header matching Figma */}
+      <div className="self-stretch inline-flex justify-between items-center">
+        <div className="flex justify-start items-center gap-3">
+          <div className="size-10 rounded-[20px] flex justify-center items-center">
+            <FacebookIcon size={36} />
+          </div>
+          <div className="inline-flex flex-col justify-start items-start gap-[3px]">
+            <div className="inline-flex justify-start items-center gap-2">
+              <div className="text-teal-950 text-base font-semibold font-['Work_Sans'] leading-5">
                 Facebook Messenger
-              </h3>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-[#0866FF]">
-                Official API
-              </span>
+              </div>
+              <div className="px-2 py-0.5 bg-blue-50 rounded-[10px] flex justify-center items-center">
+                <div className="text-blue-500 text-xs font-medium font-['Work_Sans']">Official API</div>
+              </div>
             </div>
-            <p className="text-xs text-[#6A7282] dark:text-slate-400 mt-0.5">
+            <div className="text-slate-500 text-xs font-normal font-['Work_Sans'] leading-4">
               Automated patient appointment bookings and 24/7 AI inquiries.
-            </p>
+            </div>
           </div>
         </div>
 
         {isConnected ? (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            Connected
-          </span>
+          <div className="px-3 py-[5px] bg-emerald-50 rounded-[20px] flex justify-start items-center gap-1.5">
+            <div className="size-2 bg-emerald-500 rounded-full" />
+            <div className="text-emerald-600 text-xs font-medium font-['Work_Sans']">Connected</div>
+          </div>
         ) : (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-            Not Connected
-          </span>
+          <div className="px-3 py-[5px] bg-slate-100 rounded-[20px] flex justify-start items-center gap-1.5">
+            <div className="size-2 bg-slate-400 rounded-full" />
+            <div className="text-slate-500 text-xs font-medium font-['Work_Sans']">Not Connected</div>
+          </div>
         )}
       </div>
 
       {/* Main Two-Column: Settings (Left) & Preview (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+      <div className="w-full flex flex-col lg:flex-row justify-start items-stretch gap-4">
         
         {/* Left: Connection Controls */}
-        <div className="lg:col-span-7 flex flex-col justify-between h-full gap-3">
+        <div className="flex-1 w-full min-w-0 h-72 relative bg-white rounded-xl outline outline-1 outline-offset-[-1px] outline-slate-200 overflow-hidden flex flex-col justify-between">
           
           {/* Disconnected State */}
           {!isConnected && step === 'initial' && (
-            <div className="p-4 rounded-lg bg-[#F8FAFC] dark:bg-[#182625] border border-slate-200 flex flex-col justify-between h-full gap-4">
+            <div className="p-4 flex flex-col justify-between h-full gap-4">
               <div className="space-y-2">
-                <h4 className="text-xs font-bold text-[#1E293B] dark:text-white">
+                <h4 className="text-sm font-bold text-teal-950">
                   Connect Clinic Page
                 </h4>
-                <p className="text-xs text-[#6A7282] dark:text-slate-400 leading-relaxed">
+                <p className="text-xs text-slate-500 leading-relaxed">
                   Link your Facebook business page to let SmileBot handle patient inquiries and appointments.
                 </p>
-                <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-600">
+                <div className="flex items-center gap-3 pt-1 text-xs text-slate-600">
                   <span className="flex items-center gap-1">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
                     24/7 Auto-Replies
@@ -405,14 +402,14 @@ const FacebookIntegration = ({
 
           {/* Page Selection State */}
           {step === 'selecting' && pages.length > 0 && (
-            <div className="p-4 rounded-lg bg-[#F8FAFC] dark:bg-[#182625] border border-slate-200 flex flex-col justify-between h-full gap-3">
+            <div className="p-4 flex flex-col justify-between h-full gap-3">
               <div className="space-y-2">
-                <h4 className="text-xs font-bold text-[#1E293B] dark:text-white">Select Facebook Page</h4>
+                <h4 className="text-sm font-bold text-teal-950">Select Facebook Page</h4>
                 <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                   {pages.map((page) => (
                     <div
                       key={page.id}
-                      className="p-2.5 bg-white dark:bg-[#131f1e] border border-slate-200 rounded-lg flex items-center justify-between gap-2"
+                      className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between gap-2"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         {page.picture?.data?.url ? (
@@ -452,156 +449,157 @@ const FacebookIntegration = ({
             </div>
           )}
 
-          {/* Connected State */}
+          {/* Connected State (Matches Figma 1:1) */}
           {isConnected && (
-            <div className="p-4 rounded-lg bg-[#F8FAFC] dark:bg-[#182625] border border-slate-200 flex flex-col justify-between h-full gap-3">
-              <div className="space-y-3">
-                {/* Connected Page Info */}
-                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-200">
-                  <div className="flex items-center gap-2.5 min-w-0">
+            <>
+              {/* Row 1: Page Header */}
+              <div className="w-full h-14 px-4 py-3 bg-slate-50 border-b border-slate-200 inline-flex justify-between items-center">
+                <div className="flex justify-start items-center gap-2.5">
+                  <div className="size-9 rounded-2xl flex justify-center items-center overflow-hidden border border-slate-200 bg-white">
                     {pageDetails?.picture?.data?.url ? (
-                      <img
-                        src={pageDetails.picture.data.url}
-                        alt={activePageName}
-                        className="w-8 h-8 rounded-full object-cover shrink-0"
-                      />
+                      <img className="size-9 object-cover" src={pageDetails.picture.data.url} alt={activePageName} />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-[#0866FF] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      <div className="size-9 bg-[#0866FF] text-white flex items-center justify-center font-bold text-xs">
                         {activePageName.charAt(0)}
                       </div>
                     )}
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1">
-                        <span className="font-semibold text-xs text-slate-900 truncate">{activePageName}</span>
-                        <ShieldCheck size={14} weight="fill" className="text-[#0866FF] shrink-0" />
+                  </div>
+                  <div className="inline-flex flex-col justify-start items-start gap-0.5">
+                    <div className="inline-flex justify-start items-center gap-1.5">
+                      <div className="text-teal-950 text-sm font-semibold font-['Work_Sans']">{activePageName}</div>
+                      <div className="size-4 bg-blue-600 rounded-md flex justify-center items-center text-white text-[10px] font-bold">
+                        ✓
                       </div>
-                      <p className="text-[10px] text-slate-400">ID: {activePageId}</p>
                     </div>
+                    <div className="text-slate-500 text-xs font-normal font-['Work_Sans']">ID: {activePageId}</div>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={triggerDisconnect}
-                    disabled={loading}
-                    className="text-xs font-semibold text-rose-600 hover:underline cursor-pointer disabled:opacity-50"
-                  >
-                    Disconnect
-                  </button>
                 </div>
-
-                {/* AI Toggle Switch */}
-                <div className="flex items-center justify-between gap-3 pt-1">
-                  <div>
-                    <h4 className="text-xs font-semibold text-[#1E293B] dark:text-white">24/7 AI Auto-Replies</h4>
-                    <p className="text-xs text-[#6A7282] dark:text-slate-400">Respond automatically to patient messages.</p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => onToggleMessenger && onToggleMessenger(!messengerEnabled)}
-                    className="w-[46px] p-[2px] rounded-full transition-colors flex items-center cursor-pointer shrink-0"
-                    style={{
-                      background: messengerEnabled ? '#1A8A7A' : '#CECECE',
-                      justifyContent: messengerEnabled ? 'flex-end' : 'flex-start',
-                    }}
-                  >
-                    <div className="w-[16px] h-[16px] bg-white rounded-full shadow-xs" />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={triggerDisconnect}
+                  disabled={loading}
+                  className="text-red-500 text-xs font-semibold font-['Work_Sans'] hover:underline cursor-pointer disabled:opacity-50"
+                >
+                  Disconnect
+                </button>
               </div>
 
-              <div className="pt-2 border-t border-slate-200/70 flex items-center gap-1.5 text-[11px] text-slate-500">
-                <CheckCircle size={14} className="text-emerald-600 shrink-0" weight="bold" />
-                <span>SmileBot is active and handling incoming patient chats.</span>
+              {/* Row 2: AI Auto-Replies Toggle */}
+              <div className="w-full h-14 px-4 bg-white border-b border-slate-200 inline-flex justify-between items-center">
+                <div className="inline-flex flex-col justify-start items-start gap-[3px]">
+                  <div className="text-teal-950 text-sm font-semibold font-['Work_Sans']">24/7 AI Auto-Replies</div>
+                  <div className="text-slate-500 text-xs font-normal font-['Work_Sans']">Respond automatically to patient messages.</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onToggleMessenger && onToggleMessenger(!messengerEnabled)}
+                  className="w-14 px-1 py-[3px] rounded-full inline-flex flex-col justify-center transition-colors cursor-pointer shrink-0"
+                  style={{
+                    background: messengerEnabled ? '#0D9488' : '#CBD5E1',
+                    alignItems: messengerEnabled ? 'flex-end' : 'flex-start',
+                  }}
+                >
+                  <div className="size-4 bg-white rounded-full shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10)] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10)]" />
+                </button>
               </div>
-            </div>
+
+              {/* Row 3: Spacer */}
+              <div className="flex-1" />
+
+              {/* Row 4: Status Banner at Bottom */}
+              <div className="w-full h-8 px-4 py-2 bg-emerald-50 inline-flex justify-start items-center gap-2">
+                <div className="size-2.5 bg-emerald-500 rounded-full shrink-0" />
+                <div className="text-emerald-800 text-xs font-normal font-['Work_Sans']">
+                  SmileBot is active and handling incoming patient chats.
+                </div>
+              </div>
+            </>
           )}
 
         </div>
 
-        {/* Right: Live Preview / Test Sandbox */}
-        <div className="lg:col-span-5 flex flex-col h-full">
-          <div className="bg-[#F8FAFC] dark:bg-[#0f1716] border border-slate-200 rounded-lg flex flex-col h-full min-h-[260px] overflow-hidden">
+        {/* Right: Live Preview Box (Matches Figma 1:1) */}
+        <div className="w-full lg:w-[534px] h-72 relative bg-white rounded-xl outline outline-1 outline-offset-[-1px] outline-slate-200 overflow-hidden flex flex-col justify-between shrink-0">
+          
+          {/* Header */}
+          <div className="w-full h-14 px-3.5 py-2.5 bg-slate-50 border-b border-slate-200 inline-flex justify-between items-center shrink-0">
+            <div className="flex justify-start items-center gap-2">
+              <div className="h-7 w-7 rounded-2xl flex justify-center items-center overflow-hidden border border-slate-200 bg-white">
+                {pageDetails?.picture?.data?.url ? (
+                  <img className="size-7 object-cover" src={pageDetails.picture.data.url} alt={activePageName} />
+                ) : (
+                  <div className="size-7 bg-[#0866FF] text-white flex items-center justify-center font-bold text-xs">
+                    {activePageName.charAt(0)}
+                  </div>
+                )}
+              </div>
+              <div className="inline-flex flex-col justify-start items-start gap-px">
+                <div className="text-teal-950 text-xs font-semibold font-['Work_Sans']">{activePageName}</div>
+                <div className="text-slate-500 text-xs font-normal font-['Work_Sans']">Live Preview</div>
+              </div>
+            </div>
             
-            {/* Preview Header */}
-            <div className="px-3 py-2 bg-white dark:bg-[#182625] border-b border-slate-200 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-[#0866FF] text-white flex items-center justify-center text-[9px] font-bold">
-                  SB
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-[#1E293B] dark:text-white leading-none">SmileBot</p>
-                  <p className="text-[10px] text-[#6A7282] dark:text-slate-400 mt-0.5">Live Preview</p>
+            <div className="px-2.5 py-0.5 bg-green-500 rounded-[30px] flex justify-center items-center gap-2.5">
+              <div className="text-green-100 text-xs font-medium font-['Work_Sans'] leading-4">Active</div>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div ref={chatScrollRef} className="w-full p-3.5 flex-1 overflow-y-auto flex flex-col justify-start items-start gap-2.5">
+            <div className="self-stretch inline-flex justify-end items-start">
+              <div className="px-3 py-2 bg-blue-600 rounded-tl-xl rounded-tr-xl rounded-bl-xl rounded-br-sm flex justify-start items-start max-w-[85%]">
+                <div className="text-white text-xs font-normal font-['Work_Sans'] leading-relaxed">
+                  Hi! Can I book teeth cleaning for tomorrow?
                 </div>
               </div>
-
-              {isConnected ? (
-                messengerEnabled ? (
-                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200">
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                    Active
-                  </span>
-                ) : (
-                  <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                    Paused
-                  </span>
-                )
-              ) : (
-                <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-                  Offline
-                </span>
-              )}
             </div>
 
-            {/* Chat Messages */}
-            <div ref={chatScrollRef} className="flex-1 p-2.5 overflow-y-auto space-y-2 flex flex-col min-h-[150px] max-h-[190px]">
-              {simMessages.map((msg, idx) => {
-                const isUser = msg.sender === 'user';
-                return (
-                  <div
-                    key={idx}
-                    className={`max-w-[85%] text-[11px] leading-relaxed px-2.5 py-1.5 rounded-xl ${
-                      isUser
-                        ? 'ml-auto bg-[#0866FF] text-white rounded-br-none'
-                        : 'mr-auto bg-white dark:bg-[#182625] text-slate-800 border border-slate-200/80 rounded-bl-none shadow-2xs'
-                    }`}
-                  >
+            <div className="self-stretch inline-flex justify-start items-start">
+              <div className="px-3 py-2 bg-slate-100 rounded-tl-xl rounded-tr-xl rounded-bl-sm rounded-br-xl flex justify-start items-start max-w-[85%]">
+                <div className="text-teal-950 text-xs font-normal font-['Work_Sans'] leading-relaxed">
+                  Hello! Yes, slots are open tomorrow at 10:00 AM and 2:00 PM at pivodent. Would you like to reserve?
+                </div>
+              </div>
+            </div>
+
+            {simMessages.slice(2).map((msg, idx) => {
+              const isUser = msg.sender === 'user';
+              return (
+                <div key={idx} className={`self-stretch inline-flex ${isUser ? 'justify-end' : 'justify-start'} items-start`}>
+                  <div className={`px-3 py-2 ${isUser ? 'bg-blue-600 text-white rounded-tl-xl rounded-tr-xl rounded-bl-xl rounded-br-sm' : 'bg-slate-100 text-teal-950 rounded-tl-xl rounded-tr-xl rounded-bl-sm rounded-br-xl'} text-xs font-normal font-['Work_Sans'] max-w-[85%] leading-relaxed`}>
                     {msg.text}
                   </div>
-                );
-              })}
-
-              {simIsTyping && (
-                <div className="mr-auto bg-white border border-slate-200 px-2 py-1 rounded-xl flex items-center gap-1 text-slate-400 text-[10px]">
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
-              )}
-            </div>
+              );
+            })}
 
-            {/* Test Input Form */}
-            <form
-              onSubmit={handleSendTestMessage}
-              className="p-1.5 bg-white border-t border-slate-200 flex items-center gap-1.5 shrink-0"
-            >
-              <input
-                type="text"
-                value={testInput}
-                onChange={(e) => setTestInput(e.target.value)}
-                placeholder="Type a test message..."
-                className="flex-1 bg-slate-100 text-[11px] text-slate-800 px-2.5 py-1 rounded-full focus:outline-none focus:ring-1 focus:ring-[#0866FF]"
-              />
-              <button
-                type="submit"
-                disabled={!testInput.trim() || simIsTyping}
-                className="w-6 h-6 rounded-full bg-[#0866FF] hover:bg-[#075CE5] text-white flex items-center justify-center shrink-0 cursor-pointer disabled:opacity-40"
-              >
-                <PaperPlaneRight size={10} weight="bold" />
-              </button>
-            </form>
-
+            {simIsTyping && (
+              <div className="mr-auto bg-slate-100 border border-slate-200 px-2.5 py-1.5 rounded-2xl flex items-center gap-1 text-slate-400 text-[10px]">
+                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
+                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            )}
           </div>
+
+          {/* Test Input Form */}
+          <form onSubmit={handleSendTestMessage} className="w-full h-12 bg-slate-50 border-t border-slate-200 px-3 flex items-center justify-between gap-2 shrink-0">
+            <input
+              type="text"
+              value={testInput}
+              onChange={(e) => setTestInput(e.target.value)}
+              placeholder="Type a test message..."
+              className="flex-1 h-8 px-3 bg-white rounded-2xl outline outline-1 outline-offset-[-1px] outline-slate-200 text-slate-700 placeholder-slate-400 text-xs font-normal font-['Work_Sans'] focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={!testInput.trim() || simIsTyping}
+              className="size-8 bg-blue-800 hover:bg-blue-900 rounded-2xl flex justify-center items-center text-white shrink-0 cursor-pointer disabled:opacity-40 transition-colors shadow-xs"
+            >
+              <PaperPlaneRight size={13} weight="fill" />
+            </button>
+          </form>
+
         </div>
 
       </div>

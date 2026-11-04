@@ -1,4 +1,5 @@
 import assets from '../../assets';
+import { getRoleConfig } from '../../utils/permissions';
 
 const NAV_ITEMS = [
   { id: 'overview',  label: 'Dashboard',           icon: assets.iconDashboardActive },
@@ -27,7 +28,10 @@ const getIconStyle = (itemId, isActive) => {
   }
 };
 
-export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
+export default function Sidebar({ activeTab, setActiveTab, onLogout, user }) {
+  const roleConfig = getRoleConfig(user);
+  const visibleNavItems = NAV_ITEMS.filter((item) => roleConfig.allowedTabs.includes(item.id));
+
   return (
     <aside
       className="hidden md:flex flex-col h-full bg-white shrink-0 border-r border-slate-100 select-none"
@@ -81,7 +85,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
 
       {/* Main Navigation */}
       <nav className="flex-1 space-y-4.5" aria-label="Main navigation">
-        {NAV_ITEMS.map((item) => {
+        {visibleNavItems.map((item) => {
           const isActive = activeTab === item.id;
           return (
             <button
