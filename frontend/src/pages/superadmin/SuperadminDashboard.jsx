@@ -1,7 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 
-const SUPERADMIN_API_URL = 'http://127.0.0.1:8000/api/superadmin';
+const resolveSuperadminBaseUrl = () => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return `${import.meta.env.VITE_API_BASE_URL.replace(/\/api\/dashboard\/?$/, '')}/api/superadmin`;
+  }
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (window.location.port === '5173' || (hostname !== 'localhost' && hostname !== '127.0.0.1')) {
+      return '/api/superadmin';
+    }
+    return `http://${hostname}:8000/api/superadmin`;
+  }
+  return '/api/superadmin';
+};
+
+const SUPERADMIN_API_URL = resolveSuperadminBaseUrl();
 
 export default function SuperadminDashboard() {
   const [token, setToken] = useState(() => localStorage.getItem('superadmin_token'));
@@ -235,72 +249,256 @@ export default function SuperadminDashboard() {
   // ────────────────────────────────────────────────────────────────────────
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
-        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-8">
-          <div className="flex justify-center mb-6">
-            <div className="w-12 h-12 rounded-xl bg-teal-500 flex items-center justify-center shadow-lg">
-              <span className="material-symbols-outlined text-slate-950 font-black" style={{ fontSize: '28px' }}>
-                shield_person
-              </span>
+      <div
+        className="min-h-screen flex items-center justify-center p-4 sm:p-6"
+        style={{
+          backgroundColor: '#F5F8F7',
+          fontFamily: "'Work Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+        }}
+      >
+        <div
+          className="w-full max-w-[480px] bg-white rounded-[24px] overflow-hidden"
+          style={{
+            border: '1px solid #E5EBE8',
+            boxShadow: '0 18px 45px rgba(15, 62, 56, 0.07)',
+          }}
+        >
+          {/* Main Form Body */}
+          <div className="p-8 sm:p-10 pb-7">
+            {/* Brand Logo & Super Admin Identifier */}
+            <div className="flex items-center gap-3.5 mb-7">
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                style={{
+                  background: '#FFFFFF',
+                  border: '1px solid #DCE5E0',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+                }}
+              >
+                <img
+                  src="https://raw.githubusercontent.com/rolandomajait1-rgb/Dentistly-SaaS-Clinic-System-/main/backend/public/images/email-brand-symbol-opt.png"
+                  alt="Pivodent"
+                  className="w-7 h-7 object-contain"
+                />
+              </div>
+              <div className="flex flex-col">
+                <span
+                  className="font-extrabold tracking-wide text-base leading-tight"
+                  style={{ color: '#064B42' }}
+                >
+                  PIVODENT
+                </span>
+                <span
+                  className="font-bold text-[10px] tracking-[0.14em] uppercase"
+                  style={{ color: '#064B42' }}
+                >
+                  SUPER ADMIN
+                </span>
+              </div>
             </div>
+
+            {/* Headline Block */}
+            <div className="mb-8">
+              <h1
+                className="text-[30px] sm:text-[32px] font-bold tracking-tight mb-2 leading-tight"
+                style={{
+                  color: '#0F3E38',
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                Super Admin Access
+              </h1>
+              <p
+                className="text-sm leading-relaxed"
+                style={{
+                  color: '#637570',
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                Restricted to authorized personnel only. Sign in securely to manage clinic operations and access sensitive settings.
+              </p>
+            </div>
+
+            {/* Login Form */}
+            <form onSubmit={handleLogin} className="space-y-5">
+              {loginError && (
+                <div
+                  className="p-3.5 rounded-xl text-xs font-semibold flex items-center gap-2"
+                  style={{
+                    backgroundColor: '#FEF2F2',
+                    border: '1px solid #FCA5A5',
+                    color: '#B91C1C',
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <span>{loginError}</span>
+                </div>
+              )}
+
+              {/* Email Input */}
+              <div>
+                <label
+                  className="block text-[11px] font-bold tracking-[0.08em] uppercase mb-1.5"
+                  style={{ color: '#637570' }}
+                >
+                  EMAIL ADDRESS
+                </label>
+                <input
+                  type="email"
+                  required
+                  autoFocus
+                  className="w-full h-12 px-4 rounded-xl text-sm transition-all focus:outline-none"
+                  style={{
+                    backgroundColor: '#F7FAF9',
+                    border: '1px solid #DCE5E0',
+                    color: '#0F3E38',
+                  }}
+                  placeholder="Enter admin email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+
+              {/* Password Input */}
+              <div>
+                <label
+                  className="block text-[11px] font-bold tracking-[0.08em] uppercase mb-1.5"
+                  style={{ color: '#637570' }}
+                >
+                  PASSWORD
+                </label>
+                <input
+                  type="password"
+                  required
+                  className="w-full h-12 px-4 rounded-xl text-sm transition-all focus:outline-none"
+                  style={{
+                    backgroundColor: '#F7FAF9',
+                    border: '1px solid #DCE5E0',
+                    color: '#0F3E38',
+                  }}
+                  placeholder="••••••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+
+              {/* Remember Me & Forgot Password */}
+              <div className="flex items-center justify-between pt-0.5">
+                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer" style={{ color: '#637570' }}>
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded border-slate-300 text-[#0F3E38] focus:ring-[#0F3E38] cursor-pointer"
+                  />
+                  <span>Remember me</span>
+                </label>
+                <a
+                  href="mailto:support@pivodent.io?subject=Super%20Admin%20Password%20Reset"
+                  className="text-xs font-bold transition-colors hover:underline"
+                  style={{ color: '#0F3E38' }}
+                >
+                  Forgot password?
+                </a>
+              </div>
+
+              {/* Sign In Button */}
+              <button
+                type="submit"
+                disabled={isLoggingIn}
+                className="w-full h-12 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-95 disabled:opacity-60 cursor-pointer flex items-center justify-center gap-2 mt-2"
+                style={{
+                  backgroundColor: '#0F3E38',
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                {isLoggingIn ? 'Signing in...' : 'Sign In'}
+              </button>
+            </form>
+
+            {/* "or" Divider */}
+            <div className="flex items-center gap-3 my-5">
+              <div className="h-px flex-1" style={{ backgroundColor: '#E5EBE8' }} />
+              <span className="text-xs font-semibold lowercase" style={{ color: '#889895' }}>
+                or
+              </span>
+              <div className="h-px flex-1" style={{ backgroundColor: '#E5EBE8' }} />
+            </div>
+
+            {/* Continue with Google */}
+            <button
+              type="button"
+              onClick={() => alert('Single Sign-On (SSO) with Google Workspace is managed by platform security policies. Please use admin email credentials.')}
+              className="w-full h-12 rounded-xl text-sm font-semibold flex items-center justify-center gap-2.5 transition-colors hover:bg-slate-50 cursor-pointer"
+              style={{
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #DCE5E0',
+                color: '#1E2939',
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+                <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.04 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+              </svg>
+              <span>Continue with Google</span>
+            </button>
+
+            {/* Need Help Footnote */}
+            <p className="text-center text-xs mt-4" style={{ color: '#637570' }}>
+              Need help? Contact{' '}
+              <a
+                href="mailto:support@pivodent.io"
+                className="hover:underline font-semibold"
+                style={{ color: '#0F3E38' }}
+              >
+                support@pivodent.io
+              </a>
+            </p>
           </div>
 
-          <h2 className="text-2xl font-black text-center text-white tracking-tight mb-1">
-            SaaS Control Tower
-          </h2>
-          <p className="text-slate-400 text-xs text-center font-medium tracking-wide uppercase mb-8">
-            Platform Operator Login
-          </p>
-
-          <form onSubmit={handleLogin} className="space-y-5">
-            {loginError && (
-              <div className="p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-400 text-xs font-bold flex gap-2 items-center">
-                <span className="material-symbols-outlined text-sm">error</span>
-                {loginError}
-              </div>
-            )}
-
+          {/* Bottom Card Footer: CLINIC ACCESS Switcher */}
+          <div
+            className="px-8 py-5 flex items-center justify-between gap-4"
+            style={{
+              backgroundColor: '#F7FAF9',
+              borderTop: '1px solid #E5EBE8',
+            }}
+          >
             <div>
-              <label className="block text-slate-400 text-[10px] font-bold tracking-widest uppercase mb-1.5">
-                Operator Email
-              </label>
-              <input
-                type="email"
-                required
-                className="w-full h-11 px-4 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
-                placeholder="admin@dentalsaas.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+              <span
+                className="text-[10px] font-bold tracking-[0.1em] uppercase block mb-1"
+                style={{ color: '#889895' }}
+              >
+                CLINIC ACCESS
+              </span>
+              <span className="text-sm font-bold block leading-tight" style={{ color: '#0F3E38' }}>
+                Clinic Login
+              </span>
+              <span className="text-xs block mt-0.5" style={{ color: '#637570' }}>
+                Switch to clinic staff access
+              </span>
             </div>
 
-            <div>
-              <label className="block text-slate-400 text-[10px] font-bold tracking-widest uppercase mb-1.5">
-                Secure Token Key
-              </label>
-              <input
-                type="password"
-                required
-                className="w-full h-11 px-4 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
-                placeholder="••••••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoggingIn}
-              className="w-full h-12 mt-4 bg-teal-500 hover:bg-teal-400 disabled:bg-slate-800 text-slate-950 font-extrabold rounded-lg text-sm tracking-widest uppercase transition-colors shadow-lg shadow-teal-500/10 cursor-pointer flex items-center justify-center gap-2"
+            <a
+              href="/"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all hover:bg-slate-50 cursor-pointer shrink-0"
+              style={{
+                backgroundColor: '#FFFFFF',
+                border: '1.5px solid #DCE5E0',
+                color: '#0F3E38',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+              }}
             >
-              {isLoggingIn ? 'Verifying Credentials...' : 'Access Control Deck'}
-            </button>
-          </form>
-
-          <div className="mt-8 pt-6 border-t border-slate-800/60 text-center">
-            <a href="/" className="text-xs text-slate-500 hover:text-teal-400 transition-colors font-semibold flex items-center justify-center gap-1.5">
-              <span className="material-symbols-outlined text-sm">arrow_back</span>
-              Back to main portal
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+              <span>Clinic Login</span>
             </a>
           </div>
         </div>
